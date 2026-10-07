@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from app import paths
-from app.utils.crypto import encrypt_secret, decrypt_secret_safe, is_encrypted
+from app.utils.crypto import encrypt_secret, decrypt_secret_safe, is_encrypted, looks_like_fernet_token
 from app.utils.formatting import format_bytes
 
 
@@ -115,7 +115,7 @@ class StorageProviderService:
                 if provider in config:
                     for field in fields:
                         val = config[provider].get(field, '')
-                        if val and not is_encrypted(val):
+                        if val and not is_encrypted(val) and not looks_like_fernet_token(val):
                             config[provider][field] = encrypt_secret(val)
 
             with open(cls.CONFIG_FILE, 'w') as f:
@@ -624,7 +624,7 @@ class StorageProviderService:
             if isinstance(section, dict):
                 for field in fields:
                     val = section.get(field, '')
-                    if val and not is_encrypted(val):
+                    if val and not is_encrypted(val) and not looks_like_fernet_token(val):
                         section[field] = encrypt_secret(val)
                         changed += 1
         if changed:

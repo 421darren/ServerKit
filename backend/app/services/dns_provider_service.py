@@ -6,7 +6,7 @@ import requests
 
 from app import db
 from app.models.email import DNSProviderConfig
-from app.utils.crypto import encrypt_secret, decrypt_secret_safe, is_encrypted
+from app.utils.crypto import encrypt_secret, decrypt_secret_safe, is_encrypted, looks_like_fernet_token
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +94,10 @@ class DNSProviderService:
         changed = 0
         for config in DNSProviderConfig.query.all():
             dirty = False
-            if config.api_key and not is_encrypted(config.api_key):
+            if config.api_key and not is_encrypted(config.api_key) and not looks_like_fernet_token(config.api_key):
                 config.api_key = encrypt_secret(config.api_key)
                 dirty = True
-            if config.api_secret and not is_encrypted(config.api_secret):
+            if config.api_secret and not is_encrypted(config.api_secret) and not looks_like_fernet_token(config.api_secret):
                 config.api_secret = encrypt_secret(config.api_secret)
                 dirty = True
             if dirty:

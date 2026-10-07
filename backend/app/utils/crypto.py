@@ -55,6 +55,27 @@ def _find_env_file() -> Path:
     return candidates[0] if candidates else Path('/opt/serverkit/.env')
 
 
+def read_encryption_key_from_env_file():
+    """Return the SERVERKIT_ENCRYPTION_KEY already persisted in .env, or None.
+
+    A process that starts without the environment loaded (a cron job, a one-off
+    script, a unit missing EnvironmentFile=) must reuse this key. Generating a
+    new one would replace it and strand every secret encrypted with it.
+    """
+    try:
+        env_file = _find_env_file()
+        if env_file.exists():
+            m = re.search(r'^[ \t]*SERVERKIT_ENCRYPTION_KEY[ \t]*=[ \t]*(.+?)[ \t]*$',
+                          env_file.read_text(), re.MULTILINE)
+            if m:
+                value = m.group(1).strip().strip('"\'')
+                Fernet(value.encode())  # validates the key
+                return value
+    except Exception:
+        pass
+    return None
+
+
 def generate_encryption_key() -> str:
     """Generate a new Fernet encryption key."""
     return Fernet.generate_key().decode()
@@ -99,6 +120,12 @@ def ensure_encryption_key() -> bytes:
     if key:
         return key.encode()
 
+    # A key already persisted in .env always wins over generating a new one.
+    key = read_encryption_key_from_env_file()
+    if key:
+        os.environ['SERVERKIT_ENCRYPTION_KEY'] = key
+        return key.encode()
+
     if os.environ.get('FLASK_ENV') != 'production':
         # Dev/test: fall through to the derived key below
         return None
@@ -137,6 +164,10 @@ def get_encryption_key() -> bytes:
         ValueError: If SERVERKIT_ENCRYPTION_KEY is not set and cannot be auto-generated
     """
     key = os.environ.get('SERVERKIT_ENCRYPTION_KEY')
+    if not key:
+        key = read_encryption_key_from_env_file()
+        if key:
+            os.environ['SERVERKIT_ENCRYPTION_KEY'] = key
     if not key:
         # In production, try to auto-generate and persist the key
         auto_key = ensure_encryption_key()
@@ -215,6 +246,19 @@ def decrypt_secret_safe(value: str) -> str:
         return decrypt_secret(value)
     except Exception:
         return value
+
+
+def looks_like_fernet_token(value: str) -> bool:
+    """Structural check for a Fernet token (version byte 0x80, >= 73 bytes).
+
+    Unlike ``is_encrypted`` this is true for a token made with ANY key, so
+    secret stores use it to avoid wrapping an already-encrypted value again.
+    """
+    try:
+        raw = base64.urlsafe_b64decode(value.encode())
+        return len(raw) >= 73 and raw[0] == 0x80
+    except Exception:
+        return False
 
 
 def is_encrypted(value: str) -> bool:
