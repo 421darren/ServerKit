@@ -72,6 +72,24 @@ class BackupService:
         """Save backup configuration."""
         return save_json_config(cls.BACKUP_CONFIG, config)
 
+    @staticmethod
+    def _assert_archivable(app_name: str, app_path: str) -> None:
+        """Raise ValueError unless app_path is an existing directory with files in it."""
+        if not app_path or not os.path.isdir(app_path):
+            raise ValueError(
+                f"Nothing to back up for '{app_name}': the application folder "
+                f"'{app_path}' does not exist. If this is a Docker or WordPress "
+                f"site, use its own backup (it keeps data in volumes)."
+            )
+        for _root, _dirs, files in os.walk(app_path):
+            if files:
+                return
+        raise ValueError(
+            f"Nothing to back up for '{app_name}': the application folder "
+            f"'{app_path}' contains no files. If this is a Docker or WordPress "
+            f"site, its data lives in volumes - use its own backup instead."
+        )
+
     @classmethod
     def backup_application(cls, app_name: str, app_path: str,
                           include_db: bool = False, db_config: Dict = None,
@@ -97,6 +115,10 @@ class BackupService:
         )
 
         try:
+            # Refuse to report success for a backup that would contain nothing
+            # (e.g. a Docker app whose data lives in volumes, not in root_path).
+            cls._assert_archivable(app_name, app_path)
+
             os.makedirs(backup_dir, exist_ok=True)
 
             # Backup files
