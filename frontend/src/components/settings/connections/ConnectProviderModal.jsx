@@ -83,6 +83,7 @@ export default function ConnectProviderModal({
                         <StorageBody
                             key={provider.id} provider={provider} isAdmin={isAdmin}
                             storageConfig={storageConfig} onSave={onSaveStorage} onTest={onTestStorage}
+                            onSaved={() => onOpenChange(false)}
                         />
                     )}
 
@@ -482,7 +483,7 @@ const STORAGE_FIELDS = {
     ],
 };
 
-function StorageBody({ provider, isAdmin, storageConfig, onSave, onTest }) {
+function StorageBody({ provider, isAdmin, storageConfig, onSave, onTest, onSaved }) {
     const { t } = useTranslation();
     const sp = provider.storageProvider; // 's3' | 'b2'
     const fields = STORAGE_FIELDS[sp] || [];
@@ -500,7 +501,12 @@ function StorageBody({ provider, isAdmin, storageConfig, onSave, onTest }) {
     }
 
     async function withBusy(fn) { setBusy(true); try { return await fn(); } finally { setBusy(false); } }
-    async function save(e) { e.preventDefault(); await withBusy(() => onSave(buildConfig())); }
+    async function save(e) {
+        e.preventDefault();
+        const ok = await withBusy(() => onSave(buildConfig()));
+        // onSave resolves true on success: close the dialog like the other providers.
+        if (ok && onSaved) onSaved();
+    }
     async function test() { await withBusy(() => onTest(buildConfig())); }
 
     if (!isAdmin) {
