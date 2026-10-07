@@ -254,11 +254,40 @@ def register_channel(name, *, room_fn=None, auth=None, on_subscribe=None,
     socketio.on_event(f'unsubscribe_{name}', _unsubscribe)
 
 
+def make_origin_checker(configured):
+    """Build the Socket.IO origin check.
+
+    Passing an explicit CORS_ORIGINS list to python-engineio *replaces* its
+    built-in same-origin rule. On an install without SERVERKIT_PUBLIC_URL (for
+    example one done over plain HTTP, or before a domain existed) the browser's
+    own address was therefore rejected and the UI stopped live-updating. Keep the
+    configured list, and always also accept the origin the request itself came
+    to (scheme + Host, honoring the proxy's X-Forwarded-Proto/Host), which is
+    what the library does when no list is given.
+    """
+    if configured == '*' or (isinstance(configured, (list, tuple)) and '*' in configured):
+        return '*'
+    allowed = {o.rstrip('/') for o in ([configured] if isinstance(configured, str) else (configured or []))}
+
+    def check(origin, environ=None):
+        if not origin:
+            return True  # non-browser client; auth happens in the connect handler
+        origin = origin.rstrip('/')
+        if origin in allowed:
+            return True
+        environ = environ or {}
+        host = (environ.get('HTTP_X_FORWARDED_HOST') or environ.get('HTTP_HOST') or '').split(',')[0].strip()
+        scheme = (environ.get('HTTP_X_FORWARDED_PROTO') or environ.get('wsgi.url_scheme') or '').split(',')[0].strip()
+        return bool(host and scheme and origin == f'{scheme}://{host}')
+
+    return check
+
+
 def init_socketio(app):
     """Initialize SocketIO with the Flask app."""
     socketio.init_app(
         app,
-        cors_allowed_origins=app.config.get('CORS_ORIGINS', '*'),
+        cors_allowed_origins=make_origin_checker(app.config.get('CORS_ORIGINS', '*')),
         async_mode='threading'
     )
     socketio._security_app = app
