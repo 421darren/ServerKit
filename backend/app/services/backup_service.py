@@ -73,6 +73,35 @@ class BackupService:
         return save_json_config(cls.BACKUP_CONFIG, config)
 
     @staticmethod
+    def _named_docker_volumes(app_path: str):
+        """Names of Docker named volumes used by the app's compose file (bind mounts ignored)."""
+        names = []
+        for fname in ('docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml'):
+            path = os.path.join(app_path, fname)
+            if not os.path.isfile(path):
+                continue
+            try:
+                import yaml
+                with open(path) as fh:
+                    doc = yaml.safe_load(fh) or {}
+            except Exception:
+                return names
+            top = doc.get('volumes') or {}
+            if isinstance(top, dict):
+                names.extend(str(n) for n in top.keys())
+            for svc in (doc.get('services') or {}).values():
+                for vol in (svc or {}).get('volumes') or []:
+                    if isinstance(vol, str):
+                        src = vol.split(':', 1)[0]
+                        if ':' in vol and src and not src.startswith(('.', '/', '~', '$')) and src not in names:
+                            names.append(src)
+                    elif isinstance(vol, dict) and vol.get('type') == 'volume' and vol.get('source'):
+                        if vol['source'] not in names:
+                            names.append(str(vol['source']))
+            break
+        return names
+
+    @staticmethod
     def _assert_archivable(app_name: str, app_path: str) -> None:
         """Raise ValueError unless app_path is an existing directory with files in it."""
         if not app_path or not os.path.isdir(app_path):
@@ -80,6 +109,14 @@ class BackupService:
                 f"Nothing to back up for '{app_name}': the application folder "
                 f"'{app_path}' does not exist. If this is a Docker or WordPress "
                 f"site, use its own backup (it keeps data in volumes)."
+            )
+        volumes = BackupService._named_docker_volumes(app_path)
+        if volumes:
+            raise ValueError(
+                f"'{app_name}' keeps its data in Docker volumes ({', '.join(volumes)}), "
+                f"which a plain folder backup does not include - it would only contain "
+                f"the compose/config files. Use the site's own backup "
+                f"(for WordPress: the WordPress backup) instead."
             )
         for _root, _dirs, files in os.walk(app_path):
             if files:
