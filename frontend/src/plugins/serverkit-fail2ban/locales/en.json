@@ -1,0 +1,31 @@
+{
+    "app": {
+        "fail2banTab": {
+            "activeJails": "Active jails",
+            "areYouSureYouWantTo": "Are you sure you want to unban {{ip}} from {{jail}}?",
+            "banIp": "Ban IP",
+            "banIpAddress": "Ban IP Address",
+            "banned": "Banned",
+            "fail2banInstalledSuccessfully": "Fail2ban installed successfully",
+            "fail2banNotInstalled": "Fail2ban Not Installed",
+            "fail2banStatus": "Fail2ban Status",
+            "failedToBanIp": "Failed to ban IP: {{message}}",
+            "failedToInstall": "Failed to install: {{message}}",
+            "failedToUnban": "Failed to unban: {{message}}",
+            "installFail2banToProtectAgainstBrute": "Install Fail2ban to protect against brute force attacks.",
+            "ipBannedIn": "IP {{banIP}} banned in {{banJail}}",
+            "ipUnbanned": "IP {{ip}} unbanned",
+            "jail": "Jail",
+            "loadingFail2banStatus": "Loading Fail2ban status…",
+            "noIpsAreCurrentlyBanned": "No IPs are currently banned.",
+            "none": "None",
+            "totalBanned": "Total banned",
+            "totalBannedIps": "Total banned IPs",
+            "unban": "Unban",
+            "unbanIp": "Unban IP"
+        },
+        "securityTabs": {
+            "fail2ban": "Fail2ban"
+        }
+    }
+}

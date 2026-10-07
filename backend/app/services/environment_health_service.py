@@ -255,17 +255,45 @@ class EnvironmentHealthService:
             'total': 0,
         }
 
-        # WordPress files
-        wp_dir = os.path.join(env_dir, 'wordpress')
-        if os.path.exists(wp_dir):
-            usage['wordpress'] = cls._get_dir_size(wp_dir)
-        elif os.path.exists(env_dir):
-            usage['wordpress'] = cls._get_dir_size(env_dir)
+        # Prefer the actual Docker mounts for production/containerized sites.
+        # Fall back to the original host-directory layout for environments
+        # that use ./wordpress and ./mysql-data beneath app.root_path.
+        compose_path = EnvironmentPipelineService._get_compose_path(site)
+        if not compose_path:
+            candidate = os.path.join(env_dir, 'docker-compose.yml')
+            if os.path.exists(candidate):
+                compose_path = candidate
 
-        # MySQL data
-        mysql_dir = os.path.join(env_dir, 'mysql-data')
-        if os.path.exists(mysql_dir):
-            usage['mysql'] = cls._get_dir_size(mysql_dir)
+        docker_wp_found = False
+        docker_db_found = False
+
+        if compose_path:
+            wp_mount = EnvironmentDockerService.get_service_mount_source(
+                compose_path, 'wordpress', '/var/www/html'
+            )
+            if wp_mount.get('success') and os.path.exists(wp_mount['source']):
+                usage['wordpress'] = cls._get_dir_size(wp_mount['source'])
+                docker_wp_found = True
+
+            db_mount = EnvironmentDockerService.get_service_mount_source(
+                compose_path, 'db', '/var/lib/mysql'
+            )
+            if db_mount.get('success') and os.path.exists(db_mount['source']):
+                usage['mysql'] = cls._get_dir_size(db_mount['source'])
+                docker_db_found = True
+
+        # Original host-directory fallback
+        if not docker_wp_found:
+            wp_dir = os.path.join(env_dir, 'wordpress')
+            if os.path.exists(wp_dir):
+                usage['wordpress'] = cls._get_dir_size(wp_dir)
+            elif os.path.exists(env_dir):
+                usage['wordpress'] = cls._get_dir_size(env_dir)
+
+        if not docker_db_found:
+            mysql_dir = os.path.join(env_dir, 'mysql-data')
+            if os.path.exists(mysql_dir):
+                usage['mysql'] = cls._get_dir_size(mysql_dir)
 
         # Snapshots
         snapshots_dir = os.path.join(env_dir, 'snapshots')

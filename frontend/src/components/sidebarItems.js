@@ -128,6 +128,14 @@ export const SIDEBAR_ITEMS = [
         category: 'infrastructure',
         icon: '<rect x="2" y="7" width="6" height="6" rx="1"/><rect x="9" y="7" width="6" height="6" rx="1"/><rect x="16" y="7" width="6" height="6" rx="1"/><rect x="2" y="14" width="6" height="6" rx="1"/><rect x="9" y="14" width="6" height="6" rx="1"/>'
     },
+    {
+        id: 'mail',
+        labelKey: 'nav.mail',
+        label: 'Mail',
+        route: '/mail',
+        category: 'infrastructure',
+        icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/>'
+    },
     // NOTE: "Git" appears under Infrastructure too, but it is contributed by the
     // built-in serverkit-git PLUGIN (see plugins/contributions.js), which also
     // registers the /git route. Keeping it plugin-owned means it correctly

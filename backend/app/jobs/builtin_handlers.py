@@ -121,6 +121,52 @@ def run_health_checks():
                 pass
 
 
+
+def run_wordpress_disk_usage():
+    """Refresh cached disk usage for every running production WordPress site.
+
+    Disk usage is intentionally refreshed hourly rather than during the
+    five-minute health sweep because calculating directory sizes can be
+    relatively expensive on larger WordPress and MySQL volumes.
+    """
+    from app import db
+    from app.models.wordpress_site import WordPressSite
+    from app.services.environment_health_service import EnvironmentHealthService
+
+    sites = WordPressSite.query.filter_by(is_production=True).all()
+
+    for site in sites:
+        try:
+            if not site.application or site.application.status != 'running':
+                continue
+
+            result = EnvironmentHealthService.get_disk_usage(site.id)
+
+            if result.get('success'):
+                logger.info(
+                    'WordPress disk usage refreshed for site %s: %s',
+                    site.id,
+                    result.get('total_human'),
+                )
+            else:
+                logger.warning(
+                    'WordPress disk usage refresh failed for site %s: %s',
+                    site.id,
+                    result.get('error'),
+                )
+
+        except Exception as e:
+            logger.error(
+                'WordPress disk usage refresh failed for site %s: %s',
+                site.id,
+                e,
+            )
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+
 def run_monitor_checks():
     """Poll every monitor whose interval has elapsed.
 
@@ -541,6 +587,7 @@ _BUILTINS = [
     ('builtin.restore_point_retention', run_restore_point_retention, 'restore-point-retention', 3600, 180),
     ('builtin.workflow_schedules',  check_workflow_schedules,  'workflow-schedules', 60,    60),
     ('builtin.health_check',        run_health_checks,         'health-check',       300,   30),
+    ('builtin.wordpress_disk_usage', run_wordpress_disk_usage, 'wordpress-disk-usage', 3600, 240),
     # 30s tick, not the monitor interval: the sweep only polls monitors whose own
     # interval has elapsed, so this bounds how late a 30s check can fire.
     ('builtin.monitor_check',       run_monitor_checks,        'monitor-check',      30,    20),

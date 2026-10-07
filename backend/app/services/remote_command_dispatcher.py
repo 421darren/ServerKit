@@ -17,6 +17,7 @@ def dispatch_agent_command(
     params: Optional[Mapping[str, Any]] = None,
     user_id: Optional[int] = None,
     timeout: float = 30.0,
+    audit_params: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Dispatch one typed agent verb through the shared registry transport."""
     return agent_registry.send_command(
@@ -25,4 +26,5 @@ def dispatch_agent_command(
         params=dict(params or {}),
         user_id=user_id,
         timeout=timeout,
+        audit_params=(dict(audit_params) if audit_params is not None else None),
     )

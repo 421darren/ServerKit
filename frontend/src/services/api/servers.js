@@ -1051,3 +1051,68 @@ export async function linkPanel(data) {
 export async function unlinkPanel() {
     return this.request('/linked-panel', { method: 'DELETE' });
 }
+
+// Mail Server Operations
+export async function getServerMailboxes(serverId) {
+    return this.request(`/servers/${serverId}/mail/mailboxes`);
+}
+
+export async function getServerMailboxDetails(serverId, email) {
+    return this.request(
+        `/servers/${serverId}/mail/mailboxes/${encodeURIComponent(email)}/details`
+    );
+}
+
+export async function createServerMailbox(serverId, email, password) {
+    return this.request(`/servers/${serverId}/mail/mailboxes`, {
+        method: 'POST',
+        body: { email, password }
+    });
+}
+
+export async function updateServerMailboxPassword(serverId, email, password) {
+    return this.request(
+        `/servers/${serverId}/mail/mailboxes/${encodeURIComponent(email)}/password`,
+        {
+            method: 'PUT',
+            body: { password }
+        }
+    );
+}
+
+export async function deleteServerMailbox(serverId, email, deleteMailData = false) {
+    return this.request(
+        `/servers/${serverId}/mail/mailboxes/${encodeURIComponent(email)}?delete_mail_data=${encodeURIComponent(deleteMailData)}`,
+        {
+            method: 'DELETE'
+        }
+    );
+}
+
+export async function getServerMailAliases(serverId) {
+    return this.request(`/servers/${serverId}/mail/aliases`);
+}
+
+export async function createServerMailAlias(serverId, alias, recipient) {
+    return this.request(`/servers/${serverId}/mail/aliases`, {
+        method: 'POST',
+        body: { alias, recipient }
+    });
+}
+
+export async function deleteServerMailAlias(serverId, alias, recipient) {
+    return this.request(
+        `/servers/${serverId}/mail/aliases/${encodeURIComponent(alias)}?recipient=${encodeURIComponent(recipient)}`,
+        {
+            method: 'DELETE'
+        }
+    );
+}
+
+
+export async function updateServerMailAlias(serverId, alias, oldRecipient, newRecipient) {
+    await this.deleteServerMailAlias(serverId, alias, oldRecipient);
+
+    return this.createServerMailAlias(serverId, alias, newRecipient);
+}
+

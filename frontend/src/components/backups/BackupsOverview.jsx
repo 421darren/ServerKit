@@ -247,11 +247,35 @@ export default function BackupsOverview({
     }, [stats, storageConfig, costSummary]);
 
     const nextScheduled = (() => {
-        const upcoming = (schedules || [])
+        // Legacy backup schedules.
+        const legacyUpcoming = (schedules || [])
             .filter((s) => s.enabled !== false)
             .map((s) => ({ schedule: s, at: nextFire(s) }))
-            .filter((x) => x.at)
+            .filter((x) => x.at);
+
+        // Policy-driven backups (including extension-provided target types
+        // such as wordpress_site). The fleet policy API exposes next_run_at
+        // from the ScheduledJob backing each enabled policy.
+        const policyUpcoming = (policies || [])
+            .filter((p) => p.enabled !== false && p.next_run_at)
+            .map((p) => {
+                const at = new Date(p.next_run_at);
+                if (Number.isNaN(at.getTime())) return null;
+
+                return {
+                    schedule: {
+                        name: p.name || `${p.target_type} #${p.target_id}`,
+                        schedule_time: p.schedule_cron || '',
+                        timezone: '',
+                    },
+                    at,
+                };
+            })
+            .filter(Boolean);
+
+        const upcoming = [...legacyUpcoming, ...policyUpcoming]
             .sort((a, b) => a.at - b.at);
+
         return upcoming[0] || null;
     })();
 

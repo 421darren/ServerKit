@@ -14,6 +14,7 @@ import ServicesTab from '../components/serverdetail/ServicesTab';
 import ServerOverviewTab from '../components/serverdetail/ServerOverviewTab';
 import AlertsTab from '../components/serverdetail/AlertsTab';
 import ServerDockerTab from '../components/serverdetail/ServerDockerTab';
+import ServerMailTab from '../components/serverdetail/ServerMailTab';
 import CronTab from '../components/serverdetail/CronTab';
 import CloudflaredTab from '../components/serverdetail/CloudflaredTab';
 import ServerMetricsTab from '../components/serverdetail/ServerMetricsTab';
@@ -57,6 +58,7 @@ const ServerDetail = () => {
         'overview',
         ...(isDeveloper ? ['restore-points'] : []),
         'docker',
+        'mail',
         'proxy',
         'cron',
         'cloudflared',
@@ -256,6 +258,7 @@ const ServerDetail = () => {
         { id: 'overview', label: t('common.labels.overview', 'Overview') },
         ...(isDeveloper ? [{ id: 'restore-points', label: t('app.serverDetail.restorePoints', 'Restore Points') }] : []),
         { id: 'docker', label: t('common.labels.docker', 'Docker') },
+        { id: 'mail', label: t('app.serverDetail.mail', 'Mail') },
         { id: 'proxy', label: t('app.serverDetail.proxy', 'Proxy') },
         ...(server.capabilities?.cron ? [{ id: 'cron', label: t('app.serverDetail.cron', 'Cron') }] : []),
         ...(server.capabilities?.cloudflared ? [{ id: 'cloudflared', label: t('app.serverDetail.tunnels', 'Tunnels') }] : []),
@@ -371,6 +374,9 @@ const ServerDetail = () => {
                     )}
                     <TabsContent value="docker">
                         <ServerDockerTab serverId={id} serverStatus={server.status} server={server} />
+                    </TabsContent>
+                    <TabsContent value="mail">
+                        <ServerMailTab serverId={id} serverStatus={server.status} />
                     </TabsContent>
                     <TabsContent value="proxy">
                         <ProxyStackPanel serverId={id} />

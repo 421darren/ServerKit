@@ -101,6 +101,18 @@ def list_policies():
     out = []
     for p in policies:
         d = p.to_dict()
+
+        # Expose the next scheduled run to the fleet-wide Backups overview.
+        # The per-policy serializer already provides this value, but this
+        # endpoint previously returned only BackupPolicy.to_dict().
+        scheduled = BackupPolicyService._scheduled_job(p)
+        next_run = (
+            scheduled.next_run_at
+            if scheduled and scheduled.enabled and p.enabled
+            else None
+        )
+        d['next_run_at'] = next_run.isoformat() if next_run else None
+
         d['provider_missing'] = (
             p.target_type not in VALID_TARGET_TYPES
             and not backup_kind_registry.get(p.target_type)

@@ -123,7 +123,9 @@ function TreeRow({ node, depth, expanded, childrenCache, loading, activeKey, sel
                             "Running" the green dot already carries. */}
                         {node.status === 'active' && node.version
                             ? `v${node.version}`
-                            : STATUS_LABEL[node.status]}
+                            : node.status === 'inactive' && (node.engine === 'mysql' || node.engine === 'postgresql')
+                                ? 'Host stopped'
+                                : STATUS_LABEL[node.status]}
                     </span>
                 )}
 

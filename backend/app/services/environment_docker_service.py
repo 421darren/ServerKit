@@ -298,6 +298,49 @@ networks:
             return {'success': False, 'running': False, 'error': str(e)}
 
     @classmethod
+    def get_service_mount_source(cls, compose_path: str, service: str, destination: str) -> Dict:
+        """Return the host source mounted at destination for a Compose service."""
+        try:
+            ps_result = run_checked(
+                ['docker', 'compose', '-f', compose_path, 'ps', '-q', service],
+                timeout=30)
+
+            if not ps_result['success'] or not ps_result['output'].strip():
+                return {'success': False, 'error': f'Container not found for service {service}'}
+
+            container_id = ps_result['output'].strip().splitlines()[0]
+
+            inspect_result = run_checked(
+                ['docker', 'inspect', container_id, '--format', '{{json .Mounts}}'],
+                timeout=30)
+
+            if not inspect_result['success']:
+                return {'success': False, 'error': inspect_result['error']}
+
+            mounts = json.loads(inspect_result['output'].strip() or '[]')
+
+            for mount in mounts:
+                if mount.get('Destination') == destination:
+                    source = mount.get('Source')
+                    if source:
+                        return {
+                            'success': True,
+                            'source': source,
+                            'type': mount.get('Type'),
+                            'destination': destination,
+                        }
+
+            return {
+                'success': False,
+                'error': f'No mount for {destination} on service {service}',
+            }
+
+        except subprocess.TimeoutExpired:
+            return {'success': False, 'error': 'Docker mount lookup timed out'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    @classmethod
     def get_container_logs(cls, compose_path: str, service: str = 'wordpress', lines: int = 100) -> Dict:
         """Get logs from a container in the environment.
 

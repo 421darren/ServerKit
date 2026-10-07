@@ -9,7 +9,7 @@ import json
 import logging
 import time
 
-from flask import request
+from flask import request, current_app
 from flask_socketio import Namespace, emit, disconnect
 
 from app import sockets_rooms as rooms
@@ -30,6 +30,34 @@ from app.services.agent_registry import (  # noqa: F401
 )
 
 
+def _socket_client_ip():
+    """Return the trusted client IP for a Socket.IO request.
+
+    Flask-SocketIO preserves the original WSGI REMOTE_ADDR for event
+    handlers even though nginx supplies the forwarding headers. Mirror
+    ServerKit's ProxyFix trust model: only honor X-Forwarded-For when
+    TRUST_PROXY_HEADERS is enabled, and select the rightmost trusted hop.
+    """
+    if not current_app.config.get('TRUST_PROXY_HEADERS'):
+        return request.remote_addr or 'unknown'
+
+    try:
+        hops = int(current_app.config.get('TRUSTED_PROXY_HOPS', 1))
+    except (TypeError, ValueError):
+        hops = 1
+
+    if hops < 1:
+        return request.remote_addr or 'unknown'
+
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    addresses = [item.strip() for item in forwarded.split(',') if item.strip()]
+
+    if len(addresses) >= hops:
+        return addresses[-hops]
+
+    return request.remote_addr or 'unknown'
+
+
 class AgentNamespace(Namespace):
     """
     SocketIO namespace for agent connections.
@@ -41,7 +69,7 @@ class AgentNamespace(Namespace):
         """Handle agent connection attempt"""
         # Connection is not authenticated yet
         # Agent must send auth message first
-        logger.info("New connection from %s", request.remote_addr)
+        logger.info("New connection from %s", _socket_client_ip())
 
     def on_disconnect(self):
         """Handle agent disconnection"""
@@ -69,7 +97,7 @@ class AgentNamespace(Namespace):
         }
         """
         sid = request.sid
-        ip_address = request.remote_addr
+        ip_address = _socket_client_ip()
         logger.info("Auth attempt from agent %s at %s",
                     (data or {}).get('agent_id'), ip_address)
 

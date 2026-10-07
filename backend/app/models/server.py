@@ -342,7 +342,7 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
         'list', 'list_installed', 'list_units',
         'read', 'get', 'inspect', 'status', 'info',
         'search', 'logs', 'stats', 'available',
-        'installed', 'current', 'show',
+        'installed', 'current', 'show', 'metrics', 'processes', 'ps',
         # Fleet doctor / survey probes are Observed-safe reads (plan 28 #7):
         # they only discover host state, so they classify as reads and expand
         # to `<ns>:read` rather than `<ns>:write`.
@@ -358,7 +358,15 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
         are mutating. Used by the fleet doctor to decide whether a command may
         run under the Observed (read-only) trust level.
         """
+        if not isinstance(action, str) or not action:
+            return False
         parts = action.split(':')
+        if action in {'agent:recapabilities'}:
+            return True
+        if action in cls.SYSTEM_READ_ACTIONS:
+            return True
+        if len(parts) >= 3 and parts[0] == 'docker':
+            return parts[2] in cls.DOCKER_READ_ACTIONS.get(parts[1], set())
         return bool(parts) and parts[-1] in cls.READ_ACTION_VERBS
 
     @classmethod

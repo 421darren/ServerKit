@@ -18,21 +18,8 @@ from app import db as _db
 from app.models.server import Server
 from app.services.agent_registry import agent_registry
 
-# plan 42 finding: the Observe-mode enforcement engine did NOT survive the
-# recovery rebuild, so this whole file is skipped until it is restored. Concretely
-# the surviving tree is missing:
-#   * ``Server.is_read_action`` read verbs — 'metrics'/'processes'/'ps'/
-#     'recapabilities' are no longer classified as reads (the classifier under-
-#     matches the read column of ACTION_MATRIX);
-#   * a None/empty guard on ``Server.is_read_action`` (it raises on ``None``);
-#   * the ``OBSERVED_READONLY`` write-guard in ``agent_registry.send_command``
-#     (no code path refuses a mutation on an Observed server);
-#   * the ``servers.management_mode`` column MAPPING on the Server model
-#     (migration 065 adds the column, but the model no longer declares it).
-pytestmark = pytest.mark.skip(
-    reason="plan 42: hollow feature — Observe-mode enforcement (is_read_action "
-           "verbs + None guard, send_command OBSERVED_READONLY guard, Server."
-           "management_mode column mapping) missing after recovery rebuild")
+# Observe-mode enforcement is active again at the single command choke point.
+# Keep this matrix as the contract: reads pass, mutations are refused.
 
 CONNECT = '/api/v1/agent/connect'
 
@@ -121,6 +108,17 @@ def test_observed_refuses_mutations_allows_reads(app, client, monkeypatch):
         else:
             assert result.get('code') == 'OBSERVED_READONLY', action
             assert result.get('success') is False, action
+
+
+def test_observed_break_glass_allows_agent_update(app, client, monkeypatch):
+    server_id = _connect_agent(client, monkeypatch)
+    server = Server.query.get(server_id)
+    server.management_mode = 'observed'
+    server.allow_agent_update_observed = True
+    _db.session.commit()
+
+    result = agent_registry.send_command(server_id, 'agent:update', params={}, timeout=0.3)
+    assert result.get('code') != 'OBSERVED_READONLY'
 
 
 def test_managed_allows_mutations_past_guard(app, client, monkeypatch):

@@ -239,6 +239,15 @@ def create_app(config_name=None):
     from app.core_blueprints import register_core_blueprints
     register_core_blueprints(app)
 
+    # Compatibility for ServerKit Agent 1.2.0, which still calls the
+    # pre-v1 version-check URL.
+    app.add_url_rule(
+        '/api/servers/agent/version/check',
+        endpoint='agent_version_check_legacy',
+        view_func=app.view_functions['servers.check_agent_version'],
+        methods=['POST'],
+    )
+
     # Register the core restore handlers after their models and API modules
     # have been imported by the blueprint registry.
     from app.services import recycle_bin_service

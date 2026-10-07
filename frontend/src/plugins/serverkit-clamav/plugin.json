@@ -1,0 +1,75 @@
+{
+  "name": "serverkit-clamav",
+  "display_name": "Malware Scanner",
+  "version": "1.0.0",
+  "description": "ClamAV + YARA malware scanning for ServerKit: quick/full/custom-path scans, job-backed app docroot scans with a curated web-shell rule pass, custom .yar rules, scan history, and a quarantine with restore. ClamAV installs on demand from the page; the YARA pass works everywhere via a pure-Python fallback.",
+  "author": "ServerKit",
+  "license": "MIT",
+  "category": "security",
+  "homepage": "https://github.com/jhd3197/serverkit-clamav",
+  "repository": "https://github.com/jhd3197/serverkit-clamav",
+  "permissions": [
+    "shell",
+    "filesystem"
+  ],
+  "min_panel_version": "1.9.11",
+  "sdk_version": "^1.4.0",
+  "frontend_entry": "dist/index.mjs",
+  "entry_point": "clamav:clamav_bp",
+  "url_prefix": "/api/v1/security",
+  "featured": true,
+  "feature_score": 45,
+  "icon": "<path d=\"M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z\"/><circle cx=\"12\" cy=\"11\" r=\"1\"/><path d=\"M12 11l3.5-3.5\"/>",
+  "jobs": [
+    {
+      "kind": "security.malware_scan",
+      "handler": "malware_scan_service:run_malware_scan_job"
+    }
+  ],
+  "contributions": {
+    "tabs": [
+      {
+        "group": "security",
+        "to": "/security/scanner",
+        "label": "Malware Scanner",
+        "icon": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 12l6-3\"/><path d=\"M12 3v4\"/>"
+      },
+      {
+        "group": "security",
+        "to": "/security/quarantine",
+        "label": "Quarantine",
+        "icon": "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M9 9l6 6M15 9l-6 6\"/>"
+      }
+    ],
+    "routes": [
+      {
+        "path": "security/scanner",
+        "component": "ScannerTabPage",
+        "group": "security"
+      },
+      {
+        "path": "security/quarantine",
+        "component": "QuarantineTabPage",
+        "group": "security"
+      }
+    ],
+    "page_titles": {
+      "/security/scanner": "Malware Scanner",
+      "/security/quarantine": "Quarantine"
+    },
+    "command_palette": [
+      {
+        "label": "Malware Scanner",
+        "path": "/security/scanner",
+        "category": "Pages",
+        "keywords": "clamav yara scan malware web shell virus"
+      },
+      {
+        "label": "Quarantine",
+        "path": "/security/quarantine",
+        "category": "Pages",
+        "keywords": "quarantine infected restore malware"
+      }
+    ]
+  }
+}

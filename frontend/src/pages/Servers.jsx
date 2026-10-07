@@ -184,7 +184,11 @@ const SERVER_COLUMNS = [
         key: 'agent',
         headerKey: 'app.servers.agent', header: 'Agent',
         cellClassName: 'sk-cell-mono servers-row__agent',
-        render: (server) => server.agent_version || 'not installed',
+        render: (server) => (
+            server.is_local
+                ? t('app.servers.local', 'Local')
+                : (server.agent_version || 'not installed')
+        ),
     },
     {
         key: 'group',
@@ -227,7 +231,11 @@ const SERVER_COLUMNS = [
         sortable: true,
         sortValue: (server) => (server.last_seen ? new Date(server.last_seen).getTime() : null),
         cellClassName: 'sk-cell-mono servers-row__seen',
-        render: (server) => formatLastSeen(server.last_seen),
+        render: (server) => (
+            server.is_local
+                ? t('app.servers.local', 'Local')
+                : formatLastSeen(server.last_seen)
+        ),
     },
     {
         key: 'open',
@@ -248,6 +256,8 @@ const Servers = () => {
     const navigate = useNavigate();
     const [servers, setServers] = useState([]);
     const [groups, setGroups] = useState([]);
+    const [localSystemInfo, setLocalSystemInfo] = useState(null);
+    const [localSystemMetrics, setLocalSystemMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     // Quick-create deep link: /servers?focus=create:server opens the add modal.
@@ -291,12 +301,17 @@ const Servers = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [serversData, groupsData] = await Promise.all([
+            const [serversData, groupsData, systemInfo, systemMetrics] = await Promise.all([
                 api.getServers(),
                 api.getServerGroups(),
+                api.getSystemInfo(),
+                api.getSystemMetrics(),
             ]);
+
             setServers(Array.isArray(serversData) ? serversData : []);
             setGroups(Array.isArray(groupsData) ? groupsData : []);
+            setLocalSystemInfo(systemInfo || null);
+            setLocalSystemMetrics(systemMetrics || null);
         } catch (err) {
             console.error('Failed to load servers:', err);
             toast.error(t('app.servers.failedToLoadServers', 'Failed to load servers'));
@@ -309,7 +324,28 @@ const Servers = () => {
         loadData();
     }, [loadData]);
 
-    const filteredServers = servers.filter((server) => {
+    const localServer = useMemo(() => {
+        if (!localSystemInfo) return null;
+
+        return {
+            id: 'local',
+            name: t('app.servers.localThisServer', 'Local (this server)'),
+            hostname: localSystemInfo.hostname || '',
+            ip_address: localSystemInfo.ip_address || '',
+            status: 'online',
+            is_local: true,
+            group_name: t('app.servers.local', 'Local'),
+            os_type: localSystemInfo.platform || '',
+            os_version: localSystemInfo.platform_release || '',
+            metrics: localSystemMetrics || null,
+        };
+    }, [localSystemInfo, localSystemMetrics, t]);
+
+    const displayServers = useMemo(() => {
+        return localServer ? [localServer, ...servers] : servers;
+    }, [localServer, servers]);
+
+    const filteredServers = displayServers.filter((server) => {
         const q = searchTerm.trim().toLowerCase();
         return !q
             || server.name?.toLowerCase().includes(q)
@@ -425,23 +461,30 @@ const Servers = () => {
                     selectable
                     selectedKeys={[...selectedIds]}
                     onToggleRow={(id, checked) => setSelectedIds((prev) => {
+                        if (id === 'local') return prev;
+
                         const next = new Set(prev);
                         if (checked) next.add(id);
                         else next.delete(id);
                         return next;
                     })}
                     onToggleAll={(checked) => setSelectedIds(
-                        checked ? new Set(filteredServers.map((s) => s.id)) : new Set(),
+                        checked
+                            ? new Set(filteredServers.filter((s) => !s.is_local).map((s) => s.id))
+                            : new Set(),
                     )}
                     keyboardNav
-                    onRowClick={(server) => navigate(`/servers/${server.id}`)}
+                    onRowClick={(server) => {
+                        if (server.is_local) return;
+                        navigate(`/servers/${server.id}`);
+                    }}
                     rowClassName="servers-row"
                     className="servers-card"
                     tableClassName="servers-table"
                     footer={(
                         <DataTableFooter
                             shown={chrome.shownCount}
-                            total={servers.length}
+                            total={displayServers.length}
                             noun="server"
                         />
                     )}

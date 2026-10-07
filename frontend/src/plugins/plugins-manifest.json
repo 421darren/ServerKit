@@ -1,3 +1,62 @@
 {
-  "plugins": []
+  "plugins": [
+    {
+      "name": "serverkit-clamav",
+      "slug": "serverkit-clamav",
+      "display_name": "Malware Scanner",
+      "version": "1.0.0",
+      "frontend_entry": "dist/index.mjs",
+      "path": "serverkit-clamav"
+    },
+    {
+      "name": "serverkit-wordpress",
+      "slug": "serverkit-wordpress",
+      "display_name": "WordPress",
+      "version": "1.0.2",
+      "frontend_entry": "dist/index.mjs",
+      "path": "serverkit-wordpress",
+      "styles": [
+        "plugins/serverkit-wordpress/styles/wordpress.scss",
+        "plugins/serverkit-wordpress/styles/wordpress-pipeline.scss",
+        "plugins/serverkit-wordpress/styles/_variables.scss",
+        "plugins/serverkit-wordpress/styles/wordpress-plugin-library.scss"
+      ]
+    },
+    {
+      "name": "serverkit-status",
+      "slug": "serverkit-status",
+      "display_name": "Status Pages",
+      "version": "1.0.0",
+      "frontend_entry": "",
+      "path": "serverkit-status"
+    },
+    {
+      "name": "serverkit-cloud-provision",
+      "slug": "serverkit-cloud-provision",
+      "display_name": "Cloud Provisioning",
+      "version": "1.0.0",
+      "frontend_entry": "",
+      "path": "serverkit-cloud-provision"
+    },
+    {
+      "name": "serverkit-cloudflare-ops",
+      "slug": "serverkit-cloudflare-ops",
+      "display_name": "Cloudflare Zone Ops",
+      "version": "1.1.0",
+      "frontend_entry": "dist/index.mjs",
+      "path": "serverkit-cloudflare-ops",
+      "styles": [
+        "plugins/serverkit-cloudflare-ops/styles/cloudflare-zone.scss",
+        "plugins/serverkit-cloudflare-ops/styles/_variables.scss"
+      ]
+    },
+    {
+      "name": "serverkit-fail2ban",
+      "slug": "serverkit-fail2ban",
+      "display_name": "Fail2ban",
+      "version": "1.0.0",
+      "frontend_entry": "dist/index.mjs",
+      "path": "serverkit-fail2ban"
+    }
+  ]
 }

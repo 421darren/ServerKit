@@ -1244,6 +1244,7 @@ def resolve_alert(alert_id):
 # ==================== Remote Docker Operations ====================
 
 from app.services.remote_docker_service import RemoteDockerService
+from app.services.mail_server_service import MailServerService
 from app.services.server_metrics_service import ServerMetricsService
 from app.services.terminal_service import TerminalService
 
@@ -1349,6 +1350,33 @@ def remove_remote_container(server_id, container_id):
         return jsonify(result), 500
 
     return jsonify({'message': 'Container removed'})
+
+
+@servers_bp.route('/<server_id>/docker/containers/<container_id>/exec', methods=['POST'])
+@developer_required
+def exec_remote_container(server_id, container_id):
+    """Execute a structured command inside a remote container."""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    cmd = data.get('cmd')
+
+    if not isinstance(cmd, list) or not cmd:
+        return jsonify({'error': 'cmd must be a non-empty list'}), 400
+
+    result = RemoteDockerService.exec_command(
+        server_id=server_id,
+        container_id=container_id,
+        cmd=cmd,
+        user=data.get('user', ''),
+        working_dir=data.get('working_dir', ''),
+        timeout_seconds=data.get('timeout_seconds', 60),
+        user_id=user_id
+    )
+
+    if not result.get('success'):
+        return jsonify(result), 500 if result.get('code') != 'AGENT_OFFLINE' else 503
+
+    return jsonify(result.get('data'))
 
 
 @servers_bp.route('/<server_id>/docker/containers/<container_id>/stats', methods=['GET'])
@@ -3022,3 +3050,210 @@ def remote_file_write(server_id):
         return jsonify({'error': 'content is required'}), 400
     result = RemoteFileService.write_file(server_id, path, content, user_id=user_id)
     return _agent_result(result)
+
+# ==================== Mail Server Operations ====================
+
+@servers_bp.route('/<server_id>/mail/mailboxes', methods=['GET'])
+@jwt_required()
+def list_server_mailboxes(server_id):
+    """List docker-mailserver mailboxes on a local or remote server."""
+    user_id = get_jwt_identity()
+
+    result = MailServerService.list_mailboxes(
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'mailboxes_raw': result.get('mailboxes_raw', ''),
+    })
+
+@servers_bp.route('/<server_id>/mail/mailboxes', methods=['POST'])
+@developer_required
+def create_server_mailbox(server_id):
+    """Create a docker-mailserver mailbox on a local or remote server."""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+
+    email = (data.get('email') or '').strip()
+    password = data.get('password')
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+
+    result = MailServerService.add_mailbox(
+        email=email,
+        password=password,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'email': result.get('email', email),
+        'message': 'Mailbox created',
+    }), 201
+
+@servers_bp.route('/<server_id>/mail/mailboxes/<path:email>/password', methods=['PUT'])
+@developer_required
+def update_server_mailbox_password(server_id, email):
+    """Update a docker-mailserver mailbox password."""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    password = data.get('password')
+
+    if not password:
+        return jsonify({'error': 'Password is required'}), 400
+
+    result = MailServerService.update_mailbox_password(
+        email=email,
+        password=password,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'email': result.get('email', email),
+        'message': 'Mailbox password updated',
+    })
+
+@servers_bp.route('/<server_id>/mail/mailboxes/<path:email>', methods=['DELETE'])
+@developer_required
+def delete_server_mailbox(server_id, email):
+    """Delete a docker-mailserver mailbox, preserving mail data by default."""
+    user_id = get_jwt_identity()
+    delete_mail_data = request.args.get(
+        'delete_mail_data', 'false'
+    ).lower() == 'true'
+
+    result = MailServerService.delete_mailbox(
+        email=email,
+        delete_mail_data=delete_mail_data,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'email': result.get('email', email),
+        'mail_data_deleted': delete_mail_data,
+        'message': 'Mailbox deleted',
+    })
+
+@servers_bp.route('/<server_id>/mail/mailboxes/<path:email>/details', methods=['GET'])
+@jwt_required()
+def get_server_mailbox_details(server_id, email):
+    """Return quota and INBOX details for a docker-mailserver mailbox."""
+    user_id = get_jwt_identity()
+
+    result = MailServerService.get_mailbox_details(
+        email=email,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'email': result.get('email', email),
+        'quota': result.get('quota', {}),
+        'inbox': result.get('inbox', {}),
+    })
+
+
+@servers_bp.route('/<server_id>/mail/aliases', methods=['GET'])
+@jwt_required()
+def list_server_mail_aliases(server_id):
+    """List docker-mailserver aliases on a local or remote server."""
+    user_id = get_jwt_identity()
+
+    result = MailServerService.list_aliases(
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'aliases_raw': result.get('aliases_raw', ''),
+    })
+
+@servers_bp.route('/<server_id>/mail/aliases', methods=['POST'])
+@developer_required
+def create_server_mail_alias(server_id):
+    """Create a docker-mailserver alias on a local or remote server."""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+
+    alias = (data.get('alias') or '').strip()
+    recipient = (data.get('recipient') or '').strip()
+
+    if not alias:
+        return jsonify({'error': 'Alias is required'}), 400
+    if not recipient:
+        return jsonify({'error': 'Recipient is required'}), 400
+
+    result = MailServerService.add_alias(
+        alias=alias,
+        recipient=recipient,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'alias': alias,
+        'recipient': recipient,
+        'message': 'Mail alias created',
+    }), 201
+
+@servers_bp.route('/<server_id>/mail/aliases/<path:alias>', methods=['DELETE'])
+@developer_required
+def delete_server_mail_alias(server_id, alias):
+    """Remove one recipient from a docker-mailserver alias."""
+    user_id = get_jwt_identity()
+    recipient = (request.args.get('recipient') or '').strip()
+
+    if not recipient:
+        return jsonify({'error': 'Recipient is required'}), 400
+
+    result = MailServerService.delete_alias(
+        alias=alias,
+        recipient=recipient,
+        server_id=server_id,
+        user_id=user_id,
+    )
+
+    if not result.get('success'):
+        status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
+        return jsonify(result), status
+
+    return jsonify({
+        'alias': result.get('alias', alias),
+        'recipient': result.get('recipient', recipient),
+        'message': 'Mail alias recipient deleted',
+    })
+

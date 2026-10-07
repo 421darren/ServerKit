@@ -16,6 +16,7 @@ import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formatdate
 from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -441,6 +442,7 @@ class NotificationService:
             msg['Subject'] = subject
             msg['From'] = f"{config.get('from_name', 'ServerKit')} <{config['from_email']}>"
             msg['To'] = ', '.join(config['to_emails'])
+            msg['Date'] = formatdate(localtime=True)
 
             # Render via the Notification Bus template system (Jinja2),
             # so monitoring emails share the branded, dark-mode-aware layout.

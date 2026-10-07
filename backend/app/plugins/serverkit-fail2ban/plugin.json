@@ -1,0 +1,50 @@
+{
+  "name": "serverkit-fail2ban",
+  "display_name": "Fail2ban",
+  "version": "1.0.0",
+  "description": "Fail2ban brute-force protection for ServerKit: service status, jail overview, ban/unban, and one-click install. Managed jails written by the panel (per-site brute-force protection) keep working; this extension adds the management surface.",
+  "author": "ServerKit",
+  "license": "MIT",
+  "category": "security",
+  "homepage": "https://github.com/jhd3197/serverkit-fail2ban",
+  "repository": "https://github.com/jhd3197/serverkit-fail2ban",
+  "permissions": [
+    "shell"
+  ],
+  "min_panel_version": "1.9.11",
+  "sdk_version": "^1.4.0",
+  "frontend_entry": "dist/index.mjs",
+  "entry_point": "fail2ban:fail2ban_bp",
+  "url_prefix": "/api/v1/security",
+  "featured": true,
+  "feature_score": 40,
+  "icon": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>",
+  "contributions": {
+    "tabs": [
+      {
+        "group": "security",
+        "to": "/security/fail2ban",
+        "label": "Fail2ban",
+        "icon": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>"
+      }
+    ],
+    "routes": [
+      {
+        "path": "security/fail2ban",
+        "component": "Fail2banTabPage",
+        "group": "security"
+      }
+    ],
+    "page_titles": {
+      "/security/fail2ban": "Fail2ban"
+    },
+    "command_palette": [
+      {
+        "label": "Fail2ban",
+        "path": "/security/fail2ban",
+        "category": "Pages",
+        "keywords": "ban brute force jail security"
+      }
+    ]
+  }
+}

@@ -35,7 +35,7 @@ def _patch_agent(monkeypatch, *, connected=True, capable=True, result=None):
     monkeypatch.setattr(reg, 'get_capabilities', lambda sid: {'survey': capable})
     monkeypatch.setattr(
         reg, 'send_command',
-        lambda server_id, action, params=None, user_id=None, timeout=None: (
+        lambda server_id, action, params=None, user_id=None, timeout=None, audit_params=None: (
             result if result is not None else {'success': True, 'data': {}}))
 
 

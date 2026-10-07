@@ -1413,8 +1413,11 @@ class DatabaseService:
             for service_name, service_config in services.items():
                 image = service_config.get('image', '').lower()
 
-                # Check for MySQL containers
-                if any(db in image for db in ['mysql', 'mariadb', 'percona']):
+                # Check for actual MySQL/MariaDB/Percona server images.
+                # Match the image repository name, not arbitrary substrings:
+                # e.g. serverkit-wordpress:...-mysqlclient is NOT a MySQL server.
+                image_repo = image.split('@', 1)[0].rsplit('/', 1)[-1].split(':', 1)[0]
+                if image_repo in ('mysql', 'mariadb', 'percona'):
                     container_name = service_config.get('container_name', f'{app_name}_{service_name}')
                     container_name = DatabaseService._resolve_app_container(app_path, service_name, container_name, env_vars)
                     environment = service_config.get('environment', [])

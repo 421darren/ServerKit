@@ -55,6 +55,7 @@ export const CORE_ROUTES = Object.freeze([
     { id: 'databases-tab', path: '/databases/:tab', placement: 'dashboard', component: 'Databases', titleKey: 'common.labels.databases', title: 'Databases' },
     { id: 'docker', path: '/docker', placement: 'dashboard', component: 'Docker', titleKey: 'common.labels.docker', title: 'Docker' },
     { id: 'docker-tab', path: '/docker/:tab', placement: 'dashboard', component: 'Docker', titleKey: 'common.labels.docker', title: 'Docker' },
+    { id: 'mail', path: '/mail', placement: 'dashboard', component: 'Mail', title: 'Mail' },
 
     { id: 'servers', path: '/servers', placement: 'dashboard', group: 'servers', component: 'Servers', titleKey: 'common.labels.servers', title: 'Servers' },
     { id: 'fleet', path: '/fleet', placement: 'dashboard', group: 'servers', component: 'AgentFleet', titleKey: 'app.routeManifest.agentFleet', title: 'Agent Fleet' },
@@ -102,6 +103,7 @@ export const CORE_ROUTES = Object.freeze([
     { id: 'monitoring', path: '/monitoring', placement: 'dashboard', group: 'monitoring', component: 'Monitoring', titleKey: 'common.labels.monitoring', title: 'Monitoring' },
     { id: 'monitors', path: '/monitoring/monitors', placement: 'dashboard', group: 'monitoring', component: 'Monitors', titleKey: 'app.routeManifest.monitors', title: 'Monitors' },
     { id: 'incidents', path: '/monitoring/incidents', placement: 'dashboard', group: 'monitoring', component: 'Incidents', titleKey: 'app.routeManifest.incidents', title: 'Incidents' },
+    { id: 'status-pages', path: '/monitoring/status-pages', placement: 'dashboard', group: 'monitoring', component: 'StatusPages', title: 'Status Pages' },
     { id: 'legacy-alerts', path: '/monitoring/alerts', placement: 'dashboard', group: 'monitoring', redirect: '/monitoring/incidents' },
     { id: 'legacy-fleet-alerts', path: '/monitoring/fleet-alerts', placement: 'dashboard', group: 'monitoring', redirect: '/monitoring/incidents' },
     { id: 'jobs', path: '/monitoring/jobs', placement: 'dashboard', group: 'monitoring', component: 'Jobs', titleKey: 'app.routeManifest.jobs', title: 'Jobs' },

@@ -771,16 +771,40 @@ class DatabaseSyncService:
                 import_cmd.append(f'-p{db_password}')
             import_cmd.append(db_name)
 
-            if snapshot_path.endswith('.gz'):
-                with gzip.open(snapshot_path, 'rb') as f:
-                    result = run_checked(import_cmd, stdin=f, timeout=1800)
-            else:
-                with open(snapshot_path, 'r') as f:
-                    result = run_checked(import_cmd, stdin=f, timeout=1800)
+            # Stream SQL to mysql as raw bytes. For gzip snapshots we must
+            # actively decompress and pipe the resulting SQL bytes; passing a
+            # GzipFile directly as stdin exposes its underlying compressed fd.
+            process = subprocess.Popen(
+                import_cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
 
-            if not result['success']:
-                return {'success': False,
-                        'error': f"Container import failed: {result['error']}"}
+            try:
+                opener = gzip.open if snapshot_path.endswith('.gz') else open
+                with opener(snapshot_path, 'rb') as input_file:
+                    while True:
+                        chunk = input_file.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        process.stdin.write(chunk)
+
+                process.stdin.close()
+                process.stdin = None
+                stdout, stderr = process.communicate(timeout=1800)
+
+            except Exception:
+                process.kill()
+                process.wait()
+                raise
+
+            if process.returncode != 0:
+                error = stderr.decode('utf-8', errors='replace').strip()
+                return {
+                    'success': False,
+                    'error': f'Container import failed: {error}'
+                }
 
             return {'success': True, 'message': f'Imported {snapshot_path} into container DB {db_name}'}
 

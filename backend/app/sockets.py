@@ -141,6 +141,14 @@ def _room_allowed(user, room):
                 and _server_visible(user, server_id))
 
 
+
+def _agent_job_room(room):
+    """Return (server_id, channel) for an agent-backed job room, else None."""
+    if not isinstance(room, str):
+        return None
+    match = re.fullmatch(r'server_([^_]+)_(job:[A-Za-z0-9-]+)', room)
+    return match.groups() if match else None
+
 def _prune_audience(room=None):
     # Inspect only this delivery's audience; per-sid metrics should not scan
     # every other connection for each subscriber.
@@ -497,7 +505,24 @@ def handle_join_room(data):
         emit('error', {'message': 'Room access denied'})
         return
 
+    agent_job = _agent_job_room(room)
+    had_participants = any(
+        True for _ in socketio.server.manager.get_participants('/', room)
+    )
+
     join_room(room)
+
+    # The first browser watching an agent-backed job activates the remote
+    # subscription. Agent 1.2.0 replays buffered job events on subscribe,
+    # which closes the race where a job finishes before the modal joins.
+    if agent_job and not had_participants:
+        server_id, channel = agent_job
+        from app.services.agent_registry import AgentRegistry
+        if not AgentRegistry().send_subscription(server_id, channel, subscribe=True):
+            leave_room(room)
+            emit('error', {'message': 'Agent stream subscription failed'})
+            return
+
     emit('joined', {'room': room})
 
 
@@ -507,7 +532,23 @@ def handle_leave_room(data):
     data = data if isinstance(data, dict) else {}
     room = data.get('room')
     if isinstance(room, str) and room:
+        agent_job = _agent_job_room(room)
+
         leave_room(room)
+
+        # Keep one remote subscription shared by every browser watching this
+        # job. Only tear it down after the final browser leaves the room.
+        if agent_job:
+            has_participants = any(
+                True for _ in socketio.server.manager.get_participants('/', room)
+            )
+            if not has_participants:
+                server_id, channel = agent_job
+                from app.services.agent_registry import AgentRegistry
+                AgentRegistry().send_subscription(
+                    server_id, channel, subscribe=False
+                )
+
         emit('left', {'room': room})
 
 

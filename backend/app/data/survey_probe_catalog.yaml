@@ -15,7 +15,7 @@
 #
 # Bump `version` whenever the probe set changes; snapshots record the version
 # they were taken with so a diff can note "catalog changed between flights".
-version: 1
+version: 2
 
 probes:
   - id: nginx
@@ -85,6 +85,14 @@ probes:
       units: [mysql, mariadb, postgresql, mongod]
       bins: [mysqld, mariadbd, postgres, mongod]
       ports: [3306, 5432, 27017]
+
+  - id: fail2ban
+    kind: service
+    title: Fail2ban intrusion prevention
+    reads: Fail2ban service status only. No jail configuration, logs, bans, or credential data are read by the survey.
+    detect:
+      units: [fail2ban]
+      bins: [fail2ban-client]
 
   - id: crontabs
     kind: inventory

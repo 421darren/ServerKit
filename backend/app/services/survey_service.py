@@ -44,7 +44,7 @@ _REQUIRED_PROBE_FIELDS = ('id', 'kind', 'title', 'reads')
 # Probe ids whose detection maps to a running *service* row. Marker/inventory
 # probes (foreign-panel, crontabs, certs, listeners) are surfaced elsewhere in
 # the map and must NOT appear as service rows even when "detected".
-_SERVICE_PROBE_IDS = frozenset({'nginx', 'apache', 'php-fpm', 'docker', 'databases', 'mail'})
+_SERVICE_PROBE_IDS = frozenset({'nginx', 'apache', 'php-fpm', 'docker', 'databases', 'fail2ban', 'mail'})
 
 # Web-server probes whose vhosts become site rows, mapped to their stack label.
 _WEB_PROBES = {'nginx': 'nginx', 'apache': 'apache'}

@@ -224,6 +224,79 @@ class RemoteDockerService:
             user_id=user_id
         )
 
+    @staticmethod
+    def exec_command(
+        server_id: str,
+        container_id: str,
+        cmd: List[str],
+        user: str = '',
+        working_dir: str = '',
+        timeout_seconds: int = 60,
+        user_id: int = None,
+        audit_cmd: List[str] = None
+    ) -> Dict[str, Any]:
+        """Execute a structured command inside a container."""
+        if not cmd:
+            return {'success': False, 'error': 'cmd is required'}
+
+        try:
+            timeout_seconds = int(timeout_seconds)
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'timeout_seconds must be an integer'}
+
+        if timeout_seconds <= 0 or timeout_seconds > 300:
+            return {'success': False, 'error': 'timeout_seconds must be between 1 and 300'}
+
+        if not server_id or server_id == 'local':
+            from app.services.docker_service import DockerService
+            try:
+                import shlex
+                command = ' '.join(shlex.quote(str(arg)) for arg in cmd)
+                result = DockerService.exec_command(container_id, command)
+                if not result.get('success') and 'return_code' not in result:
+                    return result
+
+                data = {
+                    'stdout': result.get('stdout', ''),
+                    'stderr': result.get('stderr', ''),
+                    'exit_code': result.get('return_code', 0),
+                }
+
+                if not result.get('success'):
+                    return {
+                        'success': False,
+                        'error': result.get('stderr') or result.get('error') or 'Container command failed',
+                        'data': data,
+                    }
+
+                return {
+                    'success': True,
+                    'data': data,
+                }
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
+
+        return dispatch_agent_command(
+            server_id=server_id,
+            action='docker:container:exec',
+            params={
+                'container': container_id,
+                'cmd': cmd,
+                'user': user,
+                'working_dir': working_dir,
+                'timeout_seconds': timeout_seconds,
+            },
+            timeout=float(timeout_seconds) + 5.0,
+            user_id=user_id,
+            audit_params={
+                'container': container_id,
+                'cmd': audit_cmd if audit_cmd is not None else cmd,
+                'user': user,
+                'working_dir': working_dir,
+                'timeout_seconds': timeout_seconds,
+            }
+        )
+
     # ==================== Images ====================
 
     @staticmethod

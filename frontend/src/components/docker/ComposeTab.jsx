@@ -26,6 +26,15 @@ import {
 const projectName = (project) => project.Name || project.name || '';
 const projectStatus = (project) => project.Status || project.status || '';
 const projectConfig = (project) => project.ConfigFiles || project.config_files || '';
+// ConfigFiles contains the compose file path, while compose operations expect
+// the project directory as their working directory. Keep the full config path
+// for display/search, but derive the directory for operational API calls.
+const projectPath = (project) => {
+    const config = projectConfig(project).split(',')[0].trim();
+    if (!config) return '';
+    const slash = config.lastIndexOf('/');
+    return slash > 0 ? config.slice(0, slash) : '.';
+};
 
 // Status is a summary string — "running(3)" or "exited(2), running(1)" — so
 // both the label and the count have to be parsed out of it. A project with even
@@ -123,8 +132,8 @@ const ComposeTab = ({ onStatsChange }) => {
     }
 
     async function handleAction(project, action) {
-        const projectPath = projectConfig(project);
-        if (!projectPath) {
+        const composeProjectPath = projectPath(project);
+        if (!composeProjectPath) {
             toast.error(t('app.composeTab.projectPathNotFound', 'Project path not found'));
             return;
         }
@@ -135,9 +144,9 @@ const ComposeTab = ({ onStatsChange }) => {
         try {
             if (action === 'up') {
                 if (isRemote) {
-                    await api.remoteComposeUp(serverId, projectPath);
+                    await api.remoteComposeUp(serverId, composeProjectPath);
                 } else {
-                    await api.composeUp(projectPath, true, false);
+                    await api.composeUp(composeProjectPath, true, false);
                 }
                 toast.success(t('app.composeTab.projectStarted', 'Project started'));
             } else if (action === 'down') {
@@ -147,23 +156,23 @@ const ComposeTab = ({ onStatsChange }) => {
                     return;
                 }
                 if (isRemote) {
-                    await api.remoteComposeDown(serverId, projectPath);
+                    await api.remoteComposeDown(serverId, composeProjectPath);
                 } else {
-                    await api.composeDown(projectPath, false, true);
+                    await api.composeDown(composeProjectPath, false, true);
                 }
                 toast.success(t('app.composeTab.projectStopped', 'Project stopped'));
             } else if (action === 'restart') {
                 if (isRemote) {
-                    await api.remoteComposeRestart(serverId, projectPath);
+                    await api.remoteComposeRestart(serverId, composeProjectPath);
                 } else {
-                    await api.composeRestart(projectPath);
+                    await api.composeRestart(composeProjectPath);
                 }
                 toast.success(t('app.composeTab.projectRestarted', 'Project restarted'));
             } else if (action === 'pull') {
                 if (isRemote) {
-                    await api.remoteComposePull(serverId, projectPath);
+                    await api.remoteComposePull(serverId, composeProjectPath);
                 } else {
-                    await api.composePull(projectPath);
+                    await api.composePull(composeProjectPath);
                 }
                 toast.success(t('app.composeTab.imagesPulled', 'Images pulled'));
             }
@@ -437,7 +446,7 @@ const ComposeLogsModal = ({ project, onClose }) => {
     const [services, setServices] = useState([]);
 
     const name = projectName(project);
-    const projectPath = projectConfig(project);
+    const composeProjectPath = projectPath(project);
 
     useEffect(() => {
         loadServices();
@@ -449,11 +458,11 @@ const ComposeLogsModal = ({ project, onClose }) => {
             let containers;
             if (isRemote) {
                 containers = normalizeListResponse(
-                    await api.getRemoteComposePs(serverId, projectPath),
+                    await api.getRemoteComposePs(serverId, composeProjectPath),
                     'containers'
                 );
             } else {
-                const result = await api.composePs(projectPath);
+                const result = await api.composePs(composeProjectPath);
                 containers = result.containers || result || [];
             }
 
@@ -474,9 +483,9 @@ const ComposeLogsModal = ({ project, onClose }) => {
         try {
             let data;
             if (isRemote) {
-                data = unwrapRemoteData(await api.remoteComposeLogs(serverId, projectPath, selectedService || null, tail));
+                data = unwrapRemoteData(await api.remoteComposeLogs(serverId, composeProjectPath, selectedService || null, tail));
             } else {
-                data = await api.composeLogs(projectPath, selectedService || null, tail);
+                data = await api.composeLogs(composeProjectPath, selectedService || null, tail);
             }
             setLogs(data.logs || 'No logs available');
         } catch (err) {

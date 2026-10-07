@@ -22,6 +22,7 @@ from collections import defaultdict
 
 from app import db
 from app.models.server import Server, ServerCommand, AgentSession
+from app.utils.sensitive_data_filter import mask_payload
 
 # ---------------------------------------------------------------------------
 # Per-IP auth rate limiter — transport-neutral state shared by the WS
@@ -555,13 +556,54 @@ class AgentRegistry:
 
     # ==================== Command Routing ====================
 
+    def send_subscription(self, server_id: str, channel: str, subscribe: bool = True) -> bool:
+        """Send a stream subscribe/unsubscribe message to a connected agent."""
+        agent = self.get_agent(server_id)
+        if not agent:
+            logger.warning(
+                "Cannot %s channel %s: agent for server %s is not connected",
+                "subscribe to" if subscribe else "unsubscribe from",
+                channel,
+                server_id,
+            )
+            return False
+
+        msg_type = 'subscribe' if subscribe else 'unsubscribe'
+        payload = {
+            'type': msg_type,
+            'id': secrets.token_urlsafe(16),
+            'timestamp': int(time.time() * 1000),
+            'channel': channel,
+        }
+
+        try:
+            if agent.transport == 'poll':
+                agent.outbound_queue.put(payload)
+            else:
+                self._socketio.emit(
+                    msg_type,
+                    payload,
+                    room=agent.socket_id,
+                    namespace='/agent'
+                )
+            return True
+        except Exception:
+            logger.exception(
+                "Failed to send %s for channel %s to server %s",
+                msg_type,
+                channel,
+                server_id,
+            )
+            return False
+
     def send_command(
         self,
         server_id: str,
         action: str,
         params: dict = None,
         timeout: float = 30.0,
-        user_id: int = None
+        user_id: int = None,
+        audit_params: dict = None
     ) -> dict:
         """
         Send a command to an agent and wait for response.
@@ -569,9 +611,11 @@ class AgentRegistry:
         Args:
             server_id: Target server ID
             action: Command action (e.g., 'docker:container:list')
-            params: Command parameters
+            params: Command parameters sent to the agent
             timeout: Timeout in seconds
             user_id: User ID for audit logging
+            audit_params: Optional sanitized parameters to persist in the audit
+                record instead of the real command parameters
 
         Returns:
             dict: Command result with 'success', 'data', 'error'
@@ -593,6 +637,20 @@ class AgentRegistry:
                 'code': 'PERMISSION_DENIED'
             }
 
+        # Observe mode is a hard read-only trust boundary. Keep the guard at
+        # the single command choke point so individual services cannot
+        # accidentally bypass it. Unknown actions are treated as writes by
+        # Server.is_read_action(). The one explicit break-glass exception is
+        # agent:update, which an operator may allow while observing.
+        if server and not server.is_managed and not server.is_read_action(action):
+            if not (action == 'agent:update' and server.allow_agent_update_observed):
+                self.record_observed_block(server_id)
+                return {
+                    'success': False,
+                    'error': 'Server is in Observed mode; mutating agent commands are blocked',
+                    'code': 'OBSERVED_READONLY'
+                }
+
         # Create command record
         command_id = secrets.token_urlsafe(16)
         command_record = ServerCommand(
@@ -600,7 +658,9 @@ class AgentRegistry:
             server_id=server_id,
             user_id=user_id,
             command_type=action,
-            command_data=params,
+            command_data=mask_payload(
+                audit_params if audit_params is not None else params
+            ),
             status='pending'
         )
 
@@ -1194,7 +1254,14 @@ class AgentRegistry:
             server.cpu_model = _coalesce(server.cpu_model, info.get('cpu_model'))
             server.total_memory = _coalesce(server.total_memory, info.get('total_memory'))
             server.total_disk = _coalesce(server.total_disk, info.get('total_disk'))
-            server.docker_version = _coalesce(server.docker_version, info.get('docker_version'))
+            logger.info(
+                "SYSTEM_INFO_DOCKER_DEBUG server=%s incoming=%r existing=%r",
+                server_id,
+                info.get('docker_version'),
+                server.docker_version,
+            )
+            if info.get('docker_version'):
+                server.docker_version = info['docker_version']
             server.agent_version = _coalesce(server.agent_version, info.get('agent_version'))
             server.agent_install_dir = _coalesce(server.agent_install_dir, info.get('install_dir'))
             server.agent_config_dir = _coalesce(server.agent_config_dir, info.get('config_dir'))
