@@ -2,6 +2,7 @@ from app.utils.env import env_bool
 import time
 import urllib.request
 import json
+import psutil
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.error_reporting import unexpected_response
