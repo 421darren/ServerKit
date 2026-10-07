@@ -849,6 +849,36 @@ def preview_from_url(url):
     }
 
 
+
+def schedule_restart_for_new_routes(slug, delay_seconds=3):
+    """Restart the panel service shortly after an install whose routes could not
+    be hot-loaded, so the extension actually works.
+
+    Only acts when running as a systemd service (INVOCATION_ID is set) and when
+    SERVERKIT_AUTO_RESTART is not "0". Returns True when a restart was scheduled.
+    """
+    import os
+    import subprocess
+    import threading
+
+    if os.environ.get('SERVERKIT_AUTO_RESTART', '1') == '0':
+        return False
+    if not os.environ.get('INVOCATION_ID'):
+        logger.info(f'{slug}: restart the panel to activate its routes (not running under systemd).')
+        return False
+
+    def _restart():
+        try:
+            subprocess.run(['systemctl', 'restart', 'serverkit'], check=False, timeout=60)
+        except Exception as exc:  # pragma: no cover - last-resort logging
+            logger.warning(f'Automatic panel restart after installing {slug} failed: {exc}')
+
+    timer = threading.Timer(delay_seconds, _restart)
+    timer.daemon = True
+    timer.start()
+    logger.info(f'{slug}: panel restart scheduled in {delay_seconds}s to activate the new routes.')
+    return True
+
 def install_from_path(path, user_id=None, force=False, hot_load=True,
                       source_type=None):
     """Install a plugin from a local directory on the panel host.
@@ -1178,6 +1208,10 @@ def _install_from_buffer(buf, source_url, source_type, user_id=None, force=False
                 _register_plugin_blueprint(plugin)
             except Exception as e:
                 logger.warning(f'Blueprint hot-load failed for {slug} (will load on restart): {e}')
+                # Flask refuses new routes once the app has served a request, so
+                # a UI install used to report success while every route of the
+                # extension answered 405 until someone restarted the panel by hand.
+                schedule_restart_for_new_routes(slug)
 
         # Regenerate frontend plugin manifest
         if has_frontend:
