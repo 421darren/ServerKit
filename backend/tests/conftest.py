@@ -539,3 +539,40 @@ def wp_extension_package(app):
             row.status = InstalledPlugin.STATUS_ACTIVE
         db.session.commit()
     return mods
+
+
+@pytest.fixture(autouse=True, scope='session')
+def _no_registry_installs():
+    """Keep boot-time registry installs out of the source tree.
+
+    Any create_app() (the app fixtures, but also the in-process CLI verbs such
+    as the break-glass token) runs extension_migration.run_registry_auto_install(),
+    which on a host that has fail2ban/clamav installed downloads the published
+    extension and installs it INTO backend/app/plugins, silently overwriting
+    the plugin under test (it replaced our fixed fail2ban with the registry
+    release). The migration swallows install errors and retries next boot, so
+    refusing the install there is safe.
+
+    Narrow on purpose: only run_registry_auto_install() is wrapped, and only
+    while plugin_service.install_registry_extension is still the real one, so
+    tests that call the installer directly, or monkeypatch it before driving
+    the migration, are untouched.
+    """
+    from unittest import mock
+    from app.services import extension_migration, plugin_service
+
+    real_install = plugin_service.install_registry_extension
+    real_run = extension_migration.run_registry_auto_install
+
+    def _refuse(slug, *args, **kwargs):
+        raise RuntimeError(
+            f'registry install of {slug!r} is disabled during boot in tests')
+
+    def _guarded_run(*args, **kwargs):
+        if plugin_service.install_registry_extension is not real_install:
+            return real_run(*args, **kwargs)  # the test supplied its own
+        with mock.patch.object(plugin_service, 'install_registry_extension', _refuse):
+            return real_run(*args, **kwargs)
+
+    with mock.patch.object(extension_migration, 'run_registry_auto_install', _guarded_run):
+        yield
