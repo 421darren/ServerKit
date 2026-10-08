@@ -7,6 +7,26 @@ from app.utils.crypto import encrypt_secret, decrypt_secret_safe, is_encrypted
 logger = logging.getLogger(__name__)
 
 
+def _check_delete(resp):
+    """A provider DELETE must really succeed. 404 = already gone (fine)."""
+    if resp.status_code == 404:
+        return
+    if not (200 <= resp.status_code < 300):
+        detail = ''
+        try:
+            detail = resp.text[:200]
+        except Exception:
+            pass
+        raise RuntimeError(f'provider returned HTTP {resp.status_code} {detail}'.strip())
+
+
+def _real_ip(value):
+    """Providers (Vultr) report 0.0.0.0 until the address is assigned."""
+    if not value or value in ('0.0.0.0', '::', ''):
+        return None
+    return value
+
+
 class CloudProvisioningService:
     """Service for provisioning cloud servers via provider APIs."""
 
@@ -125,10 +145,13 @@ class CloudProvisioningService:
         try:
             result = CloudProvisioningService._provider_create(provider, server, data)
             server.external_id = result.get('id')
-            server.ip_address = result.get('ip_address')
-            server.ipv6_address = result.get('ipv6_address')
+            server.ip_address = _real_ip(result.get('ip_address'))
+            server.ipv6_address = _real_ip(result.get('ipv6_address'))
             server.monthly_cost = result.get('monthly_cost', 0)
-            server.status = CloudServer.STATUS_ACTIVE
+            # No address yet (Vultr assigns it a bit later): stay "creating" and
+            # let refresh_server() pick it up instead of storing 0.0.0.0.
+            server.status = (CloudServer.STATUS_ACTIVE if server.ip_address
+                             else CloudServer.STATUS_CREATING)
             server.hostname = result.get('hostname', server.name)
             db.session.commit()
         except Exception as e:
@@ -158,6 +181,10 @@ class CloudProvisioningService:
             CloudProvisioningService._provider_destroy(server.provider, server)
         except Exception as e:
             logger.error(f'Provider destroy failed: {e}')
+            # Do NOT mark it destroyed: it is still running and billing at the provider.
+            raise ValueError(f'The provider did not delete this server ({e}). '
+                             'It is still running and billing; try again or delete it '
+                             'in the provider console.')
 
         server.status = CloudServer.STATUS_DESTROYED
         server.destroyed_at = datetime.utcnow()
@@ -222,6 +249,7 @@ class CloudProvisioningService:
                     server.provider, server, snapshot)
         except Exception as e:
             logger.warning(f'Provider snapshot delete failed: {e}')
+            raise ValueError(f'The provider did not delete this snapshot ({e}); it may still be billed.')
         db.session.delete(snapshot)
         db.session.commit()
         return True
@@ -264,6 +292,47 @@ class CloudProvisioningService:
         'Debian 12': 2136,
         'CentOS Stream 9': 2072,
     }
+
+    @staticmethod
+    def _vultr_wait_for_ip(instance_id, headers, fallback, attempts=8, delay=5):
+        """Poll briefly for the main_ip Vultr assigns after creation."""
+        import time
+        import requests
+        instance = fallback
+        for _ in range(attempts):
+            time.sleep(delay)
+            try:
+                r = requests.get(f'https://api.vultr.com/v2/instances/{instance_id}',
+                                 headers=headers, timeout=15)
+                if r.ok:
+                    instance = r.json().get('instance', instance)
+                    if _real_ip(instance.get('main_ip')):
+                        break
+            except Exception:
+                pass
+        return instance
+
+    @staticmethod
+    def refresh_server(server_id):
+        """Re-read address/status from the provider (Vultr). Returns the server."""
+        import requests
+        server = CloudServer.query.get(server_id)
+        if not server:
+            return None
+        if server.provider and server.provider.provider_type == 'vultr' and server.external_id:
+            headers = CloudProvisioningService._auth_headers(server.provider)
+            r = requests.get(f'https://api.vultr.com/v2/instances/{server.external_id}',
+                             headers=headers, timeout=15)
+            r.raise_for_status()
+            inst = r.json().get('instance', {})
+            ip = _real_ip(inst.get('main_ip'))
+            if ip:
+                server.ip_address = ip
+                server.ipv6_address = _real_ip(inst.get('v6_main_ip')) or server.ipv6_address
+                if server.status == CloudServer.STATUS_CREATING:
+                    server.status = CloudServer.STATUS_ACTIVE
+                db.session.commit()
+        return server
 
     # --- Provider API calls ---
 
@@ -321,6 +390,9 @@ class CloudProvisioningService:
                                  headers=headers, timeout=30)
             resp.raise_for_status()
             instance = resp.json().get('instance', {})
+            if instance.get('id') and not _real_ip(instance.get('main_ip')):
+                instance = CloudProvisioningService._vultr_wait_for_ip(
+                    instance['id'], headers, instance)
             return {
                 'id': instance.get('id', ''),
                 'ip_address': instance.get('main_ip'),
@@ -374,24 +446,24 @@ class CloudProvisioningService:
         headers = CloudProvisioningService._auth_headers(provider)
 
         if ptype == 'digitalocean':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.digitalocean.com/v2/droplets/{server.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'hetzner':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.hetzner.cloud/v1/servers/{server.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'vultr':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.vultr.com/v2/instances/{server.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'linode':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.linode.com/v4/linode/instances/{server.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
     @staticmethod
     def _provider_resize(provider, server, new_size):
@@ -513,24 +585,24 @@ class CloudProvisioningService:
         headers = CloudProvisioningService._auth_headers(provider)
 
         if ptype == 'digitalocean':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.digitalocean.com/v2/snapshots/{snapshot.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'hetzner':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.hetzner.cloud/v1/images/{snapshot.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'vultr':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.vultr.com/v2/snapshots/{snapshot.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
         elif ptype == 'linode':
-            requests.delete(
+            _check_delete(requests.delete(
                 f'https://api.linode.com/v4/linode/instances/{server.external_id}/backups/{snapshot.external_id}',
-                headers=headers, timeout=30)
+                headers=headers, timeout=30))
 
     @staticmethod
     def _install_agent(server):

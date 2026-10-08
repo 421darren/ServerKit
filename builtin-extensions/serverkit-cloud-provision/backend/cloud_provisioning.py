@@ -90,9 +90,28 @@ def destroy_server(server_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    if not CloudProvisioningService.destroy_server(server_id):
+    try:
+        ok = CloudProvisioningService.destroy_server(server_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 502
+    if not ok:
         return jsonify({'error': 'Not found'}), 404
     return jsonify({'message': 'Server destroyed'})
+
+
+@cloud_provisioning_bp.route('/servers/<int:server_id>/refresh', methods=['POST'])
+@jwt_required()
+def refresh_server(server_id):
+    user = get_current_user()
+    if not user or not user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    try:
+        server = CloudProvisioningService.refresh_server(server_id)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+    if not server:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify(server.to_dict())
 
 
 @cloud_provisioning_bp.route('/servers/<int:server_id>/resize', methods=['POST'])
@@ -136,6 +155,8 @@ def create_snapshot(server_id):
         return jsonify(snapshot.to_dict()), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Provider error: {e}'}), 502
 
 
 @cloud_provisioning_bp.route('/snapshots/<int:snapshot_id>', methods=['DELETE'])
@@ -144,7 +165,11 @@ def delete_snapshot(snapshot_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    if not CloudProvisioningService.delete_snapshot(snapshot_id):
+    try:
+        ok = CloudProvisioningService.delete_snapshot(snapshot_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 502
+    if not ok:
         return jsonify({'error': 'Not found'}), 404
     return jsonify({'message': 'Snapshot deleted'})
 
