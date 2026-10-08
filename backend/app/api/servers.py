@@ -1591,6 +1591,29 @@ def remote_compose_ps(server_id):
     return jsonify(result.get('data', []))
 
 
+def _compose_result(result):
+    """Compose commands run through the agent: the dispatch can succeed
+    while the compose command itself failed (inner data.success false).
+    Surface that as an HTTP error instead of a green result."""
+    if not result.get('success'):
+        return jsonify(result), 500
+    inner = result.get('data')
+    if isinstance(inner, dict) and inner.get('success') is False:
+        err = inner.get('error') or inner.get('output') or 'compose command failed'
+        return jsonify({'success': False, 'error': err, 'data': inner}), 500
+    return jsonify(result)
+
+
+def _encode_write_content(data):
+    """The agent expects base64. Callers may send plain text by passing
+    encoding='text' (or 'utf-8'); default stays base64 pass-through."""
+    import base64
+    content = data.get('content')
+    if (data.get('encoding') or 'base64').lower() in ('text', 'utf-8', 'utf8'):
+        content = base64.b64encode(str(content).encode('utf-8')).decode('ascii')
+    return content
+
+
 @servers_bp.route('/<server_id>/docker/compose/up', methods=['POST'])
 @developer_required
 def remote_compose_up(server_id):
@@ -1609,10 +1632,7 @@ def remote_compose_up(server_id):
         user_id=user_id
     )
 
-    if not result.get('success'):
-        return jsonify(result), 500
-
-    return jsonify(result)
+    return _compose_result(result)
 
 
 @servers_bp.route('/<server_id>/docker/compose/down', methods=['POST'])
@@ -1633,10 +1653,7 @@ def remote_compose_down(server_id):
         user_id=user_id
     )
 
-    if not result.get('success'):
-        return jsonify(result), 500
-
-    return jsonify(result)
+    return _compose_result(result)
 
 
 @servers_bp.route('/<server_id>/docker/compose/logs', methods=['POST'])
@@ -3048,6 +3065,7 @@ def remote_file_write(server_id):
         return jsonify({'error': 'path is required'}), 400
     if content is None:
         return jsonify({'error': 'content is required'}), 400
+    content = _encode_write_content(data)
     result = RemoteFileService.write_file(server_id, path, content, user_id=user_id)
     return _agent_result(result)
 
