@@ -12,6 +12,7 @@ one security.json / security_scans.log / security_alerts.log.
 
 import os
 import json
+import shutil
 import subprocess
 import threading
 from datetime import datetime
@@ -24,6 +25,16 @@ from app.utils.system import (
     ServiceControl,
     run_checked,
 )
+
+
+def _inside(base: str, target: str) -> bool:
+    """True if target resolves to a path strictly inside base (no sibling-prefix tricks)."""
+    base = os.path.realpath(base)
+    target = os.path.realpath(target)
+    try:
+        return os.path.commonpath([base, target]) == base and target != base
+    except ValueError:
+        return False
 
 
 class ClamAVService:
@@ -170,7 +181,7 @@ class ClamAVService:
             return {'success': False, 'error': 'File not found'}
 
         try:
-            result = run_checked(['clamscan', '--no-summary', file_path], timeout=60)
+            result = run_checked(['clamscan', '--no-summary', '--', os.path.abspath(file_path)], timeout=60)
 
             # clamscan exit 1 means INFECTED, not "the command failed" — read
             # the code, not result['success'].
@@ -248,23 +259,38 @@ class ClamAVService:
             cmd = ['clamscan']
             if recursive:
                 cmd.append('-r')
-            cmd.extend(['--infected', '--no-summary'])
+            cmd.append('--infected')  # summary kept: it carries the scanned-file count
 
             # Add exclusions
             for exclude in exclude_paths:
                 cmd.extend(['--exclude', exclude])
 
-            cmd.append(directory)
+            cmd.extend(['--', os.path.abspath(directory)])
 
             result = run_checked(cmd, timeout=3600)  # 1 hour
 
             # Parse output
             infected_files = []
+            files_scanned = 0
             for line in result['output'].strip().split('\n'):
-                if ': ' in line and 'FOUND' in line:
-                    file_path = line.split(':')[0]
-                    infected_files.append(file_path)
+                line = line.rstrip()
+                if line.endswith(' FOUND') and ': ' in line:
+                    # rsplit: the signature name is last, the path may contain ': '
+                    infected_files.append(line.rsplit(': ', 1)[0])
+                elif line.startswith('Scanned files:'):
+                    try:
+                        files_scanned = int(line.split(':', 1)[1].strip())
+                    except ValueError:
+                        pass
 
+            # clamscan: 0 clean, 1 infected, anything else = the scan itself failed
+            if result['returncode'] not in (0, 1):
+                cls._current_scan['status'] = 'error'
+                cls._current_scan['error'] = (result['output'] or 'clamscan failed').strip()[-500:]
+                cls._current_scan['completed_at'] = datetime.now().isoformat()
+                return
+
+            cls._current_scan['files_scanned'] = files_scanned
             cls._current_scan['status'] = 'completed'
             cls._current_scan['completed_at'] = datetime.now().isoformat()
             cls._current_scan['infected_files'] = infected_files
@@ -330,7 +356,11 @@ class ClamAVService:
             quarantine_full_path = os.path.join(quarantine_path, quarantine_name)
 
             # Move file
-            os.rename(file_path, quarantine_full_path)
+            shutil.move(file_path, quarantine_full_path)
+            try:
+                os.chmod(quarantine_full_path, 0o600)  # never leave a quarantined file executable
+            except OSError:
+                pass
 
             # Sidecar with the original location (enables restore)
             try:
@@ -384,6 +414,7 @@ class ClamAVService:
                 meta = cls._read_quarantine_meta(full_path)
                 if meta:
                     entry['original_path'] = meta.get('original_path')
+                    entry['quarantined_at'] = meta.get('quarantined_at') or entry['quarantined_at']
                 files.append(entry)
 
             return {'success': True, 'files': files}
@@ -396,14 +427,16 @@ class ClamAVService:
         """Permanently delete a quarantined file."""
         config = SecurityService.get_config()
         quarantine_path = config.get('clamav', {}).get('quarantine_path', paths.SERVERKIT_QUARANTINE_DIR)
+        if filename != os.path.basename(filename) or filename in ('', '.', '..'):
+            return {'success': False, 'error': 'Invalid file path'}
         file_path = os.path.join(quarantine_path, filename)
 
-        if not os.path.exists(file_path):
-            return {'success': False, 'error': 'File not found'}
-
         # Security check: ensure file is in quarantine directory
-        if not os.path.abspath(file_path).startswith(os.path.abspath(quarantine_path)):
+        if not _inside(quarantine_path, file_path):
             return {'success': False, 'error': 'Invalid file path'}
+
+        if not os.path.lexists(file_path):
+            return {'success': False, 'error': 'File not found'}
 
         try:
             os.remove(file_path)
@@ -429,13 +462,16 @@ class ClamAVService:
         """Move a quarantined file back to its recorded original location."""
         config = SecurityService.get_config()
         quarantine_path = config.get('clamav', {}).get('quarantine_path', paths.SERVERKIT_QUARANTINE_DIR)
+        if filename != os.path.basename(filename) or filename in ('', '.', '..') \
+                or filename.endswith('.meta.json'):
+            return {'success': False, 'error': 'Invalid file path'}
         file_path = os.path.join(quarantine_path, filename)
 
         # Security check: ensure file is in quarantine directory
-        if not os.path.abspath(file_path).startswith(os.path.abspath(quarantine_path)):
+        if not _inside(quarantine_path, file_path):
             return {'success': False, 'error': 'Invalid file path'}
 
-        if not os.path.exists(file_path):
+        if not os.path.lexists(file_path):
             return {'success': False, 'error': 'File not found'}
 
         meta = cls._read_quarantine_meta(file_path)
@@ -452,7 +488,7 @@ class ClamAVService:
 
         try:
             os.makedirs(os.path.dirname(original_path), exist_ok=True)
-            os.rename(file_path, original_path)
+            shutil.move(file_path, original_path)
             try:
                 os.remove(file_path + '.meta.json')
             except OSError:
