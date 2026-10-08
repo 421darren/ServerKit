@@ -7,12 +7,21 @@
 # wp-cli, plugin library) stay @admin_required.
 import json
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from app.middleware.rbac import admin_required, get_current_user
 from app.models import User, Application, WordPressSite
 from app.services.resource_grant_service import ResourceGrantService
 from .wordpress_service import WordPressService
 from app import db
+
+
+def _caller_id():
+    """Id of the authenticated caller, for JWT *and* X-API-Key requests.
+
+    get_jwt_identity() raises for API-key callers, which the admin decorators
+    admit; rbac.get_current_user() resolves both."""
+    user = get_current_user()
+    return user.id if user else None
 
 wordpress_bp = Blueprint('wordpress', __name__)
 
@@ -81,7 +90,7 @@ def list_sites():
     Workspace-aware (#33): filters to the active workspace when one is supplied
     (X-Workspace-Id / ?workspace_id), via the site's parent application."""
     from app.services.workspace_service import WorkspaceService
-    user = User.query.get(get_jwt_identity())
+    user = get_current_user()
     ws_id = WorkspaceService.resolve_workspace_id(
         user, request.headers.get('X-Workspace-Id') or request.args.get('workspace_id'))
     result = WordPressService.get_sites(workspace_id=ws_id)
@@ -107,7 +116,7 @@ def create_site():
     if php_version and php_version not in WordPressService.get_available_php_versions():
         return jsonify({'error': f'Unsupported PHP version: {php_version}'}), 400
 
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     result = WordPressService.create_site(
         name, admin_email, current_user_id,
         php_version=php_version,
@@ -160,7 +169,7 @@ def import_site():
             zfd, zip_tmp = tempfile.mkstemp(suffix='.zip', prefix='wp_import_content_')
             os.close(zfd)
             zip_file.save(zip_tmp)
-        current_user_id = get_jwt_identity()
+        current_user_id = _caller_id()
         result = WordPressService.import_site(
             name=name,
             admin_email=admin_email,
@@ -204,7 +213,7 @@ def clone_site(site_id):
     if not new_name:
         return jsonify({'error': 'New site name is required'}), 400
 
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     result = WordPressService.clone_site(site_id, new_name, current_user_id)
     if result.get('success'):
         return jsonify(result), 201
@@ -311,7 +320,7 @@ def create_environment(site_id):
     if not env_type:
         return jsonify({'error': 'Environment type is required'}), 400
 
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     result = WordPressService.create_environment(site_id, env_type, current_user_id)
 
     if result.get('success'):
@@ -440,7 +449,7 @@ def install_wordpress():
 
     if result['success']:
         # Create application record
-        current_user_id = get_jwt_identity()
+        current_user_id = _caller_id()
         app = Application(
             name=data.get('site_title', 'WordPress Site'),
             app_type='wordpress',
@@ -460,7 +469,7 @@ def install_wordpress():
 @jwt_required()
 def get_php(app_id):
     """Live PHP version + ini limits for a Docker WP site (read-only)."""
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
     if not app:
@@ -538,7 +547,7 @@ def get_site_status_page(app_id):
     """Return the site's live health + bound status-page component (if any) and
     the status pages it can be attached to."""
     from app.models.status_page import StatusPage, StatusComponent
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
     if not app:
@@ -624,7 +633,7 @@ def get_site_analytics(app_id):
     """Per-site traffic + error analytics, parsed on-demand from the container's
     Apache access log (visits / bandwidth / status codes / 404s / bots / top URLs)."""
     from .wp_analytics_service import WpAnalyticsService
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
     if not app:
@@ -642,7 +651,7 @@ def get_site_analytics(app_id):
 def get_site_vulnerabilities(app_id):
     """Return persisted vulnerability findings + live scan status for a site."""
     from .wp_vulnerability_service import WpVulnerabilityService
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
     if not app:
@@ -676,7 +685,7 @@ def _owner_or_admin_app(app_id):
     """Resolve an app and enforce the access guard: owner, admin, or a user the
     app was shared with via a per-resource grant (#33). Returns (app, None) or
     (None, (response, status))."""
-    user = User.query.get(get_jwt_identity())
+    user = get_current_user()
     app = _resolve_app(app_id)
     if not app:
         return None, (jsonify({'error': 'Application not found'}), 404)
@@ -939,7 +948,7 @@ def delete_site_report(app_id, report_id):
 @jwt_required()
 def get_wordpress_info(app_id):
     """Get WordPress site info."""
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
 
@@ -981,7 +990,7 @@ def update_wordpress(app_id):
 @jwt_required()
 def get_plugins(app_id):
     """Get installed plugins."""
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
 
@@ -1086,7 +1095,7 @@ def update_plugins(app_id):
 @jwt_required()
 def get_themes(app_id):
     """Get installed themes."""
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
 
@@ -1181,7 +1190,7 @@ def create_backup(app_id):
 @jwt_required()
 def list_backups(app_id):
     """List backups for a site."""
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     user = User.query.get(current_user_id)
     app = _resolve_app(app_id)
 
@@ -1459,7 +1468,7 @@ def create_wp_user(app_id):
 def wp_auto_login(site_id):
     """Mint a one-time passwordless wp-admin login URL for the calling operator."""
     from app.services.audit_service import AuditService
-    current_user_id = get_jwt_identity()
+    current_user_id = _caller_id()
     operator = User.query.get(current_user_id)
     if not operator:
         return jsonify({'error': 'User not found'}), 404
@@ -1572,7 +1581,7 @@ def add_library_plugin():
         WordPressPluginLibraryService, PluginLibraryError)
     data = request.get_json() or {}
     try:
-        result = WordPressPluginLibraryService.add_plugin(data, user_id=get_jwt_identity())
+        result = WordPressPluginLibraryService.add_plugin(data, user_id=_caller_id())
         return jsonify(result), 201
     except PluginLibraryError as e:
         return jsonify({'error': str(e)}), 400
@@ -1599,7 +1608,7 @@ def update_library_plugin(plugin_id):
     data = request.get_json() or {}
     try:
         result = WordPressPluginLibraryService.update_plugin(
-            plugin_id, data, user_id=get_jwt_identity())
+            plugin_id, data, user_id=_caller_id())
         return jsonify(result), 200
     except PluginLibraryError as e:
         return jsonify({'error': str(e)}), 400
@@ -1628,7 +1637,7 @@ def sync_library_plugin(plugin_id):
     plugin = WordPressCustomPlugin.query.get(plugin_id)
     if not plugin:
         return jsonify({'error': 'Plugin not found'}), 404
-    result = WordPressPluginLibraryService.sync_plugin(plugin, user_id=get_jwt_identity())
+    result = WordPressPluginLibraryService.sync_plugin(plugin, user_id=_caller_id())
     return jsonify(result), 200 if result.get('success') else 400
 
 

@@ -180,7 +180,15 @@ def test_init_socketio_passes_cors_origins_through(monkeypatch):
 
     sockets.init_socketio(_FakeApp())
 
-    assert captured['cors_allowed_origins'] == [PUBLIC_URL]
+    # init_socketio hands python-engineio an origin CHECKER (not the raw list)
+    # so the panel's own origin is accepted even when CORS_ORIGINS omits it.
+    check = captured['cors_allowed_origins']
+    assert callable(check)
+    assert check(PUBLIC_URL) is True                       # the configured origin
+    assert check('https://evil.example') is False          # anything else
+    assert check(None) is True                             # non-browser client
+    same_origin = {'HTTP_HOST': 'panel.local', 'wsgi.url_scheme': 'http'}
+    assert check('http://panel.local', same_origin) is True  # the panel's own origin
     # threading mode is load-bearing: the gevent-websocket worker would
     # double-answer the upgrade handshake behind a proxy.
     assert captured['async_mode'] == 'threading'
