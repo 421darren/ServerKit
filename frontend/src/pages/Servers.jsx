@@ -125,6 +125,21 @@ const formatLastSeen = (timestamp) => {
 
 const clamp = (v) => Math.min(100, Math.max(0, Number(v) || 0));
 
+// The local server's metrics come from /system/metrics in a nested shape
+// (cpu.percent, memory.ram.percent, disk.partitions[]), while remote servers
+// report flat cpu_percent / memory_percent / disk_percent. Without this
+// mapping the Local row read undefined and showed 0% for everything.
+const flattenLocalMetrics = (m) => {
+    if (!m) return null;
+    const parts = m.disk?.partitions || [];
+    const root = parts.find((d) => d.mountpoint === '/') || parts[0];
+    return {
+        cpu_percent: m.cpu?.percent ?? null,
+        memory_percent: m.memory?.ram?.percent ?? null,
+        disk_percent: root?.percent ?? null,
+    };
+};
+
 const isLive = (server) => Boolean(server.metrics) && (server.status || 'pending') === 'online';
 
 // One metric column (CPU / Memory / Disk): a percentage over a thin gauge.
@@ -242,7 +257,9 @@ const SERVER_COLUMNS = [
         header: '',
         sortable: false,
         hideable: false,
-        render: () => <ChevronRight size={16} className="servers-row__chev" />,
+        // The Local row has no detail page (its row click is a no-op), so it
+        // gets no chevron: an arrow that does nothing reads as a broken link.
+        render: (server) => (server.is_local ? null : <ChevronRight size={16} className="servers-row__chev" />),
     },
 ];
 
@@ -337,7 +354,7 @@ const Servers = () => {
             group_name: t('app.servers.local', 'Local'),
             os_type: localSystemInfo.platform || '',
             os_version: localSystemInfo.platform_release || '',
-            metrics: localSystemMetrics || null,
+            metrics: flattenLocalMetrics(localSystemMetrics),
         };
     }, [localSystemInfo, localSystemMetrics, t]);
 
