@@ -9,8 +9,10 @@ delegates those three calls to core and carries only the management-surface
 code (install, manual ban, cross-jail ban listing). Host-level fail2ban
 surfaces stay admin-only (plan 29 #9 bucket).
 """
+import ipaddress
+import re
 import subprocess
-from typing import Dict
+from typing import Dict, Optional, Set
 
 from flask import Blueprint, request, jsonify
 from app.middleware.rbac import admin_required
@@ -18,6 +20,55 @@ from app.services.fail2ban_jail_service import Fail2banJailService
 from app.utils.system import PackageManager, ServiceControl, run_checked
 
 fail2ban_bp = Blueprint('security_fail2ban', __name__)
+
+_JAIL_RE = re.compile(r'^[A-Za-z0-9_.-]{1,64}$')
+
+
+def validate_ip(value) -> Optional[str]:
+    """Return the normalised IP string, or None if it must not be banned.
+
+    Rejects anything that is not a literal IP address and addresses that can
+    never be a sensible ban target (loopback, unspecified, multicast).
+    """
+    try:
+        addr = ipaddress.ip_address(str(value).strip())
+    except ValueError:
+        return None
+    if addr.is_loopback or addr.is_unspecified or addr.is_multicast:
+        return None
+    return str(addr)
+
+
+def valid_jail_name(value) -> bool:
+    return bool(value) and bool(_JAIL_RE.match(str(value)))
+
+
+def local_addresses() -> Set[str]:
+    """IP addresses configured on this host (never ban the server itself)."""
+    found: Set[str] = set()
+    try:
+        import psutil
+        for addrs in psutil.net_if_addrs().values():
+            for a in addrs:
+                host = a.address.split('%')[0]
+                try:
+                    found.add(str(ipaddress.ip_address(host)))
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+    return found
+
+
+def requester_ip() -> Optional[str]:
+    """The admin's own address, so they cannot ban themselves."""
+    fwd = request.headers.get('X-Forwarded-For', '')
+    candidate = fwd.split(',')[0].strip() if fwd else (request.remote_addr or '')
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return None
+
 
 
 class Fail2banOps:
@@ -67,13 +118,25 @@ class Fail2banOps:
         return {'success': True, 'banned_ips': all_bans, 'total': len(all_bans)}
 
     @classmethod
-    def ban_ip(cls, ip: str, jail: str = 'sshd') -> Dict:
-        """Manually ban an IP in Fail2ban."""
+    def ban_ip(cls, ip: str, jail: str = 'sshd', protected: Optional[Set[str]] = None) -> Dict:
+        """Manually ban an IP in Fail2ban.
+
+        Refuses malformed input and addresses that would lock the admin or
+        the server itself out.
+        """
+        clean = validate_ip(ip)
+        if clean is None:
+            return {'success': False, 'error': 'Invalid or non-bannable IP address'}
+        if not valid_jail_name(jail):
+            return {'success': False, 'error': 'Invalid jail name'}
+        if clean in (protected or set()) or clean in local_addresses():
+            return {'success': False,
+                    'error': 'Refusing to ban this address: it is the server itself or your own connection'}
         try:
-            result = run_checked(['fail2ban-client', 'set', jail, 'banip', ip], timeout=10)
+            result = run_checked(['fail2ban-client', 'set', jail, 'banip', clean], timeout=10)
 
             if result['success']:
-                return {'success': True, 'message': f'IP {ip} banned in {jail}'}
+                return {'success': True, 'message': f'IP {clean} banned in {jail}'}
             return {'success': False, 'error': result['error'] or 'Failed to ban IP'}
 
         except Exception as e:
@@ -121,7 +184,12 @@ def unban_ip():
         return jsonify({'error': 'IP address required'}), 400
 
     jail = data.get('jail')
-    result = Fail2banJailService.unban_ip(data['ip'], jail)
+    clean = validate_ip(data['ip'])
+    if clean is None:
+        return jsonify({'success': False, 'error': 'Invalid IP address'}), 400
+    if jail is not None and not valid_jail_name(jail):
+        return jsonify({'success': False, 'error': 'Invalid jail name'}), 400
+    result = Fail2banJailService.unban_ip(clean, jail)
     return jsonify(result), 200 if result['success'] else 400
 
 
@@ -134,5 +202,6 @@ def ban_ip():
         return jsonify({'error': 'IP address required'}), 400
 
     jail = data.get('jail', 'sshd')
-    result = Fail2banOps.ban_ip(data['ip'], jail)
+    me = requester_ip()
+    result = Fail2banOps.ban_ip(data['ip'], jail, protected={me} if me else set())
     return jsonify(result), 200 if result['success'] else 400
