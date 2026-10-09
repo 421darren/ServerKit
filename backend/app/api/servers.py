@@ -24,7 +24,7 @@ from app.services.remote_command_dispatcher import dispatch_agent_command
 from app.services.agent_fleet_service import fleet_service
 from app.services.discovery_service import discovery_service
 from app.services import connection_string as connection_string_codec
-from app.middleware.rbac import admin_required, developer_required, get_current_user
+from app.middleware.rbac import admin_required, developer_required, viewer_required, get_current_user
 from app.exceptions import ValidationError
 
 
@@ -3072,7 +3072,7 @@ def remote_file_write(server_id):
 # ==================== Mail Server Operations ====================
 
 @servers_bp.route('/<server_id>/mail/mailboxes', methods=['GET'])
-@jwt_required()
+@viewer_required
 def list_server_mailboxes(server_id):
     """List docker-mailserver mailboxes on a local or remote server."""
     user_id = get_jwt_identity()
@@ -3175,7 +3175,7 @@ def delete_server_mailbox(server_id, email):
     })
 
 @servers_bp.route('/<server_id>/mail/mailboxes/<path:email>/details', methods=['GET'])
-@jwt_required()
+@viewer_required
 def get_server_mailbox_details(server_id, email):
     """Return quota and INBOX details for a docker-mailserver mailbox."""
     user_id = get_jwt_identity()
@@ -3198,7 +3198,7 @@ def get_server_mailbox_details(server_id, email):
 
 
 @servers_bp.route('/<server_id>/mail/aliases', methods=['GET'])
-@jwt_required()
+@viewer_required
 def list_server_mail_aliases(server_id):
     """List docker-mailserver aliases on a local or remote server."""
     user_id = get_jwt_identity()

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
-from app.middleware.rbac import get_current_user
+from app.middleware.rbac import admin_required, get_current_user
 from .cloud_provisioning_service import CloudProvisioningService
 
 cloud_provisioning_bp = Blueprint('cloud_provisioning', __name__)
@@ -100,7 +100,7 @@ def destroy_server(server_id):
 
 
 @cloud_provisioning_bp.route('/servers/<int:server_id>/refresh', methods=['POST'])
-@jwt_required()
+@admin_required
 def refresh_server(server_id):
     user = get_current_user()
     if not user or not user.is_admin:
