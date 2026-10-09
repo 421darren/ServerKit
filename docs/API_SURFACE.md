@@ -94,6 +94,8 @@ Regenerate (backend/):
 - `DELETE /servers/{server_id}/docker/images/{image_id}`
 - `DELETE /servers/{server_id}/docker/networks/{network_id}`
 - `DELETE /servers/{server_id}/docker/volumes/{volume_name}`
+- `DELETE /servers/{server_id}/mail/aliases/<path:alias>`
+- `DELETE /servers/{server_id}/mail/mailboxes/<path:email>`
 - `DELETE /services/{app_id}`
 - `DELETE /services/{app_id}/backups/{run_id}`
 - `DELETE /services/{app_id}/db-snapshots/{snapshot_id}`
@@ -570,6 +572,9 @@ Regenerate (backend/):
 - `GET /servers/{server_id}/files/allowed-paths`
 - `GET /servers/{server_id}/files/browse`
 - `GET /servers/{server_id}/files/read`
+- `GET /servers/{server_id}/mail/aliases`
+- `GET /servers/{server_id}/mail/mailboxes`
+- `GET /servers/{server_id}/mail/mailboxes/<path:email>/details`
 - `GET /servers/{server_id}/metrics`
 - `GET /servers/{server_id}/metrics/aggregated`
 - `GET /servers/{server_id}/metrics/history`
@@ -1154,11 +1159,14 @@ Regenerate (backend/):
 - `POST /servers/{server_id}/docker/compose/pull`
 - `POST /servers/{server_id}/docker/compose/restart`
 - `POST /servers/{server_id}/docker/compose/up`
+- `POST /servers/{server_id}/docker/containers/{container_id}/exec`
 - `POST /servers/{server_id}/docker/containers/{container_id}/restart`
 - `POST /servers/{server_id}/docker/containers/{container_id}/start`
 - `POST /servers/{server_id}/docker/containers/{container_id}/stop`
 - `POST /servers/{server_id}/docker/images/pull`
 - `POST /servers/{server_id}/files/write`
+- `POST /servers/{server_id}/mail/aliases`
+- `POST /servers/{server_id}/mail/mailboxes`
 - `POST /servers/{server_id}/management-mode`
 - `POST /servers/{server_id}/onboarding/retry`
 - `POST /servers/{server_id}/onboarding/start`
@@ -1330,6 +1338,7 @@ Regenerate (backend/):
 - `PUT /servers/groups/{group_id}`
 - `PUT /servers/{server_id}`
 - `PUT /servers/{server_id}/allowed-ips`
+- `PUT /servers/{server_id}/mail/mailboxes/<path:email>/password`
 - `PUT /servers/{server_id}/workspace`
 - `PUT /services/{app_id}`
 - `PUT /services/{app_id}/backup-policy`
