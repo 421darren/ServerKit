@@ -97,6 +97,10 @@ const ImageUpdateSection = ({ app, onChanged }) => {
     const status = info?.status;
     const updateAvailable = info?.update_available;
     const checkedAt = info?.checked_at;
+    // A compose / locally built app has no single pulled image to compare, so the
+    // check can never succeed; say so instead of showing an alarming "Failed".
+    const notComparable = status === 'failed'
+        && /Could not read the local image digest/i.test(info?.error_message || '');
 
     return (
         <div className="app-panel container-ops__section">
@@ -105,13 +109,21 @@ const ImageUpdateSection = ({ app, onChanged }) => {
                 <span>{t('app.containerOpsPanel.imageUpdate', 'Image Update')}</span>
                 <span className="app-panel-header-actions">
                     {status && (
-                        <Pill kind={statusKind(status)}>
-                            {formatStatusLabel(status)}
+                        <Pill kind={notComparable ? 'gray' : statusKind(status)}>
+                            {notComparable
+                                ? t('app.containerOpsPanel.notApplicable', 'Not applicable')
+                                : formatStatusLabel(status)}
                         </Pill>
                     )}
                 </span>
             </div>
             <div className="app-panel-body">
+                {notComparable && (
+                    <p className="app-panel-hint">
+                        {t('app.containerOpsPanel.noSingleImage', 'This app has no single pulled image to compare (it is a compose stack or was built locally), so there is no update to check.')}
+                    </p>
+                )}
+
                 {!isCompose && (
                     <p className="app-panel-hint">
                         {t('app.containerOpsPanel.imageUpdatesApplyToDockerCompose', 'Image updates apply to Docker Compose apps. You can still check this app\'s digest, but "Update now" is only available for docker-compose apps.')}
