@@ -20,11 +20,16 @@ def dispatch_agent_command(
     audit_params: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Dispatch one typed agent verb through the shared registry transport."""
-    return agent_registry.send_command(
+    kwargs = dict(
         server_id=server_id,
         action=action,
         params=dict(params or {}),
         user_id=user_id,
         timeout=timeout,
-        audit_params=(dict(audit_params) if audit_params is not None else None),
     )
+    # Only forward audit_params when a caller supplied it (e.g. to keep secrets
+    # out of the audit log), so transports and test doubles that predate the
+    # argument keep working unchanged.
+    if audit_params is not None:
+        kwargs['audit_params'] = dict(audit_params)
+    return agent_registry.send_command(**kwargs)
