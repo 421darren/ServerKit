@@ -47,7 +47,9 @@ MAGIC_PREFIXES = tuple(prefix for prefix, _ in TemplateService.MAGIC_PREFIXES)
 
 # The exact ``${VAR}`` substitution pattern the installer uses
 # (``TemplateService.substitute_variables``).
-VAR_PATTERN = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
+# `$${VAR}` is compose's escape for a literal `${VAR}` (resolved inside the
+# container, e.g. a healthcheck), so it is not a template reference.
+VAR_PATTERN = re.compile(r"(?<!\$)\$\{([A-Z_][A-Z0-9_]*)\}")
 
 
 def _template_files():
