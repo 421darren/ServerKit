@@ -116,6 +116,10 @@ def test_server_job_and_terminal_require_operator_and_session_owner(db_session, 
     monkeypatch.setattr(TerminalService, 'get_session', lambda sid: {
         'server_id': server.id, 'user_id': operator.id,
     } if sid == 'session-1' else None)
+    # The first watcher of an agent job activates the agent-side stream; there
+    # is no agent in this test, so pretend the subscription succeeds.
+    from app.services.agent_registry import AgentRegistry
+    monkeypatch.setattr(AgentRegistry, 'send_subscription', lambda self, *a, **k: True)
     for user in (operator, viewer, other):
         sock = clients(user)
         sock.emit('join_room', {'room': sk.rooms.server_channel_room(server.id, 'job:job-1')})
