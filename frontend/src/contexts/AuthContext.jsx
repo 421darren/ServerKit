@@ -1,5 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
 import api from '../services/api';
+import { inTunnel, storageKey } from '../services/tunnelBase.js';
 import { presetForUseCases } from '../components/sidebarItems';
 
 import { AuthContext } from './useAuth.js';
@@ -10,6 +11,8 @@ export function AuthProvider({ children }) {
     const [setupStatus, setSetupStatus] = useState({
         needsSetup: false,
         registrationEnabled: false,
+        // A fresh panel's first registration needs the server's setup code.
+        setupCodeRequired: false,
         ssoProviders: [],
         passwordLoginEnabled: true,
         // Build-time default until the pre-auth fetch resolves (avoids a title flash
@@ -27,7 +30,18 @@ export function AuthProvider({ children }) {
     });
 
     const checkAuth = useCallback(async () => {
-        const token = localStorage.getItem('access_token');
+        let token = localStorage.getItem(storageKey('access_token'));
+        if (!token && inTunnel) {
+            // Opened from ServerKit Cloud: the relay brought a grant that says
+            // who is asking. If this panel has a user with that email, sign
+            // them in; otherwise the normal login page shows.
+            try {
+                const data = await api.connectSession();
+                if (data?.access_token) token = data.access_token;
+            } catch {
+                // No matching user, or a grant this panel does not accept.
+            }
+        }
         if (token) {
             try {
                 const data = await api.getCurrentUser();
@@ -48,6 +62,7 @@ export function AuthProvider({ children }) {
             setSetupStatus({
                 needsSetup: status.needs_setup,
                 registrationEnabled: status.registration_enabled,
+                setupCodeRequired: !!status.setup_code_required,
                 ssoProviders: status.sso_providers || [],
                 passwordLoginEnabled: status.password_login_enabled !== false,
                 panelTitle: status.panel_title || import.meta.env.VITE_PANEL_TITLE || 'ServerKit',
@@ -73,6 +88,7 @@ export function AuthProvider({ children }) {
                 ...prev,
                 needsSetup: true,
                 registrationEnabled: true,
+                setupCodeRequired: true,
                 checked: true
             }));
             await checkAuth();
@@ -96,6 +112,7 @@ export function AuthProvider({ children }) {
             setSetupStatus({
                 needsSetup: status.needs_setup,
                 registrationEnabled: status.registration_enabled,
+                setupCodeRequired: !!status.setup_code_required,
                 ssoProviders: status.sso_providers || [],
                 passwordLoginEnabled: status.password_login_enabled !== false,
                 panelTitle: status.panel_title || import.meta.env.VITE_PANEL_TITLE || 'ServerKit',
@@ -116,8 +133,8 @@ export function AuthProvider({ children }) {
         return data;
     }
 
-    async function register(email, username, password, inviteToken) {
-        const data = await api.register(email, username, password, inviteToken);
+    async function register(email, username, password, inviteToken, setupCode) {
+        const data = await api.register(email, username, password, inviteToken, setupCode);
         setUser(data.user);
         return data;
     }
@@ -141,6 +158,7 @@ export function AuthProvider({ children }) {
             ...prev,
             needsSetup: false,
             registrationEnabled: false,
+            setupCodeRequired: false,
             checked: true
         }));
     }
@@ -196,6 +214,7 @@ export function AuthProvider({ children }) {
         needsMigration: setupStatus.needsMigration,
         migrationInfo: setupStatus.migrationInfo,
         registrationEnabled: setupStatus.registrationEnabled,
+        setupCodeRequired: setupStatus.setupCodeRequired,
         ssoProviders: setupStatus.ssoProviders,
         passwordLoginEnabled: setupStatus.passwordLoginEnabled,
         panelTitle: setupStatus.panelTitle,

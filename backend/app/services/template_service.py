@@ -29,6 +29,7 @@ import requests
 
 from app import paths
 from app.utils.system import run_checked
+from app.services.deploy_lock import with_deploy_lock
 
 
 class TemplateService:
@@ -651,6 +652,9 @@ class TemplateService:
     #   SERVICE_FQDN_<NAME>      -> the app's auto-assigned hostname (best-effort)
     #   SERVICE_URL_<NAME>       -> full URL derived from the FQDN (+ scheme)
     #   SERVICE_BASE64_<NAME>    -> base64 of a freshly generated secret
+    #   SERVERKIT_METRICS_TOKEN  -> the panel's Prometheus scrape token (plan
+    #                               86 §A4), so a monitoring template can scrape
+    #                               /api/v1/fleet-monitor/prometheus
     #
     # Resolution is PURE and unit-testable: no Docker, no network. The only
     # contextual input is an optional ``context`` dict (app_name / fqdn / scheme).
@@ -667,11 +671,19 @@ class TemplateService:
         ('SERVICE_BASE64_', 'base64'),
     ]
 
+    # Whole-name magic tokens (no ``<NAME>`` suffix) -> internal kind. One
+    # table so the resolver and the catalog validator agree on what exists.
+    MAGIC_EXACT_TOKENS = {
+        'SERVER_PUBLIC_IP': 'server_public_ip',       # appliance tier (plan 35)
+        'SERVERKIT_METRICS_TOKEN': 'metrics_token',   # plan 86 §A4
+    }
+
     # Matches ``${SERVICE_...}`` magic tokens specifically (a subset of the
     # generic ``${VAR}`` substitution pattern). ``<NAME>`` may be empty-safe:
     # we require at least one trailing char after the prefix.
     MAGIC_TOKEN_PATTERN = (
-        r'\$\{(SERVICE_(?:PASSWORD|USER|FQDN|URL|BASE64)_[A-Z0-9_]+|SERVER_PUBLIC_IP)\}'
+        r'\$\{(SERVICE_(?:PASSWORD|USER|FQDN|URL|BASE64)_[A-Z0-9_]+|SERVER_PUBLIC_IP'
+        r'|SERVERKIT_METRICS_TOKEN)\}'
     )
 
     # Default password length for magic SERVICE_PASSWORD_* tokens.
@@ -681,8 +693,8 @@ class TemplateService:
     def _classify_magic_token(cls, token: str):
         """Return ``(kind, name)`` for a bare magic token (no ``${}``), or
         ``(None, None)`` if it is not a recognized magic variable."""
-        if token == 'SERVER_PUBLIC_IP':  # appliance tier (plan 35), no name suffix
-            return 'server_public_ip', ''
+        if token in cls.MAGIC_EXACT_TOKENS:
+            return cls.MAGIC_EXACT_TOKENS[token], ''
         for prefix, kind in cls.MAGIC_PREFIXES:
             if token.startswith(prefix):
                 return kind, token[len(prefix):]
@@ -728,6 +740,9 @@ class TemplateService:
             scheme = str(context.get('scheme') or 'http')
             host = context.get('fqdn') or context.get('app_name') or 'localhost'
             return f'{scheme}://{host}'
+        if kind == 'metrics_token':
+            from app.services import metrics_token_service
+            return metrics_token_service.get_or_create()
         if kind == 'server_public_ip':
             ip = context.get('server_public_ip')
             if not ip:
@@ -1097,6 +1112,11 @@ class TemplateService:
             for app in apps:
                 if app.port:
                     used_ports.add(app.port)
+            # A slot app holds two ports (plan 87): the live one is app.port,
+            # the standby's stays reserved for the switch back.
+            from app.models.app_slot import AppSlot
+            used_ports.update(row.host_port for row in
+                              AppSlot.query.filter(AppSlot.host_port.isnot(None)).all())
         except Exception:
             pass
         return used_ports
@@ -2234,6 +2254,50 @@ class TemplateService:
         }
 
     @classmethod
+    def _update_slot_app(cls, app, template, variables, install_info, info_path,
+                         compose_path, backup_path, compose_content, config, user_id,
+                         log_callback):
+        """Template update for a slot app (plan 87 §C): write the new compose,
+        then deploy it into the idle slot. The live slot keeps serving until
+        the new one passes its gate; any failure puts the old files back."""
+        from app.services.deployment_service import DeploymentService
+
+        with open(compose_path, 'w') as f:
+            f.write(compose_content)
+        if 'files' in template:
+            files_result = cls._process_template_files(
+                template['files'], app.root_path, compose_path, variables)
+            if not files_result.get('success'):
+                if os.path.exists(backup_path):
+                    shutil.copy(backup_path, compose_path)
+                return files_result
+
+        result = DeploymentService._deploy_locked(app.id, user_id, False, 'template_update',
+                                                  f"template-{template.get('version')}",
+                                                  log_callback)
+        if not result.get('success'):
+            # The live slot never stopped; the files on disk must match it again.
+            if os.path.exists(backup_path):
+                shutil.copy(backup_path, compose_path)
+            return result
+
+        install_info['template_version'] = template.get('version')
+        install_info['updated_at'] = datetime.now().isoformat()
+        install_info['variables'] = variables
+        with open(info_path, 'w') as f:
+            json.dump(install_info, f, indent=2)
+        if 'scripts' in template and 'post_update' in template['scripts']:
+            cls._run_script(template['scripts']['post_update'], app.root_path, variables)
+        config['installed'][str(app.id)]['template_version'] = template.get('version')
+        config['installed'][str(app.id)]['updated_at'] = datetime.now().isoformat()
+        cls.save_config(config)
+        if os.path.exists(backup_path):
+            os.remove(backup_path)
+        return {'success': True, 'version': template.get('version'), 'app_id': app.id,
+                'slot': result.get('deployment', {}).get('id')}
+
+    @classmethod
+    @with_deploy_lock('template update')
     def update_app(cls, app_id: int, user_id: int = None,
                    log_callback: Callable[[str], None] = None) -> Dict:
         """Update an installed app to the latest template version.
@@ -2336,6 +2400,11 @@ class TemplateService:
                 return {'success': False, 'error': checks.error,
                         'preflight': checks.to_dict()}
 
+            if app.slot_deploys_enabled:
+                return cls._update_slot_app(app, template, variables, install_info,
+                                            info_path, compose_path, backup_path,
+                                            compose_content, config, user_id, log_callback)
+
             # ---- switchover: past this line the live stack is down ---------
             DockerService.compose_down(app_path)
 
@@ -2372,10 +2441,18 @@ class TemplateService:
             compose_result = DockerService.compose_up(app_path, detach=True, build=True)
 
             if not compose_result.get('success'):
-                # Rollback
+                # Rollback — and say whether it worked: an unchecked `up` here
+                # reported a plain failure while the app sat stopped (§A6).
                 if os.path.exists(backup_path):
                     shutil.copy(backup_path, compose_path)
-                    DockerService.compose_up(app_path, detach=True)
+                    restored = DockerService.compose_up(app_path, detach=True)
+                    compose_result = dict(compose_result)
+                    compose_result['restored'] = bool(restored.get('success'))
+                    if not restored.get('success'):
+                        compose_result['error'] = (
+                            f"{compose_result.get('error') or 'docker compose up failed'}; "
+                            f"restoring the previous version also failed: "
+                            f"{restored.get('error') or 'unknown error'} — the app is down")
                 return compose_result
 
             # Run post-update script

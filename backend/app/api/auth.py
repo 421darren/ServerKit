@@ -41,9 +41,17 @@ def get_setup_status():
     from app.services.migration_service import MigrationService
     migration_status = MigrationService.get_status()
 
+    # Never the code itself: only whether the first registration must carry
+    # it. Asking also mints and logs it if this panel has none yet.
+    from app.services import setup_code_service
+    setup_code_required = setup_code_service.required()
+    if setup_code_required:
+        setup_code_service.ensure()
+
     return jsonify({
         'needs_setup': needs_setup,
         'registration_enabled': registration_enabled,
+        'setup_code_required': setup_code_required,
         'sso_providers': sso_providers,
         'password_login_enabled': password_login_enabled,
         # Pre-auth branding (read by the login page before any authed call).
@@ -96,6 +104,15 @@ def register():
     if not all([email, username, password]):
         raise ValidationError('Missing required fields', code='auth.missing_fields')
 
+    # The first account becomes the administrator: reaching a fresh panel
+    # first must not be enough to own it (setup_code_service).
+    from app.services import setup_code_service
+    if is_first_user and not setup_code_service.verify(data.get('setup_code')):
+        logger.warning(f"First-user registration refused: wrong or missing setup code. IP: {request.remote_addr}")
+        raise PermissionDeniedError(
+            'Enter the setup code for this server. Run `serverkit setup-code` on the server to see it.',
+            code='auth.setup_code_invalid')
+
     if User.query.filter(func.lower(User.email) == func.lower(email)).first():
         raise ConflictError('This email or username is unavailable', code='auth.identity_unavailable')
 
@@ -126,6 +143,8 @@ def register():
 
     db.session.add(user)
     db.session.commit()
+    if is_first_user:
+        setup_code_service.consume()
 
     # Mark invitation accepted
     if invitation:
@@ -428,6 +447,38 @@ def redeem_login_link():
 
     access_token, refresh_token = issue_session_tokens(user.id)
 
+    return jsonify({
+        'user': user.to_dict(),
+        'access_token': access_token,
+        'refresh_token': refresh_token
+    }), 200
+
+
+# ==========================================
+# SERVERKIT CLOUD (the relay tunnel)
+# ==========================================
+@auth_bp.route('/connect-session', methods=['POST'])
+@limiter.limit("30 per minute")
+def connect_session():
+    """Sign in somebody who opened this panel from ServerKit Cloud.
+
+    The relay brought Cloud's signed grant with the request; it is verified
+    here against Cloud's JWKS and mapped to the panel user with the same
+    email (app/services/connect_session.py). Anybody else gets the normal
+    login page, which is what the 4xx tells the SPA.
+    """
+    from app.services import connect_session as cs
+    try:
+        user, claims = cs.user_for_request(request)
+    except cs.ConnectSessionRefused as exc:
+        logger.info('ServerKit Cloud sign-in refused (%s)', exc.code)
+        raise AuthenticationError(exc.message, code=f'auth.connect_{exc.code}')
+    # The panel's own second factor still applies: Cloud vouches for the
+    # email, not for this panel's authenticator.
+    if user.totp_enabled:
+        raise AuthenticationError('This account uses two-factor authentication. '
+                                  'Sign in with the panel login.', code='auth.connect_2fa')
+    access_token, refresh_token = cs.sign_in(user, claims)
     return jsonify({
         'user': user.to_dict(),
         'access_token': access_token,

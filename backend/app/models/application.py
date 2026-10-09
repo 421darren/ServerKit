@@ -54,6 +54,12 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     # Populated from a manifest at import, editable in Settings. NULL => no gate
     # (the restart falls back to a fixed wait).
     healthcheck_path = db.Column(db.String(255), nullable=True)
+    # JSON: health-gate timeout / 4xx rule and the other deploy knobs
+    # (plan 87). NULL = defaults; read through app.services.deploy_settings.
+    deploy_settings = db.Column(db.Text, nullable=True)
+    # A/B slot deploys (plan 87 §B): opt-in, and which slot is live.
+    slot_deploys_enabled = db.Column(db.Boolean, nullable=False, server_default='0', default=False)
+    active_slot = db.Column(db.String(1), nullable=True)
 
     # Docker specific
     docker_image = db.Column(db.String(200), nullable=True)
@@ -111,6 +117,13 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     # the site's vhost, with bypasses for auth/admin/cart traffic. NULL/False
     # = off (today's behavior).
     micro_cache_enabled = db.Column(db.Boolean, default=False, nullable=True)
+    # Page-cache TTL in seconds (plan 86 §B3). NULL = the 10s default; the
+    # renderer clamps to NginxService.MICROCACHE_TTL_MAX.
+    micro_cache_ttl = db.Column(db.Integer, nullable=True)
+    # Opt-in PgBouncer sidecar for a PostgreSQL engine app (plan 86 §D1).
+    pooler_enabled = db.Column(db.Boolean, nullable=True)
+    # Long-cache fingerprinted assets in the vhost (plan 86 §B2).
+    immutable_assets = db.Column(db.Boolean, nullable=True)
 
     # Environment linking
     environment_type = db.Column(db.String(20), default='standalone')  # 'production', 'development', 'staging', 'standalone'
@@ -211,6 +224,9 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
             'python_version': self.python_version,
             'port': self.port,
             'healthcheck_path': self.healthcheck_path,
+            'deploy_settings': self._deploy_settings(),
+            'slot_deploys_enabled': bool(self.slot_deploys_enabled),
+            'active_slot': self.active_slot,
             'root_path': self.root_path,
             'docker_image': self.docker_image,
             'container_id': self.container_id,
@@ -229,6 +245,9 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
             'private_slug': self.private_slug,
             'private_url_enabled': self.private_url_enabled,
             'micro_cache_enabled': bool(self.micro_cache_enabled),
+            'micro_cache_ttl': self.micro_cache_ttl,
+            'pooler_enabled': bool(self.pooler_enabled),
+            'immutable_assets': bool(self.immutable_assets),
             'environment_type': self.environment_type,
             'linked_app_id': self.linked_app_id,
             'shared_config': self._json_read('shared_config', None),
@@ -303,6 +322,10 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
                 'status': self.linked_app.status
             }
         return result
+
+    def _deploy_settings(self):
+        from app.services.deploy_settings import effective
+        return effective(self)
 
     def __repr__(self):
         return f'<Application {self.name}>'

@@ -18,7 +18,80 @@ Earlier development history remains in
 The [agent](https://github.com/jhd3197/serverkit-agent/releases) has its own
 release history; historical `agent-v*` tags are not panel releases.
 
-## [1.11.1] - Unreleased
+## [Unreleased]
+
+### Security
+
+- Require a one-time setup code to create the first administrator, so reaching
+  a freshly installed panel first is no longer enough to claim it. The
+  installer prints the code, the panel logs it at startup, and
+  `serverkit setup-code` shows it again; it stops working once the admin exists.
+  Unattended installs can set `SERVERKIT_ADMIN_EMAIL`/`SERVERKIT_ADMIN_PASSWORD`
+  to create the admin directly, and automation can pin `SERVERKIT_SETUP_CODE`.
+
+### Fixed
+
+- Importing a Git repository that has a `docker-compose.yml` now deploys the
+  compose project — every service it declares — instead of building only its
+  Dockerfile, which started the web container without its database.
+- "Deploy latest" on a Docker app from Git now builds the configured branch's
+  latest commit; it rebuilt the checkout already on disk.
+- A push webhook for a Docker app now rebuilds and restarts it; it only pulled
+  the code, so the old containers kept serving.
+- Switching a Git app to another branch works on imported apps (they are
+  cloned single-branch, so the new branch was never fetched).
+- Redeploying a compose app on a host with the legacy `docker-compose` v1 no
+  longer fails the preflight by mistaking the app's own ports for a conflict.
+- An uploaded archive holding a single file (such as a lone
+  `docker-compose.yml`) extracted to an empty directory.
+- `serverkit create-admin`, `reset-password`, `unlock-user`, `make-admin`,
+  `activate-user` and `deactivate-user` ignored their flags and always prompted.
+- The panel's database no longer grows without bound on a busy box: old job
+  log lines, successful background checks (now kept a day) and a dozen history
+  tables (audit and error logs, notifications, deployment jobs, cron runs,
+  webhook and event deliveries, sandbox runs) are pruned on a schedule.
+- Updates no longer leave the downloaded release behind in `/tmp`, and no longer
+  keep a second full copy of the previous version as a tree backup.
+
+### Changed
+
+- Complete and improve Traditional Chinese translations.
+- New Settings → Storage page: where the disk goes, the previous version kept
+  for rollback, a Free up space action and the retention settings.
+- Admins are notified when the panel host's disk reaches 85% and again at 95%,
+  and a deploy is refused before anything stops when under 512 MB is free.
+- The previous version's install is removed 24 hours after a healthy update.
+- On disks under 50 GB, ServerKit keeps shorter history by default and one
+  upgrade snapshot instead of three; panel logs are rotated and new app
+  containers get a log size cap.
+- Let the template catalog certification test point at an external registry
+  tree (`SERVERKIT_TEMPLATES_DIR`, `SERVERKIT_TEMPLATES_INDEX`), so the
+  official template registry's CI holds every template to the installer's
+  rules before a merge publishes it.
+
+### Fixed
+
+- Hold the log viewer to its allowed directories. A folder whose name only
+  begins with an allowed root, such as `/opt-private` next to `/opt`, was
+  treated as though it sat inside that root and could be read, searched and
+  cleared through the Log Files tab.
+- Keep panel-internal files out of the log viewer entirely. On the standard
+  install layout the panel's own directory sits under the allowed root
+  `/opt`, so the Log Files tab could read — or clear — the backend `.env`
+  and database. The log viewer now shares the file manager's protected-roots
+  exclusion.
+- Make extension hot-load work on a live panel. Flask refuses to register a
+  blueprint once the app has served its first request, so an extension
+  installed on a running panel had no API routes until a restart — its pages
+  loaded, but every call failed, with POSTs surfacing as a 405 (the Malware
+  Scanner custom-path scan, #144). Blueprint registration now waives Flask's
+  setup guard for the duration of the call, which is safe in the panel's
+  single-worker threaded deployment.
+
+## [1.11.4] - 2026-09-12
+
+Covers the 1.11.1 through 1.11.3 version bumps, which shipped only as dev
+prerelease builds.
 
 ### Added
 
@@ -29,6 +102,15 @@ release history; historical `agent-v*` tags are not panel releases.
 
 ### Fixed
 
+- Stop the Connect client when ServerKit Cloud revokes its access: honor the
+  relay's close-reason frame, which production edges deliver where a custom
+  close code is stripped, and treat a revoked long-poll the same way instead
+  of reconnecting forever.
+- Refetch the signing keys once when a Cloud command arrives signed with a key
+  the cached JWKS predates, and only then refuse an unknown key.
+- Warn on the first failure of a metrics build streak and after five empty
+  collections, instead of logging silently at debug level.
+- Fix first-run sidebar preferences and extension loading.
 - Require explicit consent before sending diagnostics or collecting logs, and
   redact structured secrets and short authorization credentials locally.
 - Recover unacknowledged log batches within their byte and expiry limits;
@@ -40,7 +122,7 @@ release history; historical `agent-v*` tags are not panel releases.
 - Fix backend test-factory compliance and the settings browser-test timing race.
 - Update the demo link in all four README translations.
 
-[Source changes since 1.11.0](https://github.com/jhd3197/ServerKit/compare/v1.11.0...v1.11.1).
+[Source changes since 1.11.0](https://github.com/jhd3197/ServerKit/compare/v1.11.0...v1.11.4).
 
 ## [1.11.0] - 2026-09-08
 
@@ -972,7 +1054,8 @@ require their matching extensions. Review the installed extensions after updatin
 - Established the earliest published panel release covered by this backfill, with the Flask/React control panel, application and database management, Docker operations, backups and server monitoring.
 - Moved the agent into the separate serverkit-agent repository and introduced a dedicated panel release workflow.
 
-[1.11.1]: https://github.com/jhd3197/ServerKit/releases/tag/v1.11.1
+[Unreleased]: https://github.com/jhd3197/ServerKit/compare/v1.11.4...dev
+[1.11.4]: https://github.com/jhd3197/ServerKit/releases/tag/v1.11.4
 [1.11.0]: https://github.com/jhd3197/ServerKit/releases/tag/v1.11.0
 [1.10.0]: https://github.com/jhd3197/ServerKit/releases/tag/v1.10.0
 [1.9.29]: https://github.com/jhd3197/ServerKit/releases/tag/v1.9.29

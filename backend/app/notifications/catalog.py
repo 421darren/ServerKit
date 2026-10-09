@@ -81,6 +81,26 @@ _CATALOG = {
         'severity': 'success',
         'category': 'apps',
     },
+    # Slot deploys (plan 87): a release that never went live, one that was
+    # switched back automatically, and a switch back that did not work.
+    'app.deploy_aborted': {
+        'title': 'Deploy stopped, site unchanged: {app}',
+        'template': 'generic',
+        'severity': 'warning',
+        'category': 'apps',
+    },
+    'app.deploy_reverted': {
+        'title': 'Deploy switched back automatically: {app}',
+        'template': 'generic',
+        'severity': 'warning',
+        'category': 'apps',
+    },
+    'app.deploy_revert_failed': {
+        'title': 'Deploy failed and switching back failed: {app}',
+        'template': 'generic',
+        'severity': 'critical',
+        'category': 'apps',
+    },
     'system.alert': {
         'title': 'System alert on {hostname}',
         'template': 'generic',
@@ -106,6 +126,14 @@ _CATALOG = {
     # or a filesystem running out while an attached volume sits idle.
     'host.storage_advisory': {
         'title': 'Storage needs attention on this server',
+        'template': 'generic',
+        'severity': 'warning',
+        'category': 'system',
+    },
+    # The panel host's disk crossed the warning (85%) or critical (95%) line
+    # (see app/services/disk_alert_service.py). Sent once per crossing.
+    'storage.disk_low': {
+        'title': 'Disk {percent}% full on this server',
         'template': 'generic',
         'severity': 'warning',
         'category': 'system',
@@ -208,11 +236,15 @@ _LINKS = {
     'security.alert': '/security',
     # apps / deploys
     'app.deployed': '/services',
+    'app.deploy_aborted': '/services',
+    'app.deploy_reverted': '/services',
+    'app.deploy_revert_failed': '/services',
     # system / monitoring
     'system.alert': '/monitoring',
     'monitoring.alert': '/monitoring',
     'host.specs_changed': '/monitoring',
     'host.storage_advisory': '/monitoring',
+    'storage.disk_low': '/settings/storage',
     'drift.detected': '/monitoring/doctor',
     'dns.sync_failed': '/domains',
     'dns.unresolved': '/domains',

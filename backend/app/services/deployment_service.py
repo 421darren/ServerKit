@@ -24,6 +24,7 @@ from app.models.application import Application
 from app.services.build_service import BuildService
 from app.services.docker_service import DockerService
 from app.services.git_service import GitService
+from app.services import deploy_stages
 from app import paths
 
 
@@ -92,9 +93,23 @@ class DeploymentService:
               log_callback: Callable[[str], None] = None) -> Dict:
         """Execute a full deployment (build + deploy).
 
-        This is the main entry point for deployments.
+        This is the main entry point for deployments. It holds the app's deploy
+        lock for the whole run, so a second deploy of the same app waits for
+        this one instead of racing it (plan 87 §A5).
         """
-        # Create deployment record
+        from app.services.deploy_lock import deploy_lock, DeployLockTimeout
+        try:
+            with deploy_lock(app_id, 'deploy', log=log_callback):
+                return cls._deploy_locked(app_id, user_id, no_cache, trigger,
+                                          version_tag, log_callback)
+        except DeployLockTimeout as exc:
+            return {'success': False, 'error': str(exc)}
+
+    @classmethod
+    def _deploy_locked(cls, app_id, user_id, no_cache, trigger, version_tag,
+                       log_callback) -> Dict:
+        # Create deployment record (inside the lock: the version number is
+        # read-then-written, so two unlocked deploys could both claim vN).
         result = cls.create_deployment(app_id, user_id, trigger, version_tag)
         if not result.get('success'):
             return result
@@ -118,65 +133,81 @@ class DeploymentService:
             app.status = 'deploying'
             db.session.commit()
 
-            # Step 1: Build
-            deployment.status = 'building'
-            deployment.build_started_at = datetime.utcnow()
-            db.session.commit()
+            # A Docker app deployed from Git builds its branch's latest commit:
+            # "Deploy latest" and push webhooks both end up here, and building
+            # the stale checkout redeployed old code. Non-Docker apps pull in
+            # _deploy_traditional instead.
+            if app.app_type == 'docker':
+                pull_result = cls._pull_latest(app, log_callback)
+                if not pull_result.get('success'):
+                    return cls._fail(app, deployment, pull_result.get('error') or 'Git pull failed')
+                # create_deployment read HEAD before this pull, so the row named
+                # the commit that was live, not the one being deployed (§A2).
+                cls._record_commit(app, deployment)
 
-            if log_callback:
-                log_callback(f"Starting build for {app.name}...")
-
-            build_result = BuildService.build(
-                app_id,
-                no_cache=no_cache,
-                log_callback=log_callback
-            )
-
-            deployment.build_completed_at = datetime.utcnow()
-
-            if not build_result.get('success'):
-                deployment.status = 'failed'
-                deployment.error_message = build_result.get('error', 'Build failed')
-                app.status = 'error'
+            if cls._uses_compose(app):
+                # The whole compose project: build, validate and pull while
+                # the current release keeps serving, then switch over.
+                deployment.status = 'building'
+                deployment.build_started_at = datetime.utcnow()
                 db.session.commit()
-                return {
-                    'success': False,
-                    'error': deployment.error_message,
-                    'deployment': deployment.to_dict()
-                }
-
-            # Store build artifacts
-            if build_result.get('image_tag'):
-                deployment.image_tag = build_result['image_tag']
-
-            if build_result.get('build_log'):
-                # Store build log path for later retrieval
-                log_dir = os.path.join(paths.BUILD_LOG_DIR, str(app_id))
-                log_file = f"build-{deployment.created_at.isoformat().replace(':', '-')}.json"
-                deployment.build_log_path = os.path.join(log_dir, log_file)
-
-            db.session.commit()
-
-            # Step 2: Deploy
-            deployment.status = 'deploying'
-            deployment.deploy_started_at = datetime.utcnow()
-            db.session.commit()
-
-            if log_callback:
-                log_callback("Build successful, starting deployment...")
-
-            deploy_result = cls._deploy_application(app, deployment, log_callback)
-
-            if not deploy_result.get('success'):
-                deployment.status = 'failed'
-                deployment.error_message = deploy_result.get('error', 'Deploy failed')
-                app.status = 'error'
+                deploy_result = cls._deploy_compose(app, deployment, log_callback)
+                deployment.build_completed_at = datetime.utcnow()
+                if not deploy_result.get('success'):
+                    return cls._fail(app, deployment, deploy_result.get('error') or 'Deploy failed',
+                                     status=deploy_result.get('deployment_status', 'failed'),
+                                     still_serving=bool(deploy_result.get('still_serving')))
+            else:
+                # Step 1: Build
+                deployment.status = 'building'
+                deployment.build_started_at = datetime.utcnow()
                 db.session.commit()
-                return {
-                    'success': False,
-                    'error': deployment.error_message,
-                    'deployment': deployment.to_dict()
-                }
+
+                if log_callback:
+                    log_callback(f"Starting build for {app.name}...")
+
+                deploy_stages.mark('Build')
+                # An immutable tag per deployment: a rollback then redeploys
+                # the image that actually ran, not whatever :latest became (§A1).
+                from app.services.app_image_retention import deploy_image_tag
+                build_result = BuildService.build(
+                    app_id,
+                    no_cache=no_cache,
+                    log_callback=log_callback,
+                    image_tag=deploy_image_tag(app_id, deployment.id),
+                )
+
+                deployment.build_completed_at = datetime.utcnow()
+
+                if not build_result.get('success'):
+                    return cls._fail(app, deployment, build_result.get('error', 'Build failed'))
+
+                # Store build artifacts
+                if build_result.get('image_tag'):
+                    deployment.image_tag = build_result['image_tag']
+
+                if build_result.get('build_log'):
+                    # Store build log path for later retrieval
+                    log_dir = os.path.join(paths.BUILD_LOG_DIR, str(app_id))
+                    log_file = f"build-{deployment.created_at.isoformat().replace(':', '-')}.json"
+                    deployment.build_log_path = os.path.join(log_dir, log_file)
+
+                db.session.commit()
+
+                # Step 2: Deploy
+                deployment.status = 'deploying'
+                deployment.deploy_started_at = datetime.utcnow()
+                db.session.commit()
+
+                if log_callback:
+                    log_callback("Build successful, starting deployment...")
+
+                deploy_result = cls._deploy_application(app, deployment, log_callback)
+
+                if not deploy_result.get('success'):
+                    return cls._fail(app, deployment, deploy_result.get('error', 'Deploy failed'),
+                                     status=deploy_result.get('deployment_status', 'failed'),
+                                     still_serving=bool(deploy_result.get('still_serving')))
 
             # Mark previous live deployment as rolled_back
             current = Deployment.get_current(app_id)
@@ -211,8 +242,30 @@ class DeploymentService:
                 keep_count = build_config.get('keep_deployments', 5)
                 Deployment.cleanup_old_deployments(app_id, keep_count)
 
+            # One image per deploy is a disk leak unless something prunes it
+            # (plan 85). Keeps the newest few for rollback.
+            if app.app_type == 'docker' and not app.server_id:
+                from app.services import app_image_retention, deploy_settings
+                app_image_retention.prune(app_id, keep=deploy_settings.get(app, 'keep_images'),
+                                          protect=cls._protected_images(app))
+
             if log_callback:
                 log_callback(f"Deployment successful! Version {deployment.version} is now live.")
+
+            # app.deployed was in the event catalog but nothing emitted it.
+            # Webhook subscribers and in-process listeners (a CDN purge,
+            # plan 86 §B4) hear it now. Best-effort: never fails the deploy.
+            try:
+                from app.services.event_service import EventService
+                EventService.emit('app.deployed', {
+                    'event': 'app.deployed',
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'app_id': app.id, 'app_name': app.name,
+                    'version': deployment.version, 'deployment_id': deployment.id,
+                    'domains': [d.name for d in app.live_domains if d.name],
+                }, user_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning('app.deployed emit failed for app %s: %s', app.id, exc)
 
             return {
                 'success': True,
@@ -229,6 +282,105 @@ class DeploymentService:
                 'error': str(e),
                 'deployment': deployment.to_dict()
             }
+
+    @classmethod
+    def _fail(cls, app: Application, deployment: Deployment, error: str,
+              status: str = 'failed', still_serving: bool = False) -> Dict:
+        deployment.status = status
+        deployment.error_message = error
+        # A slot deploy that aborted before (or reverted after) the switch
+        # left the previous release serving: the app is fine, the deploy
+        # is not. Only a deploy that took the site down marks the app.
+        app.status = 'running' if still_serving else 'error'
+        db.session.commit()
+        return {'success': False, 'error': error, 'still_serving': still_serving,
+                'deployment': deployment.to_dict()}
+
+    @staticmethod
+    def _record_commit(app: Application, deployment: Deployment) -> None:
+        """Stamp the deployment with the commit now checked out (after a pull)."""
+        if not app.root_path:
+            return
+        info = GitService.get_commit_info(app.root_path)
+        if info and info.get('hash'):
+            deployment.commit_hash = info.get('hash')
+            deployment.commit_message = info.get('message')
+            db.session.commit()
+
+    @staticmethod
+    def _protected_images(app: Application) -> set:
+        """Image refs a slot still points at (never pruned)."""
+        from app.services.slot_deploy_service import SlotDeployService
+        return SlotDeployService.protected_images(app)
+
+    @staticmethod
+    def _uses_compose(app: Application) -> bool:
+        """A local app whose runtime is its own compose project."""
+        return bool(app.compose_file and app.root_path and not app.server_id)
+
+    @classmethod
+    def _pull_latest(cls, app: Application, log_callback: Callable[[str], None] = None) -> Dict:
+        """Check out the configured branch's latest commit, if deployed from Git."""
+        deploy_config = GitService.get_app_config(app.id)
+        if not deploy_config:
+            return {'success': True, 'skipped': True}
+        branch = deploy_config.get('branch') or 'main'
+        if log_callback:
+            log_callback(f"Pulling latest changes from {branch}...")
+        return GitService.pull_changes(app.root_path, branch)
+
+    @classmethod
+    def _deploy_compose(cls, app: Application, deployment: Deployment,
+                        log_callback: Callable[[str], None] = None) -> Dict:
+        """Deploy an app that is a compose project (every service it declares).
+
+        The preflight validates the file, builds and pulls every image and
+        checks ports while the current release is still serving; `up -d
+        --build` then recreates only the services whose image or config
+        changed, so an unchanged database keeps running through a deploy.
+        """
+        from app.services import deploy_preflight_service as preflight
+
+        checks = preflight.preflight_compose_project(app.root_path, app.compose_file, log=log_callback)
+        if not checks.ok:
+            # Nothing was stopped: the previous release is still serving.
+            return {'success': False, 'error': checks.error, 'preflight': checks.to_dict()}
+
+        deployment.status = 'deploying'
+        deployment.deploy_started_at = datetime.utcnow()
+        db.session.commit()
+
+        from app.services.slot_deploy_service import SlotDeployService, SlotDeployError
+        if app.slot_deploys_enabled:
+            # A/B slots (plan 87 §C): the project boots as <name>-<idle slot>
+            # beside the live one instead of recreating it in place.
+            verdict = SlotDeployService.eligibility(app)
+            if not verdict['eligible']:
+                return {'success': False, 'still_serving': True,
+                        'error': 'Slot deploys are on but this app no longer qualifies: '
+                                 + ' '.join(verdict['reasons'])}
+            try:
+                return SlotDeployService.deploy_compose(app, deployment, log=log_callback)
+            except SlotDeployError as exc:
+                return {'success': False, 'still_serving': True, 'error': str(exc)}
+
+        # Slots switched off: fold the slot projects away; the in-place
+        # project publishes its own port again.
+        released_port = SlotDeployService.release_slots(app, log=log_callback)
+        if log_callback:
+            log_callback(f"Starting compose project {app.compose_file}...")
+        result = DockerService.compose_up(app.root_path, detach=True, build=True,
+                                          compose_file=app.compose_file)
+        if not result.get('success'):
+            return {'success': False, 'error': result.get('error') or 'docker compose up failed'}
+        if released_port and released_port != app.port:
+            app.port = released_port
+            db.session.commit()
+            if app.live_domains:
+                from app.services.site_domain_service import SiteDomainService
+                SiteDomainService.write_app_vhost(app)
+                SlotDeployService._reapply_vhost_extras(app)
+        return {'success': True}
 
     @classmethod
     def _deploy_application(cls, app: Application, deployment: Deployment,
@@ -289,8 +441,35 @@ class DeploymentService:
 
         checks = preflight.preflight_image(image_tag, pull=pull_fn, log=log_callback)
         if not checks.ok:
-            return {'success': False, 'error': checks.error,
+            return {'success': False, 'error': checks.error, 'still_serving': True,
                     'preflight': checks.to_dict()}
+
+        # Attach any managed volumes so app data persists across redeploys
+        # (each returns a `name:/mount[:ro]` spec for `docker run -v`).
+        from app.services.volume_service import VolumeService
+        volumes = VolumeService.run_args(app)
+
+        from app.services.slot_deploy_service import SlotDeployService
+        if app.slot_deploys_enabled:
+            # A/B slots (plan 87 §B): boot beside the live release, gate,
+            # switch, watch. Eligibility is re-checked on every deploy; an app
+            # that stopped qualifying fails here rather than silently taking
+            # the downtime of an in-place deploy.
+            verdict = SlotDeployService.eligibility(app)
+            if not verdict['eligible']:
+                return {'success': False, 'still_serving': True,
+                        'error': 'Slot deploys are on but this app no longer qualifies: '
+                                 + ' '.join(verdict['reasons'])
+                                 + ' Turn slot deploys off to deploy in place.'}
+            return SlotDeployService.deploy_container(app, deployment, image_tag, env, volumes,
+                                                      log=log_callback)
+
+        # Slots switched off: fold them away and publish in place again, on
+        # the port the app listens on inside the container.
+        released_port = SlotDeployService.release_slots(app, log=log_callback)
+        if released_port and released_port != app.port:
+            app.port = released_port
+            ports = [f"{app.port}:{app.port}"]
 
         # ---- switchover: past this line the live container is gone ---------
         existing = DockerService.get_container(container_name)
@@ -299,11 +478,6 @@ class DeploymentService:
                 log_callback("Stopping existing container...")
             DockerService.stop_container(container_name)
             DockerService.remove_container(container_name)
-
-        # Attach any managed volumes so app data persists across redeploys
-        # (each returns a `name:/mount[:ro]` spec for `docker run -v`).
-        from app.services.volume_service import VolumeService
-        volumes = VolumeService.run_args(app)
 
         # Run new container
         if log_callback:
@@ -320,9 +494,27 @@ class DeploymentService:
         )
 
         if result.get('success'):
+            from app.services.worker_process_service import (
+                WorkerProcessService, connect_shared_network)
+            connect_shared_network(app, container_name)
+            if released_port:
+                # Leaving slots moved app.port back; nginx has to follow.
+                db.session.commit()
+                from app.services.site_domain_service import SiteDomainService
+                if app.live_domains:
+                    SiteDomainService.write_app_vhost(app)
+                    SlotDeployService._reapply_vhost_extras(app)
+            # Procfile worker/scheduler lines run as siblings of the same image
+            # (plan 86 §C3). Best-effort: the web process is already live.
+            workers = WorkerProcessService.deploy(
+                app, image_tag, env, volumes, log=log_callback)
+            if workers['failed'] and log_callback:
+                for process, error in workers['failed'].items():
+                    log_callback(f'Worker {process} did not start: {error}')
             return {
                 'success': True,
-                'container_id': result.get('container_id')
+                'container_id': result.get('container_id'),
+                'workers': workers,
             }
         return result
 
@@ -345,6 +537,7 @@ class DeploymentService:
 
             if not pull_result.get('success'):
                 return pull_result
+            cls._record_commit(app, deployment)
 
             # Run post-deploy scripts
             if deploy_config.get('post_deploy_script'):
@@ -380,6 +573,15 @@ class DeploymentService:
 
         If target_version is not specified, rolls back to the previous successful deployment.
         """
+        from app.services.deploy_lock import deploy_lock, DeployLockTimeout
+        try:
+            with deploy_lock(app_id, 'rollback', log=log_callback):
+                return cls._rollback_locked(app_id, target_version, user_id, log_callback)
+        except DeployLockTimeout as exc:
+            return {'success': False, 'error': str(exc)}
+
+    @classmethod
+    def _rollback_locked(cls, app_id, target_version, user_id, log_callback) -> Dict:
         # query_active: a rollback re-deploys code and restarts the app.
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
@@ -401,7 +603,10 @@ class DeploymentService:
         if not target:
             return {'success': False, 'error': 'No previous deployment found to rollback to'}
 
-        if not target.image_tag and not target.commit_hash:
+        # A compose slot app can roll back to its standby, which needs neither
+        # an image tag nor a commit: the release is still there, stopped or warm.
+        slot_compose = cls._uses_compose(app) and app.slot_deploys_enabled
+        if not target.image_tag and not target.commit_hash and not slot_compose:
             return {
                 'success': False,
                 'error': 'Target deployment has no artifacts to rollback to'
@@ -441,7 +646,11 @@ class DeploymentService:
             db.session.commit()
 
             # Deploy the previous version
-            if target.image_tag:
+            if cls._uses_compose(app) and app.slot_deploys_enabled:
+                from app.services.slot_deploy_service import SlotDeployService
+                deploy_result = SlotDeployService.rollback_compose(
+                    app, target, rollback_deployment, log_callback)
+            elif target.image_tag:
                 # Docker rollback
                 deploy_result = cls._deploy_docker(app, rollback_deployment, log_callback)
             else:
@@ -451,7 +660,7 @@ class DeploymentService:
             if not deploy_result.get('success'):
                 rollback_deployment.status = 'failed'
                 rollback_deployment.error_message = deploy_result.get('error')
-                app.status = 'error'
+                app.status = 'running' if deploy_result.get('still_serving') else 'error'
                 db.session.commit()
                 return {
                     'success': False,
@@ -498,15 +707,9 @@ class DeploymentService:
         app_path = app.root_path
 
         try:
-            if log_callback:
-                log_callback(f"Checking out commit {target.commit_hash[:8]}...")
-
-            # Checkout the specific commit
-            result = run_checked(['git', '-C', app_path, 'checkout', target.commit_hash],
-                                 timeout=None)
-
+            result = cls._checkout(app, target.commit_hash, log_callback)
             if not result['success']:
-                return {'success': False, 'error': result['error']}
+                return result
 
             # Run post-deploy script if configured
             deploy_config = GitService.get_app_config(app.id)
@@ -522,6 +725,25 @@ class DeploymentService:
                 if not script_result.get('success'):
                     return script_result
 
+            # A compose app's code lives in its images: checking out the old
+            # commit changed files and nothing else, so the "rollback"
+            # reported success while the new release kept serving (§A6).
+            # Rebuild and recreate from the checked-out tree, validated first.
+            if cls._uses_compose(app):
+                from app.services import deploy_preflight_service as preflight
+                checks = preflight.preflight_compose_project(
+                    app.root_path, app.compose_file, log=log_callback)
+                if not checks.ok:
+                    return {'success': False, 'error': checks.error,
+                            'preflight': checks.to_dict()}
+                if log_callback:
+                    log_callback(f"Starting compose project {app.compose_file}...")
+                up = DockerService.compose_up(app.root_path, detach=True, build=True,
+                                              compose_file=app.compose_file)
+                if not up.get('success'):
+                    return {'success': False,
+                            'error': up.get('error') or 'docker compose up failed'}
+
             # Restart service
             if app.app_type in ['flask', 'django']:
                 service_name = f"serverkit-{app.name}"
@@ -531,6 +753,16 @@ class DeploymentService:
 
         except Exception as e:
             return {'success': False, 'error': str(e)}
+
+    @staticmethod
+    def _checkout(app: Application, commit_hash: str,
+                  log_callback: Callable[[str], None] = None) -> Dict:
+        if log_callback:
+            log_callback(f"Checking out commit {commit_hash[:8]}...")
+        result = run_checked(['git', '-C', app.root_path, 'checkout', commit_hash], timeout=None)
+        if not result['success']:
+            return {'success': False, 'error': result['error']}
+        return {'success': True}
 
     @classmethod
     def _generate_diff(cls, deployment: Deployment) -> None:

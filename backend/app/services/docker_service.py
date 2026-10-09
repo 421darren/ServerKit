@@ -515,7 +515,36 @@ class DockerService:
                 return [{'id': container_id, 'name': container_id, 'service': 'main', 'state': 'unknown'}]
             return []
 
+        app_id = cls._app_attr(app, 'id')
+        if (app_id and not isinstance(app, dict)
+                and cls._app_attr(app, 'slot_deploys_enabled') and cls._app_attr(app, 'active_slot')):
+            # A slot app (plan 87): the live slot, its standby, its workers
+            # (for compose, the live and standby projects).
+            from app.services.slot_deploy_service import SlotDeployService
+            return SlotDeployService.containers(app)
         containers = cls.compose_ps(root_path, compose_file=compose_file)
+        if not containers and app_id and cls._app_attr(app, 'buildpack_type'):
+            # A build-pack app is not a compose project: its deploy runs
+            # `serverkit-app-<id>` plus one `serverkit-app-<id>-<process>` per
+            # Procfile worker (plan 86 §C3). Anchored so app 5 never lists 50.
+            listed = cls.run(['ps', '-a', '--filter', f'name=^serverkit-app-{app_id}$',
+                              '--filter', f'name=^serverkit-app-{app_id}-',
+                              '--format', '{{json .}}'], timeout=30)
+            prefix = f'serverkit-app-{app_id}-'
+            result = []
+            for line in (listed.get('output') or '').splitlines() if listed.get('success') else []:
+                try:
+                    c = json.loads(line)
+                except ValueError:
+                    continue
+                name = c.get('Names') or ''
+                result.append({
+                    'id': c.get('ID'),
+                    'name': name,
+                    'service': name[len(prefix):] if name.startswith(prefix) else 'web',
+                    'state': (c.get('State') or '').lower(),
+                })
+            return sorted(result, key=lambda c: (c['service'] != 'web', c['service']))
         result = []
         for c in containers:
             result.append({
@@ -1209,7 +1238,7 @@ class DockerService:
             return {'success': False, 'error': str(e)}
 
     @classmethod
-    def compose_ps(cls, project_path, compose_file=None):
+    def compose_ps(cls, project_path, compose_file=None, strict=False):
         """List Docker Compose services.
 
         Handles multiple output formats from docker compose ps --format json:
@@ -1217,7 +1246,10 @@ class DockerService:
         - JSON Array: Single line with array of objects
         - Mixed: Warning messages (time=...) mixed with JSON
 
-        Returns a list of container dictionaries.
+        Returns a list of container dictionaries. A failed listing (e.g. the
+        legacy docker-compose v1, which has no ``--format json``) is also an
+        empty list unless ``strict``, which returns None instead — for callers
+        that must not mistake "could not tell" for "no containers".
         """
         try:
             result = cls.run_compose(
@@ -1243,10 +1275,15 @@ class DockerService:
                     except json.JSONDecodeError:
                         continue
                 return containers
+            # docker-compose v1 answers `--format json` with its usage text on
+            # stderr and exit code 0: "success" with nothing listed.
+            unsupported = 'usage:' in (result.get('stderr') or '').lower()
+            if strict and (not result['success'] or unsupported):
+                return None
             return []
         except Exception as e:
             logger.error(f"Failed to list compose services: {e}")
-            return []
+            return None if strict else []
 
     @classmethod
     def compose_logs(cls, project_path, service=None, tail=100, compose_file=None):

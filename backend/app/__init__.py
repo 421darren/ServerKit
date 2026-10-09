@@ -268,6 +268,14 @@ def create_app(config_name=None):
         from app.services.settings_service import SettingsService
         SettingsService.initialize_defaults()
         SettingsService.migrate_legacy_roles()
+        if not app.config.get('TESTING'):
+            # Size-aware retention defaults, once per install (plan 85 §C).
+            # Skipped under test: the result would depend on the test host's disk.
+            try:
+                from app.services import storage_profile_service
+                storage_profile_service.apply_to_existing()
+            except Exception as e:
+                app.logger.warning(f'Storage profile not applied: {e}')
 
         # Encrypt any legacy plaintext provider secrets at rest (idempotent —
         # DNS-provider api keys and storage credentials predate encryption).
@@ -320,6 +328,16 @@ def create_app(config_name=None):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f'Host snapshot skipped: {e}')
+
+        # A panel with no account yet logs its one-time setup code, so the
+        # owner can read it from the service log (setup_code_service).
+        if not app.config.get('TESTING'):
+            try:
+                from app.services import setup_code_service
+                setup_code_service.ensure()
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f'Setup code unavailable: {e}')
 
         # Seed bundled flagship extensions (D4) — WordPress ships installed by
         # default on every panel (fresh and upgrade) unless the user uninstalled
@@ -444,6 +462,9 @@ def create_app(config_name=None):
             MetadataGuardService.register_jobs()
             if not app.config.get('TESTING'):
                 MetadataGuardService.ensure()  # converge the metadata egress rule (no-op when unsupported)
+                # Bound the log files the panel writes or causes (plan 85 A5).
+                from app.services import log_limits_service
+                log_limits_service.converge()
             from app.services.speed_test_service import SpeedTestService
             SpeedTestService.register_jobs()
             from app.services import login_link_service
@@ -487,11 +508,20 @@ def create_app(config_name=None):
     # path-prefix exceptions can turn a pending token into a full session.
 
     # Serve frontend for root path
+    def _spa_page():
+        # Opened from ServerKit Cloud, the page is served under the relay's
+        # path prefix (app/services/connect_session.py).
+        from app.services import connect_session
+        prefix = connect_session.tunnel_prefix(request)
+        if prefix:
+            return connect_session.index_under_prefix(app.static_folder, prefix)
+        return send_from_directory(app.static_folder, 'index.html')
+
     @app.route('/')
     def serve_index():
         index = os.path.join(app.static_folder, 'index.html') if app.static_folder else None
         if index and os.path.isfile(index):
-            return send_from_directory(app.static_folder, 'index.html')
+            return _spa_page()
         return {'message': 'ServerKit API is running', 'docs': '/api/v1/'}, 200
 
     # Expected application failures. Services raise these typed errors and the
@@ -562,7 +592,7 @@ def create_app(config_name=None):
         # Serve SPA index.html if it exists, otherwise JSON 404
         index = os.path.join(app.static_folder, 'index.html') if app.static_folder else None
         if index and os.path.isfile(index):
-            return send_from_directory(app.static_folder, 'index.html')
+            return _spa_page()
         return {'error': 'Not found'}, 404
 
     return app

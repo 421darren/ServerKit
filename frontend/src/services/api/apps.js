@@ -134,8 +134,10 @@ export async function updateAppResources(id, data) {
 }
 
 // Per-site nginx micro-cache (short-TTL page cache with auth/admin/cart bypasses).
-export async function setMicroCache(id, enabled) {
-    return this.request(`/apps/${id}/micro-cache`, { method: 'PUT', body: { enabled } });
+// ttl: whole seconds (1-300), null for the 10s default, undefined to leave as is.
+export async function setMicroCache(id, enabled, ttl) {
+    const body = ttl === undefined ? { enabled } : { enabled, ttl };
+    return this.request(`/apps/${id}/micro-cache`, { method: 'PUT', body });
 }
 
 export async function purgeMicroCache(id) {
@@ -531,4 +533,73 @@ export async function rollback(appId, targetVersion = null) {
 
 export async function getCurrentDeployment(appId) {
     return this.request(`/builds/apps/${appId}/current-deployment`);
+}
+
+// Services an app uses (plan 86 §C4): storage (own bucket + scoped key),
+// cache and queue (env references to an installed engine).
+export async function getAppAttachments(appId) {
+    return this.request(`/apps/${appId}/attachments`);
+}
+
+export async function getAttachableServices(kind) {
+    return this.request(`/apps/attachments/services?kind=${encodeURIComponent(kind)}`);
+}
+
+export async function attachService(appId, kind, serviceAppId) {
+    return this.request(`/apps/${appId}/attachments/${encodeURIComponent(kind)}`, {
+        method: 'POST',
+        body: { service_app_id: serviceAppId },
+    });
+}
+
+export async function detachService(appId, attachmentId) {
+    return this.request(`/apps/${appId}/attachments/${attachmentId}`, { method: 'DELETE' });
+}
+
+// Opt-in PgBouncer beside an installed PostgreSQL (plan 86 §D1).
+export async function getAppPooler(appId) {
+    return this.request(`/apps/${appId}/pooler`);
+}
+
+export async function setAppPooler(appId, enabled) {
+    return this.request(`/apps/${appId}/pooler`, { method: 'PUT', body: { enabled } });
+}
+
+// Rule-based bottleneck hints for an app (plan 86 §A5).
+export async function getAppHints(appId) {
+    return this.request(`/apps/${appId}/hints`);
+}
+
+// Long-cache fingerprinted assets in the vhost (plan 86 §B2).
+export async function setImmutableAssets(appId, enabled) {
+    return this.request(`/apps/${appId}/immutable-assets`, { method: 'PUT', body: { enabled } });
+}
+
+// A/B slot deploys (plan 87): slot state + eligibility, the opt-in, and the
+// instant switch back to the standby.
+export async function getAppSlots(appId) {
+    return this.request(`/apps/${appId}/slots`);
+}
+
+export async function setAppSlots(appId, enabled) {
+    return this.request(`/apps/${appId}/slots`, { method: 'PUT', body: { enabled } });
+}
+
+export async function switchBackAppSlot(appId) {
+    return this.request(`/apps/${appId}/slots/switch-back`, { method: 'POST' });
+}
+
+export async function restoreAppSlotDatabase(appId, deploymentId) {
+    return this.request(`/apps/${appId}/slots/restore-db`, {
+        method: 'POST', body: { deployment_id: deploymentId },
+    });
+}
+
+// Compose slot apps with a database move it once into a shared data project.
+export async function previewAppComposeSplit(appId) {
+    return this.request(`/apps/${appId}/slots/compose-split`);
+}
+
+export async function applyAppComposeSplit(appId) {
+    return this.request(`/apps/${appId}/slots/compose-split`, { method: 'POST', body: { confirm: true } });
 }

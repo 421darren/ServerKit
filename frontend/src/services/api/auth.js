@@ -16,9 +16,10 @@ export async function login(email, password) {
     return data;
 }
 
-export async function register(email, username, password, inviteToken) {
+export async function register(email, username, password, inviteToken, setupCode) {
     const body = { email, username, password };
     if (inviteToken) body.invite_token = inviteToken;
+    if (setupCode) body.setup_code = setupCode;
     const data = await this.request('/auth/register', {
         method: 'POST',
         body,
@@ -82,6 +83,16 @@ export async function redeemLoginLink(token) {
         method: 'POST',
         body: { token },
     });
+    if (data.access_token) {
+        this.setTokens(data.access_token, data.refresh_token);
+    }
+    return data;
+}
+
+// Opened from ServerKit Cloud through its relay: the relay hands the panel
+// Cloud's signed grant, and the panel signs in the user with that email.
+export async function connectSession() {
+    const data = await this.request('/auth/connect-session', { method: 'POST' });
     if (data.access_token) {
         this.setTokens(data.access_token, data.refresh_token);
     }

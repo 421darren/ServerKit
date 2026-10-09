@@ -432,6 +432,10 @@ def status() -> dict:
 def disconnect(remove_key: bool = False) -> dict:
     """Forget the pairing locally. Does NOT revoke anything on ServerKit Cloud."""
     stop_relay_client()  # no-op unless the client runs in this process
+    # The managed profile belongs to the pairing and leaves with it: a panel
+    # that is no longer connected is not managed (plan 25).
+    from app.services import connect_managed_profile
+    connect_managed_profile.clear('disconnected')
     removed = []
     for path in (connect_file_path(), state_file_path()):
         if os.path.exists(path):
@@ -670,6 +674,8 @@ class RelayClient:
         self._thread = None
         self._stop = threading.Event()
         self._ws = None
+        # The browser tunnel for the live connection (connect_tunnel.py).
+        self._tunnel = None
         self._attempts_at = collections.deque()
         self._flap_logged = False
         self._last_written = None  # (state, reason, transport) transition dedup
@@ -773,6 +779,7 @@ class RelayClient:
                     # Same terminal handling as the ws path: limited mode is
                     # where a panel behind a code-stripping edge learns it.
                     self._set_state('revoked', 'revoked', transport=None)
+                    self._clear_managed_profile()
                     logger.warning('Connect relay: device revoked on ServerKit Cloud; stopping')
                     return
                 ws_blocked_until = 0.0  # time to re-probe WS
@@ -786,6 +793,7 @@ class RelayClient:
 
             if kind == 'revoked':
                 self._set_state('revoked', 'revoked', transport=None)
+                self._clear_managed_profile()
                 logger.warning('Connect relay: device revoked on ServerKit Cloud; stopping')
                 return
 
@@ -803,6 +811,16 @@ class RelayClient:
 
             self._set_state('paired_offline', reason, transport=None)
             self._sleep(backoff_delay(attempt))
+
+    def _clear_managed_profile(self):
+        """A revoked panel is not managed: lift the profile immediately
+        (plan 25 "Revoked or unpaired")."""
+        try:
+            from app.services import connect_managed_profile
+            connect_managed_profile.clear('revoked', app=self.app)
+        except Exception:
+            logger.warning('Connect relay: could not lift the managed profile',
+                           exc_info=True)
 
     def _note_attempt(self):
         now = time.time()
@@ -836,6 +854,7 @@ class RelayClient:
             return f'refused:{_classify_ws_failure(exc)}'
 
         self._ws = ws
+        self._tunnel = self._new_tunnel(ws)
         try:
             # Consent is connection-scoped. Reconnect using empty probes.
             if self._diagnostics_collect:
@@ -889,6 +908,9 @@ class RelayClient:
             return f'drop:{_classify_ws_failure(exc)}'
         finally:
             self._ws = None
+            if self._tunnel is not None:
+                self._tunnel.shutdown()
+                self._tunnel = None
             for batch in reversed(list(self._logs_inflight.values())):
                 self._logs.requeue(batch)
             self._logs_inflight.clear()
@@ -991,10 +1013,23 @@ class RelayClient:
             self._metrics.requeue(samples)
             logger.debug('Connect metrics: send failed, samples kept', exc_info=True)
 
+    def _new_tunnel(self, ws):
+        """The browser tunnel for this connection (connect_tunnel.py)."""
+        from app.services import cli_api_client, connect_tunnel
+        return connect_tunnel.Tunnel(lambda frame: self._send(ws, frame),
+                                     cli_api_client.resolve_port())
+
     def _handle_frame(self, ws, raw):
         try:
             frame = json.loads(raw)
         except ValueError:
+            return
+        tunnel = getattr(self, '_tunnel', None)
+        if frame.get('t') == 'data':
+            if tunnel is not None:
+                tunnel.data(frame)
+            return
+        if frame.get('t') == 'close' and tunnel is not None and tunnel.close(frame):
             return
         if frame.get('t') == 'close':
             stream_id = frame.get('s')
@@ -1034,6 +1069,10 @@ class RelayClient:
         if frame.get('t') == 'open':
             if frame.get('k') == 'command':
                 self._run_command(ws, frame)
+                return
+            # "Open panel" in ServerKit Cloud: a browser request or its
+            # Socket.IO socket, replayed on this panel's own port.
+            if tunnel is not None and tunnel.open(frame):
                 return
             # Anything else is a stream this client version does not speak.
             # Refusing honestly is what stops the relay holding it open.

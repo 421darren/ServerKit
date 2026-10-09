@@ -26,7 +26,6 @@ from app.services.application_lifecycle_service import (
     _agent_result_error, _assert_managed_app_path,
 )
 from app.services.container_sleep_service import ContainerSleepService
-from app.services.container_scale_service import ContainerScaleService
 from app.services.log_service import LogService
 from app.services.process_service import ProcessService
 from app.services.backup_policy_service import BackupPolicyService, BackupPolicyError
@@ -837,6 +836,20 @@ def create_app_from_repository():
         _ws_id = WorkspaceService.ensure_default_workspace().id
     project_id, environment_id = _resolve_project_env(data, _ws_id)
 
+    # A repository whose manifest is a compose file deploys as that compose
+    # project — every service it declares (a database next to the web app),
+    # exactly like an uploaded archive. Building only the Dockerfile it also
+    # contains used to start the web container without its database. An
+    # explicit non-compose choice from the caller still wins.
+    compose_file = None
+    if (manifest_strategy == 'docker_compose' and app_type in ('auto', 'docker')
+            and build_method in ('auto', 'dockerfile')):
+        compose_file = next((m.get('file') for m in manifest.get('manifests') or []
+                             if m.get('type') == 'docker_compose'), None)
+    managed_by = 'docker_compose' if compose_file else None
+    if compose_file:
+        resolved_app_type = 'docker'
+
     app = Application(
         name=name,
         app_type=resolved_app_type,
@@ -844,10 +857,12 @@ def create_app_from_repository():
         root_path=app_path,
         user_id=user.id,
         port=port,
+        compose_file=compose_file,
+        managed_by=managed_by,
         buildpack_type=buildpack_type,
         buildpack_plan=json.dumps(buildpack_plan) if buildpack_plan else None,
         buildpack_overrides=json.dumps(buildpack_overrides) if buildpack_overrides else None,
-        ingress_plane=_resolve_ingress_plane(data, resolved_app_type),
+        ingress_plane=_resolve_ingress_plane(data, resolved_app_type, managed_by),
         project_id=project_id,
         environment_id=environment_id,
     )
@@ -1275,6 +1290,15 @@ def update_app(app_id):
 
     data = request.get_json()
 
+    # Validate before anything is assigned, so a bad setting leaves the app
+    # untouched rather than half-updated in the session.
+    if 'deploy_settings' in data:
+        from app.exceptions import ValidationError
+        from app.services import deploy_settings
+        _, error = deploy_settings.validate(data['deploy_settings'])
+        if error:
+            raise ValidationError(error)
+
     if 'name' in data:
         app.name = data['name']
     if 'status' in data:
@@ -1288,6 +1312,9 @@ def update_app(app_id):
     if 'healthcheck_path' in data:
         hc = (data['healthcheck_path'] or '').strip()
         app.healthcheck_path = hc or None
+    if 'deploy_settings' in data:
+        from app.services import deploy_settings
+        deploy_settings.update(app, data['deploy_settings'])
     if 'root_path' in data:
         app.root_path = data['root_path']
     if 'docker_image' in data:
@@ -1403,6 +1430,19 @@ def apply_image_update(app_id):
         return jsonify({'error': 'Application not found'}), 404
     if not _can_edit_app(user, app):
         return jsonify({'error': 'Access denied'}), 403
+
+    # A slot app never recreates its live stack in place: the newest images
+    # go through a slot deploy (pulled in its preflight, gated, switched).
+    from app.services.slot_deploy_service import SlotDeployService
+    if SlotDeployService.is_compose_slot_app(app):
+        from app.services.deployment_job_service import DeploymentJobService
+        queued = DeploymentJobService.enqueue_app_deploy(app, user_id=current_user_id,
+                                                         trigger='image_update')
+        if not queued.get('success'):
+            from app.exceptions import ConflictError
+            raise ConflictError(queued.get('error') or 'Failed to queue the update')
+        return jsonify({'message': 'Image update queued as a slot deploy',
+                        'deploy_job_id': queued['job_id'], 'app': app.to_dict()}), 202
 
     # Auto-apply is only safe for compose-managed apps; recreating a standalone
     # container would need its full run spec, which we don't store.
@@ -1650,6 +1690,16 @@ def set_micro_cache(app_id):
     if 'enabled' not in data:
         return jsonify({'error': "'enabled' is required"}), 400
 
+    from app.services.nginx_service import NginxService
+    if 'ttl' in data:
+        ttl = data['ttl']
+        if ttl is not None and (isinstance(ttl, bool) or not isinstance(ttl, int)
+                                or not 1 <= ttl <= NginxService.MICROCACHE_TTL_MAX):
+            from app.exceptions import ValidationError
+            raise ValidationError("'ttl' must be whole seconds from 1 to "
+                                  f'{NginxService.MICROCACHE_TTL_MAX}')
+        app.micro_cache_ttl = ttl
+
     app.micro_cache_enabled = bool(data['enabled'])
     db.session.commit()
 
@@ -1669,6 +1719,7 @@ def set_micro_cache(app_id):
     response = {
         'message': f"Micro-cache {'enabled' if app.micro_cache_enabled else 'disabled'}",
         'micro_cache_enabled': bool(app.micro_cache_enabled),
+        'micro_cache_ttl': app.micro_cache_ttl,
         'applied': applied,
     }
     if note:
@@ -1681,12 +1732,10 @@ def set_micro_cache(app_id):
 @apps_bp.route('/<int:app_id>/micro-cache/purge', methods=['POST'])
 @jwt_required()
 def purge_micro_cache(app_id):
-    """Manually clear the micro-cache.
+    """Clear this site's cached pages (plan 86 §B3).
 
-    The cache is ONE shared nginx zone for all opted-in sites (zones must be
-    declared statically, so per-site zones don't scale) — purging therefore
-    wipes cached entries for every opted-in site. With the 10-second TTL this
-    is near-harmless, and no nginx reload is needed.
+    The zone is shared, but the cache key carries the host, so only entries
+    for this app's domains are removed. No nginx reload is needed.
     """
     user = get_current_user()
     app = Application.query_active().filter_by(id=app_id).first()
@@ -1695,88 +1744,17 @@ def purge_micro_cache(app_id):
     if not _can_edit_app(user, app):
         return jsonify({'error': 'Access denied'}), 403
 
+    hosts = [d.name for d in app.live_domains if d.name]
+    if not hosts:
+        return jsonify({'message': 'Nothing cached: this service has no domain yet',
+                        'purged': 0}), 200
+
     from app.services.nginx_service import NginxService
-    result = NginxService.purge_micro_cache()
+    result = NginxService.purge_micro_cache(hosts)
     if not result.get('success'):
         return jsonify({'error': result.get('error', 'Purge failed')}), 500
-
-    response = {'message': result.get('message', 'Micro-cache cleared')}
-    if result.get('note'):
-        response['note'] = result['note']
-    return jsonify(response), 200
-
-
-@apps_bp.route('/<int:app_id>/scale-policy', methods=['GET'])
-@jwt_required()
-def get_scale_policy(app_id):
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return jsonify({'error': 'Application not found'}), 404
-    if not _can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
-    return jsonify(ContainerScaleService.get_or_create_policy(app_id).to_dict())
-
-
-@apps_bp.route('/<int:app_id>/scale-policy', methods=['PUT'])
-@jwt_required()
-def update_scale_policy(app_id):
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return jsonify({'error': 'Application not found'}), 404
-    if not _can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
-    data = request.get_json() or {}
-    try:
-        policy = ContainerScaleService.set_policy(app_id, **data)
-    except ValueError as exc:
-        # The service rolls back its own dirty session before raising.
-        return jsonify({'error': str(exc)}), 400
-    return jsonify(policy.to_dict())
-
-
-@apps_bp.route('/<int:app_id>/scale', methods=['POST'])
-@jwt_required()
-def scale_app(app_id):
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return jsonify({'error': 'Application not found'}), 404
-    if not _can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
-    data = request.get_json() or {}
-    if data.get('replicas') is None:
-        return jsonify({'error': 'replicas is required'}), 400
-    result = ContainerScaleService.scale_to(app_id, data['replicas'])
-    if not result.get('success'):
-        return jsonify({'error': result['error']}), 400
-    return jsonify(result)
-
-
-@apps_bp.route('/<int:app_id>/scale/evaluate', methods=['POST'])
-@jwt_required()
-def evaluate_scale(app_id):
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return jsonify({'error': 'Application not found'}), 404
-    if not _can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
-    result = ContainerScaleService.evaluate(app_id)
-    if not result.get('success'):
-        return jsonify({'error': result.get('error', 'Evaluation failed')}), 400
-    return jsonify(result)
-
-
-@apps_bp.route('/scale-sweep', methods=['POST'])
-@jwt_required()
-def scale_sweep():
-    """Evaluate every enabled auto-scaling policy. Intended for cron/scheduler."""
-    user = get_current_user()
-    if not (user and user.is_admin):
-        return jsonify({'error': 'Admin access required'}), 403
-    return jsonify(ContainerScaleService.sweep())
+    return jsonify({'message': result.get('message', 'Micro-cache cleared'),
+                    'purged': result.get('purged', 0)}), 200
 
 
 @apps_bp.route('/<int:app_id>/stop', methods=['POST'])

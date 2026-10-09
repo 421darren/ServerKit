@@ -22,20 +22,22 @@ import IconReferenceTab from '../components/settings/IconReferenceTab';
 import AISettingsTab from '../components/settings/AISettingsTab';
 import WebhooksTab from '../components/settings/WebhooksTab';
 import AboutTab from '../components/settings/AboutTab';
+import CloudTab from '../components/settings/CloudTab';
+import StorageTab from '../components/settings/StorageTab';
 import PluginSlot from '../components/PluginSlot';
-import { Activity, Code, Database, Layers, Link2, PaintBucket, Sparkles, Trash2, Webhook, Settings as SettingsIcon } from 'lucide-react';
+import { Activity, CloudCog, Code, Database, HardDrive, Layers, Link2, PaintBucket, Sparkles, Trash2, Webhook, Settings as SettingsIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SegControl } from '@/components/ds';
 import PageLayout from '../layouts/PageLayout';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-const VALID_TABS = ['profile', 'security', 'connections', 'appearance', 'sidebar', 'whitelabel', 'notifications', 'system', 'users', 'activity', 'site', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'developer', 'about'];
+const VALID_TABS = ['profile', 'security', 'connections', 'cloud', 'appearance', 'sidebar', 'whitelabel', 'notifications', 'system', 'users', 'activity', 'site', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'storage', 'developer', 'about'];
 
 // Tabs that belong to the server-wide "Administration" group (admin-only); the
 // rest are personal "My Account" settings. Drives the two-way section switch so
 // personal prefs aren't interleaved with destructive system controls.
-const ADMIN_TABS = ['users', 'activity', 'site', 'connections', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'system', 'developer'];
+const ADMIN_TABS = ['users', 'activity', 'site', 'connections', 'cloud', 'sso', 'api', 'webhooks', 'ai', 'migrations', 'recyclebin', 'storage', 'system', 'developer'];
 
 const Settings = () => {
     const { t } = useTranslation();
@@ -234,6 +236,14 @@ const Settings = () => {
                             </Button>
                             <Button
                                 variant="ghost"
+                                className={`settings-nav-item ${activeTab === 'cloud' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('cloud')}
+                            >
+                                <CloudCog size={18} />
+                                {t('app.settings.serverkitCloud', 'ServerKit Cloud')}
+                            </Button>
+                            <Button
+                                variant="ghost"
                                 className={`settings-nav-item ${activeTab === 'sso' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('sso')}
                             >
@@ -278,6 +288,14 @@ const Settings = () => {
                             </Button>
                             <Button
                                 variant="ghost"
+                                className={`settings-nav-item ${activeTab === 'storage' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('storage')}
+                            >
+                                <HardDrive size={18} />
+                                {t('app.settings.storage', 'Storage')}
+                            </Button>
+                            <Button
+                                variant="ghost"
                                 className={`settings-nav-item ${activeTab === 'system' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('system')}
                             >
@@ -319,6 +337,7 @@ const Settings = () => {
                     {activeTab === 'profile' && <ProfileTab />}
                     {activeTab === 'security' && <SecuritySettingsTab />}
                     {activeTab === 'connections' && isAdmin && <ConnectionsHub />}
+                    {activeTab === 'cloud' && isAdmin && <CloudTab />}
                     {activeTab === 'appearance' && <AppearanceTab />}
                     {activeTab === 'sidebar' && <SidebarSettings />}
                     {activeTab === 'whitelabel' && <WhiteLabelTab />}
@@ -336,6 +355,7 @@ const Settings = () => {
                     {activeTab === 'webhooks' && isAdmin && <WebhooksTab />}
                     {activeTab === 'ai' && isAdmin && <AISettingsTab />}
                     {activeTab === 'migrations' && isAdmin && <MigrationHistoryTab />}
+                    {activeTab === 'storage' && isAdmin && <StorageTab />}
                     {activeTab === 'system' && isAdmin && <SystemTab />}
                     {activeTab === 'developer' && devMode && isAdmin && <IconReferenceTab />}
                     {activeTab === 'about' && <AboutTab />}

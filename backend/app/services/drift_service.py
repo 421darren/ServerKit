@@ -47,6 +47,7 @@ import difflib
 import json
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -388,6 +389,23 @@ def _with_expected_waf(app_id, config):
     return injected if injected is not None else config
 
 
+# A vhost written before the timed log format (plan 86 §A1) has a bare
+# `access_log <path>;`. That is not drift: the format only changes what the log
+# records, and the next regeneration adopts it. Read such lines as the timed
+# form so an upgrade doesn't flag (and notify about) every existing site.
+_LEGACY_ACCESS_LOG_RE = re.compile(
+    r'^(\s*access_log /var/log/nginx/[^\s;]+\.access\.log);$', re.MULTILINE)
+
+
+def _nginx_read_actual(paths):
+    actual = _default_read_actual(paths)
+    return {
+        path: (_LEGACY_ACCESS_LOG_RE.sub(r'\1 serverkit_timed;', content)
+               if content is not None else None)
+        for path, content in actual.items()
+    }
+
+
 def _nginx_repair(app_id):
     from app.models.application import Application
     from app.services.nginx_service import NginxService
@@ -403,11 +421,8 @@ def _nginx_repair(app_id):
     # write_app_vhost regenerates from the template, which drops the WAF
     # include; re-wire it for apps with an enforcing policy so a repair
     # never strips protection the DB still records (plan 82 §F.1).
-    from app.models.waf_policy import WafPolicy
-    policy = WafPolicy.query.filter_by(application_id=app_id).first()
-    if policy is not None and policy.mode in ('block', 'detect'):
-        from app.services.waf_service import WafService
-        WafService.apply(app_id)
+    from app.services.waf_service import WafService
+    WafService.reapply_if_enforcing(app_id)
 
     reload_res = NginxService.reload()
     return {
@@ -425,6 +440,7 @@ register_check({
     'supported': _linux_only,
     'list_resources': _nginx_list_resources,
     'render_expected': _nginx_render_expected,
+    'read_actual': _nginx_read_actual,
     'repair': _nginx_repair,
 })
 

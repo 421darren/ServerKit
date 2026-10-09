@@ -117,11 +117,24 @@ scripts/test/output/<run-id>/
     install-status                ("OK" or "FAIL")
     pytest.log
     pytest-report.json
+    runtime.json                   (post-install resource observation)
   sk-test-ubuntu24-<id>/ ...
   sk-test-debian12-<id>/ ...
 ```
 
 ## Update & uninstall coverage
+
+Full VM installs now wait 60 seconds after the health check, then collect a
+120-second passive runtime baseline before pytest. The HTML report shows median
+and sampled-peak cgroup memory, and median/p95 CPU per measured service. Raw data
+is in `runtime.json`; unavailable/failed measurements are shown explicitly and
+do not turn a successful install into a failed install. Test Sandbox full mode
+uses the same sampler and saves `<distro>.runtime.json` beside its log.
+
+These short observations help identify regressions, but parallel VM/container
+work can affect them. Quick/provision checks do not run the panel and cannot
+measure its runtime overhead. See [measurement definitions and longer baseline
+commands](../../docs/METRICS.md#passive-linux-runtime-sampler).
 
 Alongside `vm-install.sh`, two more "run inside the VM" scripts exercise the
 other lifecycle stages end-to-end (same contract: log to
@@ -171,6 +184,9 @@ python .\scripts\test\distro-compatibility.py --mode both --jobs 4
 # A smaller investigation or a CI-gating run
 python .\scripts\test\distro-compatibility.py --only ubuntu22,debian13,rocky10
 python .\scripts\test\distro-compatibility.py --mode provision --strict
+
+# Installer #148 regression: includes Ubuntu 26.04's Python 3.14
+python .\scripts\test\distro-compatibility.py --only ubuntu26,ubuntu24,debian13 --mode provision --strict
 ```
 
 Each run writes `report.md`, `report.json`, image-pull logs, and one log per
@@ -183,7 +199,9 @@ The two modes deliberately make narrower claims than a full install:
 
 - **quick** — shell syntax plus the source-level installer/update/lib/CLI suites.
 - **provision** — real repositories through `install.sh`, including supported
-  Python, venv, pip, SSL, SQLite, and ctypes.
+  Python, venv, pip, SSL, SQLite, ctypes, and a source build/import of the pinned
+  gevent dependency. Ubuntu 26.04 also installs all backend requirements and
+  runs `pip check`.
 
 Neither mode proves systemd, nginx, firewall behavior, Docker-in-Docker,
 kernel-specific behavior, LXC nesting, a hypervisor, or Raspberry Pi hardware.

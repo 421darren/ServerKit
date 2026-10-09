@@ -98,6 +98,12 @@ export async function getSystemInfo() {
     return this.request('/system/info');
 }
 
+// Where the panel host's disk goes, plus the retention settings that bound
+// ServerKit's own share (admin, read-only).
+export async function getStorageOverview() {
+    return this.request('/system/storage');
+}
+
 export async function getServerTime() {
     return this.request('/system/time');
 }
@@ -119,6 +125,16 @@ export async function getVersion() {
 
 export async function checkUpdate() {
     return this.request('/system/check-update');
+}
+
+// ServerKit Cloud connect state and the managed presentation policy (plan 25).
+// Both are admin-only on the backend; callers treat a refusal as "no profile".
+export async function getConnectStatus() {
+    return this.request('/connect/status');
+}
+
+export async function getManagedProfile() {
+    return this.request('/connect/managed-profile');
 }
 
 export async function getPanelUpdateStatus() {
@@ -209,10 +225,6 @@ export async function getNginxProxyRules(domain) {
     return this.request(`/nginx/advanced/proxy/${domain}`);
 }
 
-export async function createNginxProxy(data) {
-    return this.request('/nginx/advanced/proxy', { method: 'POST', body: data });
-}
-
 export async function testAdvancedNginxConfig() {
     return this.request('/nginx/advanced/test', { method: 'POST' });
 }
@@ -229,10 +241,6 @@ export async function previewNginxDiff(domain, config) {
 
 export async function getNginxVhostLogs(domain, type = 'access', lines = 100) {
     return this.request(`/nginx/advanced/logs/${domain}?type=${encodeURIComponent(type)}&lines=${encodeURIComponent(lines)}`);
-}
-
-export async function getNginxLBMethods() {
-    return this.request('/nginx/advanced/lb-methods');
 }
 
 // Log endpoints
