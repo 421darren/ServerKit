@@ -184,6 +184,7 @@ STATELESS = {
     'mobile.execute_quick_action': 'stub: canned no-op responses / live metrics read only',
     'mobile.unregister_push': 'stub: returns success without touching the DB',
     'servers.check_agent_version': 'agent-facing version check; outbound only to a fixed GitHub releases URL, cached',
+    'agent_version_check_legacy': 'alias of servers.check_agent_version for Agent 1.2.0 (pre-v1 URL); same stateless handler',
     'templates.validate_installation': 'validation only (name-clash read + variable checks)',
 }
 

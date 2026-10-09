@@ -256,6 +256,7 @@ def test_public_passkey_options_issue_only_a_challenge(client, db_session):
 # dedicated per-feature tests, not here.
 _SKIP_ENDPOINTS = {
     'servers.check_agent_version',
+    'agent_version_check_legacy',
     # Revokes the sweep's shared viewer token, masking later missing gates.
     # Covered with real viewer sessions in test_session_security.py instead.
     'auth.logout',
