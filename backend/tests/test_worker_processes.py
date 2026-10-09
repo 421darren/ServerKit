@@ -96,7 +96,10 @@ class TestDeploy:
         assert result['started'] == [] and set(result['failed']) == {'worker', 'scheduler'}
 
 
-def test_build_pack_containers_are_listed_web_first(app, fake_subprocess):
+def test_build_pack_containers_are_listed_web_first(app, fake_subprocess, monkeypatch):
+    # The detected compose command is cached on the class; pin it so an earlier
+    # test cannot leave the v1 `docker-compose` spelling behind.
+    monkeypatch.setattr(DockerService, '_compose_cmd', ['docker', 'compose'])
     site = make_application(db, name='shop', buildpack_type='python', root_path='/nonexistent')
     rows = [{'ID': 'w1', 'Names': f'serverkit-app-{site.id}-worker', 'State': 'running'},
             {'ID': 'm1', 'Names': f'serverkit-app-{site.id}', 'State': 'running'}]
