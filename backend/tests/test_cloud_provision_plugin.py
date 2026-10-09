@@ -6,7 +6,10 @@ import types
 
 import pytest
 
-_DIR = os.path.join(os.path.dirname(__file__), '..', 'app', 'plugins', 'serverkit-cloud-provision')
+# Tracked source of truth (the app/plugins copy only exists on a running
+# install, so reading it breaks in any fresh checkout).
+_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'builtin-extensions',
+                    'serverkit-cloud-provision', 'backend')
 _spec = importlib.util.spec_from_file_location('cloud_prov_under_test',
                                                os.path.join(_DIR, 'cloud_provisioning_service.py'))
 mod = importlib.util.module_from_spec(_spec)
