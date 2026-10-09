@@ -198,18 +198,18 @@ class TestBuiltins:
         assert 'builtin.crash_loop' in kinds
         # Warm standby slots are stopped once their time is up (plan 87 §B).
         assert 'builtin.slot_standby' in kinds
-        assert len([k for k in kinds if k.startswith('builtin.')]) == 21
+        assert len([k for k in kinds if k.startswith('builtin.')]) == 22
 
         builtin_handlers.seed_builtin_schedules()
-        # 21 builtin.* schedules (incl. the request-metrics, crash-loop and slot-standby ticks, restore-point/job/telemetry retention,
+        # 22 builtin.* schedules (21 upstream + the hourly WordPress disk-usage refresh carried by this fork; (incl. the request-metrics, crash-loop and slot-standby ticks, restore-point/job/telemetry retention,
         # the monitor sweep, security-feed check, recycle-bin retention and the
         # fleet threshold check) + login-link/SSO reapers + drift/FIM/bandwidth
         # sweeps + the host doctor sweep AND the fleet doctor sweep (plan 26)
         # + the setup-health nag (plan 22).
-        assert ScheduledJob.query.count() == 29
+        assert ScheduledJob.query.count() == 30
         # Seeding twice doesn't duplicate.
         builtin_handlers.seed_builtin_schedules()
-        assert ScheduledJob.query.count() == 29
+        assert ScheduledJob.query.count() == 30
 
 
 class TestApi:
