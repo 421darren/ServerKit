@@ -1003,6 +1003,8 @@ def enable_pg_stat_statements(container):
 @jwt_required()
 def generate_password():
     """Generate a secure random password."""
-    length = request.args.get('length', 16, type=int)
+    # Bounded: an unchecked ?length=1000000000 made the server build a
+    # gigabyte-long string.
+    length = min(max(request.args.get('length', 16, type=int), 8), 128)
     password = DatabaseService.generate_password(length)
     return jsonify({'password': password}), 200
