@@ -80,6 +80,16 @@ def _resolve_token_expiry(expires_in):
 servers_bp = Blueprint('servers', __name__)
 
 
+def _get_operable_server(server_id):
+    """The server, if the current user may operate it; 404 otherwise, so a
+    non-member can't tell a foreign workspace's server from a missing one."""
+    from app.services.workspace_service import WorkspaceService
+    server = Server.query.get(server_id)
+    if not server or not WorkspaceService.can_access_server(get_current_user(), server):
+        raise not_found('server')
+    return server
+
+
 def _get_external_base_url():
     """Return the public origin agents should use when this app sits behind a proxy."""
     public_url = current_app.config.get('PUBLIC_URL') or os.environ.get('SERVERKIT_PUBLIC_URL')
@@ -435,9 +445,9 @@ def set_server_workspace(server_id):
     from app.models.workspace import Workspace
     from app.services.workspace_service import WorkspaceService
     user = get_current_user()
-    server = Server.query.get(server_id)
-    if not server:
-        raise not_found('server')
+    server = _get_operable_server(server_id)
+    if server.workspace_id and not WorkspaceService.can_write_in_workspace(user, server.workspace_id):
+        return jsonify({'error': "You have read-only access to this server's workspace"}), 403
 
     target = (request.get_json() or {}).get('workspace_id')
     if target in (None, '', 'default'):
@@ -677,9 +687,7 @@ def regenerate_token(server_id):
     Body is optional; only ``expires_in`` is read (same semantics as
     create_server).
     """
-    server = Server.query.get(server_id)
-    if not server:
-        raise not_found('server')
+    server = _get_operable_server(server_id)
 
     data = request.get_json(silent=True) or {}
     expires_at = _resolve_token_expiry(data.get('expires_in'))
@@ -1744,6 +1752,7 @@ def create_terminal_session(server_id):
         cols: Terminal width (default: 80)
         rows: Terminal height (default: 24)
     """
+    _get_operable_server(server_id)
     user_id = get_jwt_identity()
     data = request.get_json() or {}
 

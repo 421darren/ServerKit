@@ -133,6 +133,21 @@ class WorkspaceService:
         return WorkspaceService.effective_role(user, workspace_id) != User.ROLE_VIEWER
 
     @staticmethod
+    def can_access_server(user, server):
+        """Whether the user may operate *server*: admins always, otherwise only
+        servers outside any named workspace or in one they are a member of.
+        The Default workspace counts as none — servers created without a
+        context are stamped into it, and nobody is a member of it.
+        The one rule for both the REST routes and the Socket.IO rooms."""
+        if user.is_admin or not server.workspace_id:
+            return True
+        default = Workspace.query.filter_by(
+            slug=WorkspaceService.DEFAULT_WORKSPACE_SLUG).first()
+        if default is not None and server.workspace_id == default.id:
+            return True
+        return WorkspaceService.get_user_role(server.workspace_id, user.id) is not None
+
+    @staticmethod
     def check_quota(workspace_id, current_count, quota_field):
         """Return an error string if a workspace quota would be exceeded,
         otherwise None. `quota_field` is the Workspace column name."""

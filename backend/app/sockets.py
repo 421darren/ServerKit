@@ -107,8 +107,7 @@ def _server_visible(user, server_id):
     server = Server.query.populate_existing().filter_by(id=server_id).first()
     if not server:
         return False
-    return (user.is_admin or not server.workspace_id
-            or WorkspaceService.get_user_role(server.workspace_id, user.id) is not None)
+    return WorkspaceService.can_access_server(user, server)
 
 
 def _room_allowed(user, room):
