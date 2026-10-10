@@ -246,14 +246,18 @@ const LogFilesTab = () => {
         }
     }
 
-    async function loadLogContent(logPath, showLoading = true) {
+    // Callers that just set state pass the new values: this render's
+    // lineCount/appliedSearch are still the old ones.
+    async function loadLogContent(logPath, showLoading = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const search = overrides.search ?? appliedSearch;
         if (showLoading) setLoadingContent(true);
         try {
             let data;
-            if (appliedSearch.trim()) {
-                data = await api.searchLog(logPath, appliedSearch, lineCount);
+            if (search.trim()) {
+                data = await api.searchLog(logPath, search, lines);
             } else {
-                data = await api.readLog(logPath, lineCount);
+                data = await api.readLog(logPath, lines);
             }
             setLogContent(data.content || data.lines?.join('\n') || '');
             setSelectedLog(logPath);
@@ -297,7 +301,7 @@ const LogFilesTab = () => {
     function handleSearchClear() {
         setSearchPattern('');
         setAppliedSearch('');
-        if (selectedLog) loadLogContent(selectedLog);
+        if (selectedLog) loadLogContent(selectedLog, true, { search: '' });
     }
 
     function scrollToBottom() {
@@ -412,7 +416,7 @@ const LogFilesTab = () => {
                         onSearchSubmit={handleSearchSubmit}
                         onSearchClear={handleSearchClear}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) setTimeout(() => loadLogContent(selectedLog), 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) loadLogContent(selectedLog, true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}
@@ -533,7 +537,10 @@ const JournalTab = () => {
         immediate: false,
     });
 
-    async function loadJournalLogs(showSpinner = true) {
+    // Same as loadLogContent: pass values that were just set.
+    async function loadJournalLogs(showSpinner = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const selectedUnit = overrides.unit ?? unit;
         if (isRemote && !REMOTE_JOURNAL_SUPPORTED.has('read')) {
             setLogContent('');
             setSource('');
@@ -544,7 +551,7 @@ const JournalTab = () => {
         if (showSpinner) setLoading(true);
         setUnavailable(false);
         try {
-            const data = await api.getJournalLogs(unit || null, lineCount);
+            const data = await api.getJournalLogs(selectedUnit || null, lines);
             setLogContent(data.lines?.join('\n') || '');
             setSource(data.source || '');
             setSourceLabel(data.source_label || '');
@@ -567,18 +574,18 @@ const JournalTab = () => {
     function pickUnit(u) {
         setUnit(u);
         setUnitInput(u);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: u });
     }
 
     function clearUnit() {
         setUnit('');
         setUnitInput('');
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: '' });
     }
 
     function applyUnitInput() {
         setUnit(unitInput);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: unitInput });
     }
 
     function handleDownload() {
@@ -698,7 +705,7 @@ const JournalTab = () => {
                                 {filteredUnits.map(u => (
                                     <SharedButton variant="unstyled" type="button"
                                         key={u.id}
-                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}}`}
+                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}`}
                                         onClick={() => pickUnit(u.id)}
                                     >
                                         <span className={`lv-file-dot kind-${u.kind}`} />
@@ -750,7 +757,7 @@ const JournalTab = () => {
                         onSearchSubmit={() => setAppliedSearch(searchPattern)}
                         onSearchClear={() => { setSearchPattern(''); setAppliedSearch(''); }}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); setTimeout(loadJournalLogs, 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); loadJournalLogs(true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}

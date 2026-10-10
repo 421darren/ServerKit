@@ -71,6 +71,9 @@ jobs:
       - name: SVG sanitizer browser regressions
         working-directory: frontend
         run: npm run test:sanitize-svg
+      - name: Terminal log viewer browser regressions
+        working-directory: frontend
+        run: npm run test:terminal-logs
       - name: Upload Settings screenshots
         if: always()
         uses: actions/upload-artifact@v4
