@@ -8,11 +8,11 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import requests
 
 from app import db
 from app.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models import WebhookEndpoint, WebhookDelivery
+from app.utils import safe_http
 from app.utils.slug import unique_slug
 
 logger = logging.getLogger(__name__)
@@ -211,12 +211,11 @@ class WebhookGatewayService:
         }
         for attempt in range(max(1, endpoint.retry_count)):
             try:
-                resp = requests.post(
+                resp = safe_http.post(
                     endpoint.forward_url,
                     data=payload,
                     headers=forward_headers,
                     timeout=30,
-                    verify=True,
                 )
                 return {
                     'success': 200 <= resp.status_code < 300,

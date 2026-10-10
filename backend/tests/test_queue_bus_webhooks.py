@@ -61,7 +61,7 @@ class TestWebhookQueueIntegration:
             calls.append((url, data, headers, timeout))
             return Resp()
 
-        monkeypatch.setattr('app.queue_bus.consumers.webhook_consumer.http_requests.post', fake_post)
+        monkeypatch.setattr('app.queue_bus.consumers.webhook_consumer.safe_http.post', fake_post)
 
         consumer = WebhookConsumer(app)
         consumer._process_batch()
@@ -92,7 +92,7 @@ class TestWebhookQueueIntegration:
                 text = 'error'
             return Resp()
 
-        monkeypatch.setattr('app.queue_bus.consumers.webhook_consumer.http_requests.post', fake_post)
+        monkeypatch.setattr('app.queue_bus.consumers.webhook_consumer.safe_http.post', fake_post)
 
         consumer = WebhookConsumer(app)
         # Three attempts: initial + 2 retries. Bypass the bus retry delay in tests
