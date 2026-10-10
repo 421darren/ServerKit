@@ -910,6 +910,11 @@ def create_app_from_repository():
         return unexpected_response(exc)
 
 
+# Fields that point the row at host paths and units root-run code acts on
+# (docker compose up, nginx site files, systemctl) — admin-only, as /manual.
+_HOST_BINDING_FIELDS = ('root_path', 'compose_file', 'systemd_unit', 'managed_by')
+
+
 @apps_bp.route('', methods=['POST'])
 @jwt_required()
 def create_app():
@@ -919,7 +924,12 @@ def create_app():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
-    name = data.get('name')
+    host_fields = [f for f in _HOST_BINDING_FIELDS if data.get(f)]
+    if host_fields and not User.query.get(current_user_id).is_admin:
+        return jsonify({'error': f"Only an admin can set {', '.join(host_fields)}"}), 403
+
+    # The name becomes the nginx vhost name and its file path.
+    name = _service_slug(data.get('name'))
     app_type = data.get('app_type')
 
     if not all([name, app_type]):
@@ -928,6 +938,10 @@ def create_app():
     valid_types = ['php', 'wordpress', 'flask', 'django', 'docker', 'static']
     if app_type not in valid_types:
         return jsonify({'error': f'Invalid app_type. Must be one of: {", ".join(valid_types)}'}), 400
+
+    clash = app_name_clash_error(Application.query.filter_by(name=name).first(), name)
+    if clash:
+        return jsonify({'error': clash}), 400
 
     # Stamp the workspace (#33): the requested one (membership-checked) or the default.
     from app.services.workspace_service import WorkspaceService
@@ -1307,10 +1321,20 @@ def update_app(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = request.get_json() or {}
 
     # Validate before anything is assigned, so a bad setting leaves the app
     # untouched rather than half-updated in the session.
+    host_fields = [f for f in _HOST_BINDING_FIELDS if f in data]
+    if host_fields and not user.is_admin:
+        return jsonify({'error': f"Only an admin can change {', '.join(host_fields)}"}), 403
+    if 'name' in data and data['name'] != app.name:
+        if not data['name'] or _service_slug(data['name']) != data['name']:
+            return jsonify({'error': 'Service name must be lowercase letters, digits and hyphens'}), 400
+        clash = app_name_clash_error(
+            Application.query.filter_by(name=data['name']).first(), data['name'])
+        if clash:
+            return jsonify({'error': clash}), 400
     if 'deploy_settings' in data:
         from app.exceptions import ValidationError
         from app.services import deploy_settings

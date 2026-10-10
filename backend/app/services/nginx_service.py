@@ -1128,6 +1128,19 @@ location /p/ {{
             return None
         return result.stdout if result.returncode == 0 else None
 
+    @staticmethod
+    def _invalid_site_name(name) -> Optional[Dict]:
+        """The error for a site name that is not a plain filename, else None.
+
+        Every site method joins `name` onto sites-available/sites-enabled and
+        acts on the result as root, so a caller-controlled name must not
+        traverse out (preview_diff applies the same rule for reads).
+        """
+        if (not name or not isinstance(name, str) or os.path.basename(name) != name
+                or name in ('.', '..') or '\x00' in name):
+            return {'success': False, 'error': f'Invalid site name: {name!r}'}
+        return None
+
     @classmethod
     def write_vhost(cls, name: str, content: str, *, enable: bool = True) -> Dict:
         """Write, enable, config-test, roll back on failure, reload. One door (§G4).
@@ -1148,12 +1161,9 @@ location /p/ {{
 
         Returns ``{'success', 'path'}`` or ``{'success': False, 'error'}``.
         """
-        # `name` becomes a filesystem path below — refuse anything that is not
-        # a plain filename so a caller-controlled name cannot traverse out of
-        # sites-available (preview_diff applies the same rule for reads).
-        if (not name or os.path.basename(name) != name
-                or name in ('.', '..') or '\x00' in name):
-            return {'success': False, 'error': f'Invalid site name: {name!r}'}
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
 
         # A vhost naming the timed format fails `nginx -t` until the
         # http-level log_format exists — declare it first.
@@ -1223,6 +1233,9 @@ location /p/ {{
     @classmethod
     def enable_site(cls, name: str) -> Dict:
         """Enable a site by creating symlink in sites-enabled."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         available_path = os.path.join(cls.SITES_AVAILABLE, name)
         enabled_path = os.path.join(cls.SITES_ENABLED, name)
 
@@ -1246,6 +1259,9 @@ location /p/ {{
     @classmethod
     def disable_site(cls, name: str) -> Dict:
         """Disable a site by removing symlink from sites-enabled."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         enabled_path = os.path.join(cls.SITES_ENABLED, name)
         _auto_capture_vhost(name, 'disable_site')
 
@@ -1263,6 +1279,9 @@ location /p/ {{
     @classmethod
     def delete_site(cls, name: str) -> Dict:
         """Delete a site configuration."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         _auto_capture_vhost(name, 'delete_site')
         # First disable it
         from app.services.restore_point_service import suppress_auto_capture
