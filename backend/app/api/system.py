@@ -270,28 +270,46 @@ def get_network_metrics():
 
 @system_bp.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint - no auth required"""
-    from app.utils.crypto import is_encryption_configured
-    from app.services.settings_service import SettingsService
-    from app.utils.domain import canonical_origin
+    """Liveness + readiness, no auth required.
 
-    canonical_domain = SettingsService.get('canonical_domain', '') or ''
-    https_enabled = bool(SettingsService.get('canonical_https_enabled', False))
+    Answers 503 when the database does not respond, so container healthchecks
+    and the installer stop treating a panel that cannot serve as healthy.
+    The domain and encryption details are for signed-in callers only: they
+    describe the deployment to anyone who asks.
+    """
+    from sqlalchemy import text
+    from flask_jwt_extended import verify_jwt_in_request
+    from app import db
 
-    # Staging instances run with SERVERKIT_STAGING set. Echo
-    # it here so the verify step can prove WHICH instance answered and the UI
-    # can show its STAGING banner.
-    staging = env_bool('SERVERKIT_STAGING')
+    # Staging instances run with SERVERKIT_STAGING set. Echo it here so the
+    # verify step can prove WHICH instance answered and the UI can show its
+    # STAGING banner.
+    body = {'service': 'serverkit-api', 'staging': env_bool('SERVERKIT_STAGING')}
+    try:
+        db.session.execute(text('SELECT 1'))
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Health check: database unreachable')
+        return jsonify({**body, 'status': 'unhealthy', 'database': 'unreachable'}), 503
 
-    return jsonify({
-        'status': 'healthy',
-        'service': 'serverkit-api',
-        'encryption_configured': is_encryption_configured(),
-        'canonical_domain': canonical_domain,
-        'canonical_https_enabled': https_enabled,
-        'canonical_origin': canonical_origin(canonical_domain, https_enabled) if canonical_domain else None,
-        'staging': staging,
-    }), 200
+    try:
+        signed_in = verify_jwt_in_request(optional=True) is not None and get_jwt_identity() is not None
+    except Exception:  # an expired or revoked token is just an anonymous probe
+        signed_in = False
+    if signed_in:
+        from app.utils.crypto import is_encryption_configured
+        from app.services.settings_service import SettingsService
+        from app.utils.domain import canonical_origin
+        canonical_domain = SettingsService.get('canonical_domain', '') or ''
+        https_enabled = bool(SettingsService.get('canonical_https_enabled', False))
+        body.update({
+            'encryption_configured': is_encryption_configured(),
+            'canonical_domain': canonical_domain,
+            'canonical_https_enabled': https_enabled,
+            'canonical_origin': (canonical_origin(canonical_domain, https_enabled)
+                                 if canonical_domain else None),
+        })
+    return jsonify({**body, 'status': 'healthy'}), 200
 
 
 @system_bp.route('/notices', methods=['GET'])
