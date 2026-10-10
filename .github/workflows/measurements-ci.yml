@@ -18,7 +18,7 @@ on:
       - 'scripts/test/test_measure_runtime.py'
       - '.github/workflows/measurements-ci.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'README.md'
       - 'docs/README*.md'
