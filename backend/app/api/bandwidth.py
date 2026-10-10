@@ -23,12 +23,9 @@ bandwidth_bp = Blueprint('bandwidth', __name__)
 def get_apps_bandwidth():
     """Month totals + 30-day sparkline series for every app with traffic —
     one call for the Services list."""
-    try:
-        data = BandwidthService.overview(days=30)
-        # JSON object keys must be strings.
-        return jsonify({'apps': {str(k): v for k, v in data.items()}})
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    data = BandwidthService.overview(days=30)
+    # JSON object keys must be strings.
+    return jsonify({'apps': {str(k): v for k, v in data.items()}})
 
 
 @bandwidth_bp.route('/apps/<int:app_id>', methods=['GET'])
@@ -40,17 +37,14 @@ def get_app_bandwidth(app_id):
     user = get_current_user()
     if app is None or not ResourceGrantService.can_access_app(user, app):
         return jsonify({'error': 'Not found'}), 404
-    try:
-        days = request.args.get('days', 90, type=int)
-        series = BandwidthService.series(app_id=app_id, days=days)
-        return jsonify({
-            'app_id': app_id,
-            'days': len(series),
-            'series': series,
-            'month_bytes': BandwidthService.monthly_total(app_id),
-        })
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    days = request.args.get('days', 90, type=int)
+    series = BandwidthService.series(app_id=app_id, days=days)
+    return jsonify({
+        'app_id': app_id,
+        'days': len(series),
+        'series': series,
+        'month_bytes': BandwidthService.monthly_total(app_id),
+    })
 
 
 @bandwidth_bp.route('/apps/<int:app_id>/requests', methods=['GET'])

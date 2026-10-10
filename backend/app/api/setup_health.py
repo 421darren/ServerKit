@@ -13,7 +13,6 @@ ref}``). The doctor report carries the same items as its ``setup.*`` section, so
 this endpoint and Monitoring → Doctor stay in lockstep.
 """
 from flask import Blueprint, jsonify, request
-from app.error_reporting import unexpected_response
 
 from ..middleware.rbac import admin_required, auth_required, get_current_user
 from ..services.setup_health_service import SetupHealthService
@@ -32,10 +31,7 @@ setup_health_bp = Blueprint('setup_health', __name__)
 def get_setup_health():
     """Evaluate the setup-health registry (panel scope) and return items +
     summary. Cheap — DB/settings probes only, no host calls."""
-    try:
-        return jsonify(SetupHealthService.evaluate(scope='panel'))
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(SetupHealthService.evaluate(scope='panel'))
 
 
 @setup_health_bp.route('/account', methods=['GET'])
@@ -43,13 +39,10 @@ def get_setup_health():
 def get_account_security():
     """The requesting user's own setup-health items (scope 'user') — e.g. the
     'secure your account' nudge. Any authenticated user, about themselves."""
-    try:
-        user = get_current_user()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        return jsonify(SetupHealthService.evaluate(scope='user', user=user))
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(SetupHealthService.evaluate(scope='user', user=user))
 
 
 # --------------------------------------------------------------------------- #
@@ -82,10 +75,7 @@ def snooze_item():
     user, err = _snooze_guard(key)
     if err:
         return err
-    try:
-        return jsonify(SetupHealthService.snooze(key, days=data.get('days', 30), user=user))
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(SetupHealthService.snooze(key, days=data.get('days', 30), user=user))
 
 
 @setup_health_bp.route('/snooze', methods=['DELETE'])
@@ -99,10 +89,7 @@ def unsnooze_item():
     user, err = _snooze_guard(key)
     if err:
         return err
-    try:
-        return jsonify(SetupHealthService.unsnooze(key, user=user))
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(SetupHealthService.unsnooze(key, user=user))
 
 
 # --------------------------------------------------------------------------- #
@@ -114,22 +101,16 @@ def unsnooze_item():
 @admin_required
 def dns_backfill_preview():
     """Dry-run: the managed hosts a DNS backfill would ensure records for."""
-    try:
-        return jsonify(SetupReconcileService.dns_backfill_preview())
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(SetupReconcileService.dns_backfill_preview())
 
 
 @setup_health_bp.route('/reconcile/dns/apply', methods=['POST'])
 @admin_required
 def dns_backfill_apply():
     """Enqueue the DNS backfill job (loops ensure_a_record, ownership-guarded)."""
-    try:
-        from app.jobs.service import JobService
-        job = JobService.enqueue(DNS_BACKFILL_JOB_KIND, payload={}, max_attempts=1)
-        return jsonify({'job_id': job.id}), 202
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    from app.jobs.service import JobService
+    job = JobService.enqueue(DNS_BACKFILL_JOB_KIND, payload={}, max_attempts=1)
+    return jsonify({'job_id': job.id}), 202
 
 
 @setup_health_bp.route('/reconcile/url-fix/preview', methods=['POST'])
@@ -137,19 +118,13 @@ def dns_backfill_apply():
 def url_fix_preview():
     """Dry-run: WordPress sites whose siteurl/home still point at localhost or a
     stale IP, with the per-site swap they'd get."""
-    try:
-        return jsonify(SetupReconcileService.url_fix_preview())
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(SetupReconcileService.url_fix_preview())
 
 
 @setup_health_bp.route('/reconcile/url-fix/apply', methods=['POST'])
 @admin_required
 def url_fix_apply():
     """Enqueue the WordPress URL-fix job (loops change_site_url)."""
-    try:
-        from app.jobs.service import JobService
-        job = JobService.enqueue(URL_FIX_JOB_KIND, payload={}, max_attempts=1)
-        return jsonify({'job_id': job.id}), 202
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    from app.jobs.service import JobService
+    job = JobService.enqueue(URL_FIX_JOB_KIND, payload={}, max_attempts=1)
+    return jsonify({'job_id': job.id}), 202

@@ -293,14 +293,11 @@ def download_file():
     if os.path.isdir(path):
         return jsonify({'error': 'Cannot download directory'}), 400
 
-    try:
-        return send_file(
-            path,
-            as_attachment=True,
-            download_name=os.path.basename(path)
-        )
-    except Exception as e:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(e)
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=os.path.basename(path)
+    )
 
 
 @files_bp.route('/upload', methods=['POST'])

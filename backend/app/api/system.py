@@ -4,7 +4,6 @@ import urllib.request
 import json
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.error_reporting import unexpected_response
 from app.exceptions import ValidationError
 from app.models import User
 from app.middleware.rbac import admin_required, get_current_user, viewer_required
@@ -115,10 +114,7 @@ def get_panel_update_status():
     log file (see panel_update_service).
     """
     from app.services import panel_update_service as svc
-    try:
-        return jsonify(svc.get_status()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(svc.get_status()), 200
 
 
 @system_bp.route('/update', methods=['POST'])
@@ -197,10 +193,7 @@ def get_storage_overview():
     bound ServerKit's own share. Reads only."""
     from app.services import storage_overview_service
 
-    try:
-        return jsonify(storage_overview_service.overview()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(storage_overview_service.overview()), 200
 
 
 @system_bp.route('/disk/reclaim/report', methods=['GET'])
@@ -209,10 +202,7 @@ def get_disk_reclaim_report():
     """Measure every safe reclaim candidate. Reads only — deletes nothing."""
     from app.services import disk_reclaim_service as svc
 
-    try:
-        return jsonify(svc.scan()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(svc.scan()), 200
 
 
 @system_bp.route('/disk/reclaim', methods=['POST'])
@@ -236,34 +226,28 @@ def reclaim_disk_space():
     user = get_current_user()
     from app.services import disk_reclaim_service as svc
 
-    try:
-        keys, error = svc.validate_reclaim_keys(keys)
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    keys, error = svc.validate_reclaim_keys(keys)
     if error:
         raise ValidationError(error)
 
-    try:
-        wait = request.args.get('wait', 'true').lower() != 'false'
-        if not wait:
-            from app.jobs.service import JobService
-            job = JobService.enqueue(
-                svc.DISK_RECLAIM_JOB_KIND,
-                payload={'keys': keys},
-                max_attempts=1,
-                owner_type='system',
-                owner_id='disk',
-            )
-            _audit('disk.reclaim', user.id, target_type='job',
-                   target_id=str(job.id), details={'keys': keys, 'queued': True})
-            return jsonify({'job_id': job.id, 'kind': svc.DISK_RECLAIM_JOB_KIND}), 202
+    wait = request.args.get('wait', 'true').lower() != 'false'
+    if not wait:
+        from app.jobs.service import JobService
+        job = JobService.enqueue(
+            svc.DISK_RECLAIM_JOB_KIND,
+            payload={'keys': keys},
+            max_attempts=1,
+            owner_type='system',
+            owner_id='disk',
+        )
+        _audit('disk.reclaim', user.id, target_type='job',
+               target_id=str(job.id), details={'keys': keys, 'queued': True})
+        return jsonify({'job_id': job.id, 'kind': svc.DISK_RECLAIM_JOB_KIND}), 202
 
-        result = svc.reclaim(keys)
-        _audit('disk.reclaim', user.id, target_type='host', target_id='disk',
-               details={'keys': keys, 'freed_bytes': result.get('freed_bytes')})
-        return jsonify(result), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    result = svc.reclaim(keys)
+    _audit('disk.reclaim', user.id, target_type='host', target_id='disk',
+           details={'keys': keys, 'freed_bytes': result.get('freed_bytes')})
+    return jsonify(result), 200
 
 
 def _audit(action, user_id, target_type=None, target_id=None, details=None):

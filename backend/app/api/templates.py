@@ -19,7 +19,6 @@ from app.services.template_service import TemplateService
 from app.services.repository_manifest_service import RepositoryManifestService
 from app.services.resource_grant_service import ResourceGrantService
 from app.utils.slug import app_name_clash_error, validate_app_name
-from app.error_reporting import unexpected_response
 from app.exceptions import not_found, permission_denied
 
 templates_bp = Blueprint('templates', __name__)
@@ -315,50 +314,44 @@ def catalog_schema():
 @admin_required
 def install_template(template_id):
     """Install a template as a new application."""
-    try:
-        current_user_id = get_jwt_identity()
-        data = request.get_json()
+    current_user_id = get_jwt_identity()
+    data = request.get_json()
 
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
 
-        app_name = data.get('app_name')
-        if not app_name:
-            return jsonify({'error': 'app_name is required'}), 400
+    app_name = data.get('app_name')
+    if not app_name:
+        return jsonify({'error': 'app_name is required'}), 400
 
-        # Validate app name
-        valid, error = validate_app_name(app_name, min_length=3)
-        if not valid:
-            return jsonify({'error': error}), 400
+    # Validate app name
+    valid, error = validate_app_name(app_name, min_length=3)
+    if not valid:
+        return jsonify({'error': error}), 400
 
-        user_variables = data.get('variables', {})
-        server_id = data.get('server_id') or data.get('target_server_id')
-        wait = bool(data.get('wait', False))
-        # The deploy drawer sends true when it showed the operator a
-        # <name>.<base> hostname — that promise must not depend on the
-        # template YAML having opted in. Absent means the template decides.
-        auto_domain = data.get('auto_domain')
+    user_variables = data.get('variables', {})
+    server_id = data.get('server_id') or data.get('target_server_id')
+    wait = bool(data.get('wait', False))
+    # The deploy drawer sends true when it showed the operator a
+    # <name>.<base> hostname — that promise must not depend on the
+    # template YAML having opted in. Absent means the template decides.
+    auto_domain = data.get('auto_domain')
 
-        result = DeploymentJobService.install_template(
-            template_id=template_id,
-            app_name=app_name,
-            user_variables=user_variables,
-            user_id=current_user_id,
-            server_id=server_id,
-            wait=wait,
-            auto_domain=None if auto_domain is None else bool(auto_domain),
-        )
+    result = DeploymentJobService.install_template(
+        template_id=template_id,
+        app_name=app_name,
+        user_variables=user_variables,
+        user_id=current_user_id,
+        server_id=server_id,
+        wait=wait,
+        auto_domain=None if auto_domain is None else bool(auto_domain),
+    )
 
-        if not result.get('success'):
-            return jsonify(result), 400
+    if not result.get('success'):
+        return jsonify(result), 400
 
-        status = result.get('job', {}).get('status')
-        return jsonify(result), 201 if status == 'succeeded' else 202
-
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        # Was returning the full traceback to the caller and print()ing it.
-        # The door logs it and files it under a request id instead.
-        return unexpected_response(exc)
+    status = result.get('job', {}).get('status')
+    return jsonify(result), 201 if status == 'succeeded' else 202
 
 
 @templates_bp.route('/<template_id>/capacity', methods=['GET'])
@@ -383,77 +376,73 @@ def template_capacity(template_id):
 @jwt_required()
 def validate_installation():
     """Validate template installation parameters before installing."""
-    try:
-        data = request.get_json()
+    data = request.get_json()
 
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
 
-        template_id = data.get('template_id')
-        app_name = data.get('app_name')
-        user_variables = data.get('variables', {})
-        server_id = data.get('server_id') or data.get('target_server_id')
+    template_id = data.get('template_id')
+    app_name = data.get('app_name')
+    user_variables = data.get('variables', {})
+    server_id = data.get('server_id') or data.get('target_server_id')
 
-        errors = []
-        capacity = None
+    errors = []
+    capacity = None
 
-        # Validate app name
-        if not app_name:
-            errors.append('App name is required')
+    # Validate app name
+    if not app_name:
+        errors.append('App name is required')
+    else:
+        valid, error = validate_app_name(app_name, min_length=2)
+        if not valid:
+            errors.append(error)
+
+    # Check if app name is taken
+    # Deliberately unfiltered: a tombstone keeps RESERVING its name, or a
+    # new app takes it and the restore is refused (_live_name_clash).
+    if app_name:
+        existing = Application.query.filter_by(name=app_name).first()
+        if existing:
+            errors.append(app_name_clash_error(existing, app_name))
+
+    # Validate template exists and check required variables
+    if template_id:
+        result = TemplateService.get_template(template_id)
+        if not result.get('success'):
+            errors.append('Template not found')
         else:
-            valid, error = validate_app_name(app_name, min_length=2)
-            if not valid:
-                errors.append(error)
+            template = result['template']
+            raw_vars = template.get('variables', [])
 
-        # Check if app name is taken
-        # Deliberately unfiltered: a tombstone keeps RESERVING its name, or a
-        # new app takes it and the restore is refused (_live_name_clash).
-        if app_name:
-            existing = Application.query.filter_by(name=app_name).first()
-            if existing:
-                errors.append(app_name_clash_error(existing, app_name))
-
-        # Validate template exists and check required variables
-        if template_id:
-            result = TemplateService.get_template(template_id)
-            if not result.get('success'):
-                errors.append('Template not found')
-            else:
-                template = result['template']
-                raw_vars = template.get('variables', [])
-
-                # Handle both list and dict formats
-                if isinstance(raw_vars, list):
-                    for var in raw_vars:
-                        if isinstance(var, dict) and var.get('required', False):
-                            var_name = var.get('name', '')
-                            if var_name and var_name not in user_variables:
-                                errors.append(f'Required variable "{var_name}" is not provided')
-                elif isinstance(raw_vars, dict):
-                    for var_name, var_config in raw_vars.items():
-                        if var_config.get('required', False) and var_name not in user_variables:
+            # Handle both list and dict formats
+            if isinstance(raw_vars, list):
+                for var in raw_vars:
+                    if isinstance(var, dict) and var.get('required', False):
+                        var_name = var.get('name', '')
+                        if var_name and var_name not in user_variables:
                             errors.append(f'Required variable "{var_name}" is not provided')
+            elif isinstance(raw_vars, dict):
+                for var_name, var_config in raw_vars.items():
+                    if var_config.get('required', False) and var_name not in user_variables:
+                        errors.append(f'Required variable "{var_name}" is not provided')
 
-                # Does the target have room? Advisory: it rides alongside
-                # `errors` rather than in it, so a tight server informs the
-                # operator without refusing the install. Never fatal — a
-                # capacity probe that throws must not block a deploy.
-                try:
-                    from app.services.capacity_service import check_fit
-                    capacity = check_fit(template, server_id)
-                except Exception:  # noqa: BLE001
-                    current_app.logger.warning('capacity check failed', exc_info=True)
-        else:
-            errors.append('Template ID is required')
+            # Does the target have room? Advisory: it rides alongside
+            # `errors` rather than in it, so a tight server informs the
+            # operator without refusing the install. Never fatal — a
+            # capacity probe that throws must not block a deploy.
+            try:
+                from app.services.capacity_service import check_fit
+                capacity = check_fit(template, server_id)
+            except Exception:  # noqa: BLE001
+                current_app.logger.warning('capacity check failed', exc_info=True)
+    else:
+        errors.append('Template ID is required')
 
-        if errors:
-            return jsonify({'valid': False, 'errors': errors,
-                            'capacity': capacity}), 400
+    if errors:
+        return jsonify({'valid': False, 'errors': errors,
+                        'capacity': capacity}), 400
 
-        return jsonify({'valid': True, 'capacity': capacity}), 200
-
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify({'valid': True, 'capacity': capacity}), 200
 
 
 @templates_bp.route('/test-db-connection', methods=['POST'])

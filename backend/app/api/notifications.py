@@ -12,7 +12,6 @@ from app.services.settings_service import SettingsService
 from app.services.bounce_service import BounceService
 from app.notifications.service import NotificationBusService
 from app.notifications.providers import EmailProviderService, SUPPORTED as EMAIL_PROVIDERS
-from app.error_reporting import unexpected_response
 
 # Header carrying the provider's HMAC-SHA256 of the raw request body, formatted
 # as ``sha256=<hexdigest>`` (GitHub-style). The shared secret is
@@ -225,11 +224,8 @@ def update_user_preferences():
         if 'end' in qh:
             prefs.quiet_hours_end = qh['end']
 
-    try:
-        db.session.commit()
-        return jsonify({'success': True, 'preferences': prefs.to_dict()}), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)  # rolls the session back itself
+    db.session.commit()
+    return jsonify({'success': True, 'preferences': prefs.to_dict()}), 200
 
 
 @notifications_bp.route('/preferences/test', methods=['POST'])
