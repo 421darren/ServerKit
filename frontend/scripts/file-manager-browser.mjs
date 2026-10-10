@@ -79,6 +79,22 @@ try {
     assert.equal(await page.getByText('projects', { exact: true }).count() > 0, true);
     assert.deepEqual(errors, []);
     console.log('PASS a slow listing for a folder the user left does not pull them back');
+
+    // Blocked site data: every localStorage access throws. The view prefs
+    // used to read it unguarded during render, which took the page down.
+    const blocked = await browser.newPage();
+    const blockedErrors = [];
+    blocked.on('pageerror', error => blockedErrors.push(error.message));
+    await blocked.addInitScript(() => {
+        Object.defineProperty(window, 'localStorage', {
+            configurable: true,
+            get() { throw new DOMException('The operation is insecure.', 'SecurityError'); },
+        });
+    });
+    await blocked.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await blocked.getByText('projects', { exact: true }).first().waitFor();
+    assert.deepEqual(blockedErrors, []);
+    console.log('PASS the File Manager renders and browses with storage blocked');
 } finally {
     await browser?.close();
     await server.close();

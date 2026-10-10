@@ -32,6 +32,7 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { useTranslation } from 'react-i18next';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import { errorReason } from '@/utils/errorMessage';
+import usePersistentState from '@/hooks/usePersistentState';
 
 // Demo rail shortcuts (Quick access) — one-click jumps to the paths people
 // actually visit on a ServerKit host. "Stack" starts at the default install
@@ -118,6 +119,17 @@ const STORAGE = {
     sortBy: 'serverkit-fm-sort-by',
     sortDir: 'serverkit-fm-sort-dir',
 };
+
+const serializeExpanded = (set) => JSON.stringify([...set]);
+const parseExpanded = (stored) => {
+    try {
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+        return new Set();
+    }
+};
+const isNarrowScreen = () => typeof window !== 'undefined'
+    && window.matchMedia('(max-width: 1024px)').matches;
 
 const FILTER_OPTIONS = [
     { id: 'all', labelKey: 'common.labels.all', label: 'All' },
@@ -252,27 +264,19 @@ function FileManager() {
     const dragCounter = useRef(0);
 
     // ─── view prefs ──────────────────────────────────────
-    const [viewMode, setViewMode] = useState(() => localStorage.getItem(STORAGE.viewMode) || 'list');
+    const [viewMode, setViewMode] = usePersistentState(STORAGE.viewMode, (v) => v || 'list');
     const gridSize = 'md';
-    const [sortBy, setSortBy] = useState(() => localStorage.getItem(STORAGE.sortBy) || 'name');
-    const [sortDir, setSortDir] = useState(() => localStorage.getItem(STORAGE.sortDir) || 'asc');
+    const [sortBy, setSortBy] = usePersistentState(STORAGE.sortBy, (v) => v || 'name');
+    const [sortDir, setSortDir] = usePersistentState(STORAGE.sortDir, (v) => v || 'asc');
     const [activeFilter, setActiveFilter] = useState('all');
 
     // ─── left sidebar ────────────────────────────────────
-    const [sidebarVisible, setSidebarVisible] = useState(() => {
-        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches) return false;
-        const v = localStorage.getItem(STORAGE.sidebar);
-        return v !== null ? v === 'true' : true;
-    });
-    const [treeCollapsed, setTreeCollapsed] = useState(() => localStorage.getItem(STORAGE.treeCollapsed) === 'true');
+    const [sidebarVisible, setSidebarVisible] = usePersistentState(
+        STORAGE.sidebar, (v) => (isNarrowScreen() ? false : v !== null ? v === 'true' : true));
+    const [treeCollapsed, setTreeCollapsed] = usePersistentState(STORAGE.treeCollapsed, (v) => v === 'true');
 
     // ─── folder tree state ───────────────────────────────
-    const [treeExpanded, setTreeExpanded] = useState(() => {
-        try {
-            const stored = localStorage.getItem(STORAGE.expanded);
-            return stored ? new Set(JSON.parse(stored)) : new Set();
-        } catch { return new Set(); }
-    });
+    const [treeExpanded, setTreeExpanded] = usePersistentState(STORAGE.expanded, parseExpanded, serializeExpanded);
     const [treeCache, setTreeCache] = useState(new Map());
     const [treeLoading, setTreeLoading] = useState(new Set());
 
@@ -294,16 +298,6 @@ function FileManager() {
     const [contextMenu, setContextMenu] = useState(null);
 
     const toast = useToast();
-
-    // ─── persistence ─────────────────────────────────────
-    useEffect(() => { localStorage.setItem(STORAGE.sidebar, sidebarVisible); }, [sidebarVisible]);
-    useEffect(() => { localStorage.setItem(STORAGE.treeCollapsed, treeCollapsed); }, [treeCollapsed]);
-    useEffect(() => { localStorage.setItem(STORAGE.viewMode, viewMode); }, [viewMode]);
-    useEffect(() => { localStorage.setItem(STORAGE.sortBy, sortBy); }, [sortBy]);
-    useEffect(() => { localStorage.setItem(STORAGE.sortDir, sortDir); }, [sortDir]);
-    useEffect(() => {
-        localStorage.setItem(STORAGE.expanded, JSON.stringify([...treeExpanded]));
-    }, [treeExpanded]);
 
     useEffect(() => {
         const pathFromUrl = searchParams.get('path') || '/home';
@@ -483,7 +477,7 @@ function FileManager() {
             }
         }
         setTreeExpanded((s) => { const n = new Set(s); n.add(path); return n; });
-    }, [treeExpanded, treeCache, fileApi]);
+    }, [treeExpanded, treeCache, fileApi, setTreeExpanded]);
 
     // Auto-expand the tree along the current path so the active row is visible.
     useEffect(() => {
