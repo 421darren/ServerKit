@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import shutil
 import tarfile
 import tempfile
@@ -20,6 +21,8 @@ from app.utils.system import (
 )
 from app.services.telemetry_service import TelemetryService, generate_correlation_id
 from app.services import backup_schedule_service
+
+logger = logging.getLogger(__name__)
 
 # Unified job kind for asynchronous scheduled backups (see register_jobs).
 BACKUP_JOB_KIND = 'backup.run'
@@ -818,8 +821,11 @@ class BackupService:
                 if meta_path and os.path.exists(meta_path):
                     with open(meta_path, 'w') as f:
                         json.dump(backup_info, f, indent=2)
+            else:
+                # The row stays 'local' with its upload button; say why.
+                logger.warning('Auto-upload of %s failed: %s', backup_path, result.get('error'))
         except Exception:
-            pass
+            logger.exception('Auto-upload of %s failed', backup_path)
 
     # --- Smart backups (incremental + compression tiering) ---
 
@@ -1016,18 +1022,10 @@ class BackupService:
                 paths_list = [p.strip() for p in target.split(',') if p.strip()]
                 result = cls.backup_files(paths_list, backup_name=f"scheduled_{sched.get('name', 'backup')}")
 
-            # Upload to remote if configured on this schedule
+            # Upload to remote if configured on this schedule. The operator
+            # asked for an offsite copy, so not getting one is a failure.
             if result and result.get('success') and sched.get('upload_remote', False):
-                try:
-                    from app.services.storage_provider_service import StorageProviderService
-                    backup_path = result.get('path') or result.get('backup', {}).get('path')
-                    if backup_path:
-                        if os.path.isdir(backup_path):
-                            StorageProviderService.upload_directory(backup_path)
-                        else:
-                            StorageProviderService.upload_file(backup_path)
-                except Exception:
-                    pass
+                result = cls._upload_scheduled(result)
 
             # Update schedule status
             config = cls.get_config()
@@ -1057,6 +1055,22 @@ class BackupService:
                     break
             cls.save_config(config)
             cls._send_backup_notification(sched.get('name', 'Backup'), False, str(e), correlation_id=correlation_id)
+
+    @staticmethod
+    def _upload_scheduled(result: Dict) -> Dict:
+        from app.services.storage_provider_service import StorageProviderService
+        backup_path = result.get('path') or result.get('backup', {}).get('path')
+        if not backup_path:
+            upload = {'success': False, 'error': 'the backup reported no path'}
+        elif os.path.isdir(backup_path):
+            upload = StorageProviderService.upload_directory(backup_path)
+        else:
+            upload = StorageProviderService.upload_file(backup_path)
+        if upload.get('success'):
+            return result
+        return {**result, 'success': False,
+                'error': f"Saved locally at {backup_path}, but the offsite upload "
+                         f"failed: {upload.get('error', 'unknown error')}"}
 
     @classmethod
     def _send_backup_notification(cls, backup_name: str, success: bool, message: str,
