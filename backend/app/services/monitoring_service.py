@@ -298,7 +298,7 @@ class MonitoringService:
             )
 
         # Emit panel events so Automations (tramo) workflows can trigger on a
-        # high-CPU/memory alert through the events bridge (plan 45 Ph4, ported
+        # high-CPU/memory alert through the events bridge (ported
         # from the retired Workflow Builder's 'high_cpu'/'high_memory').
         try:
             from app.services.event_service import EventService

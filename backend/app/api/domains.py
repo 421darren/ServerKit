@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app domain routes gate on the shared
+# Bucket: PER-APP. Per-app domain routes gate on the shared
 # app-access seam (can_access_app for reads, can_edit_app for mutations);
 # host-level DNS/nginx surfaces stay admin-only.
 import re

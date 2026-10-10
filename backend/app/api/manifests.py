@@ -145,7 +145,7 @@ def apply_manifest():
     result = ManifestApplyService.apply(project, normalized, user_id=user.id,
                                         manifest_row=row)
 
-    # Appliance-tier blockers (plan 35): apply refused, nothing executed.
+    # Appliance-tier blockers: apply refused, nothing executed.
     if result.get('refused'):
         return jsonify(result), 400
 

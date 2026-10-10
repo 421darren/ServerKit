@@ -33,7 +33,7 @@ def upload_archive():
 @admin_required
 def probe_ssh_source():
     """Preflight an SSH import source: test the connection, list the docroot,
-    sniff the stack (plan 31 #8). Linux-only runtime — returns 501 on a host
+    sniff the stack. Linux-only runtime — returns 501 on a host
     that can't run ssh (e.g. Windows dev) so the wizard can message it."""
     data = request.get_json(silent=True) or {}
     source = data.get('source') or data

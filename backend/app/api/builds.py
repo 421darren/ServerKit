@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app build routes gate via the app-grant
+# Bucket: PER-APP. Per-app build routes gate via the app-grant
 # family (can_access_app / can_edit_app). See docs/WORKSPACE_SCOPING.md.
 """
 Build and Deployment API Endpoints
@@ -201,7 +201,7 @@ def clear_build_cache(app_id):
 def deploy_app(app_id):
     """Deploy an application (build + deploy).
 
-    Every deploy is a job (plan 51 D7): by default this enqueues an `app_deploy`
+    Every deploy is a job: by default this enqueues an `app_deploy`
     DeploymentJob and returns 202 + {deploy_job_id} so the UI can open the live
     Deploy Console. `?wait=true` preserves the old synchronous contract for
     CLI/tests (runs inline, returns the deployment result body).

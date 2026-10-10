@@ -1,4 +1,4 @@
-"""Warn before the panel host's disk fills (plan 85 §D3).
+"""Warn before the panel host's disk fills.
 
 Host disk alerts existed but were off by default and not started at boot,
 and Doctor's ``disk.headroom`` failure notified nobody — so a box reached

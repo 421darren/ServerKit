@@ -1,4 +1,4 @@
-// Managed profile (ServerKit Cloud, plan 25)
+// Managed profile (ServerKit Cloud)
 //
 // When ServerKit Cloud holds a Managed scope for this server it sends a signed
 // presentation policy naming the capabilities it has taken over. This ONE
@@ -49,7 +49,7 @@ export const MANAGED_CAPABILITY_MAP = {
     },
     // Panel/agent update screens and self-update. The self-update section in
     // Settings › About collapses to the card in miniature. (The panel's
-    // self-update still runs; the card says so until plan 08's rings own it.)
+    // self-update still runs; the card says so until update rings own it.)
     updates: {
         labelKey: 'managed.capability.updates',
         label: 'Updates',

@@ -1,4 +1,4 @@
-// Dashboard board persistence (plan 62).
+// Dashboard board persistence.
 // A board is one dashboard tab: { id, slug, name, icon, position, widgets }.
 // Boards are per-user — the backend scopes every call to the caller, and the
 // first getDashboards() of a new account seeds the shipped default boards.

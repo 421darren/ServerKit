@@ -1,4 +1,4 @@
-"""Dashboard boards API (plan 62) — /api/v1/dashboards.
+"""Dashboard boards API — /api/v1/dashboards.
 
 Per-user dashboard tabs and their widget layout. Everything here is scoped to
 the calling user: a board that belongs to somebody else is indistinguishable

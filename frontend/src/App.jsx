@@ -250,7 +250,7 @@ function App() {
     return (
         <Router basename={TUNNEL_BASE || undefined}>
             {/* Outermost: a toast raised while the theme or workspace is still
-                initialising must already be translatable (plan 79 B1). */}
+                initialising must already be translatable. */}
             <LocaleProvider>
             <WorkspaceProvider>
                 <ThemeProvider>

@@ -62,7 +62,7 @@ class ResourceGrantService:
         """Operate (member+) access to an application. Folds every path to the
         app into one capability tier (see rbac.app_access_tier) and admits
         anyone at 'member' or above: owner, panel admin, an editor grant, or a
-        workspace member/admin/owner. The member-write seam (plan 19 Phase 4)."""
+        workspace member/admin/owner. The member-write seam."""
         from app.middleware.rbac import app_access_tier, _APP_ROLE_RANK
         tier = app_access_tier(user, app)
         return tier is not None and _APP_ROLE_RANK[tier] >= _APP_ROLE_RANK['member']

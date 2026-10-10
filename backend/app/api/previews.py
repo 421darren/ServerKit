@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Reads require app access (can_access_app); the
+# Bucket: PER-APP. Reads require app access (can_access_app); the
 # enable/sync/redeploy/destroy mutations require write access (can_edit_app),
 # replacing the old panel-wide @developer_required.
 """PR Preview Environments API.
@@ -21,7 +21,7 @@ previews_bp = Blueprint('previews', __name__)
 
 
 def _get_app_or_404(app_id, write=False):
-    """Resolve the app and enforce per-app access (plan 29 #9). ``write`` requires
+    """Resolve the app and enforce per-app access. ``write`` requires
     can_edit_app (owner/admin/editor); otherwise can_access_app (adds workspace
     members). A caller without the needed tier gets a sealed 404 (no leak)."""
     app = Application.query_active().filter_by(id=app_id).first()

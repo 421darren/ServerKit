@@ -1,4 +1,4 @@
-"""Per-user dashboard boards (plan 62).
+"""Per-user dashboard boards.
 
 A *board* is one tab on the dashboard — a name, an icon, and an ordered bag of
 widget instances laid out on a 12-column grid. Boards belong to a user, not to

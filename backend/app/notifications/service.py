@@ -125,7 +125,7 @@ class NotificationBusService:
                     to_enqueue.append(delivery)
                 db.session.add(delivery)
 
-        # Org-level chat/webhook connections (plan 24 Phase 4). A preference-
+        # Org-level chat/webhook connections. A preference-
         # driven notification (channels is None) fans out ONCE per active,
         # category-matched connection as an org-level delivery (no recipient
         # user). Directed transactional sends (explicit channels) are

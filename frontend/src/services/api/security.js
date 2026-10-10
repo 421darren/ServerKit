@@ -1,7 +1,7 @@
 // Firewall, SSL certificates, file integrity, SSH keys, IP lists and the
 // security audit — the core security surfaces. The install-gated tool
 // clients (ClamAV/YARA/quarantine, fail2ban, Lynis, auto-updates) moved into
-// their security extensions with their tabs (plan 47 Ph3b-4).
+// their security extensions with their tabs.
 
 // Firewall endpoints
 export async function getFirewallStatus() {

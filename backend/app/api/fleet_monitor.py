@@ -190,7 +190,7 @@ def prometheus_metrics():
     """Prometheus-compatible metrics endpoint (no JWT, uses token param).
 
     Accepts ``PROMETHEUS_TOKEN`` from the environment or the panel's own scrape
-    token, the one the Prometheus template is installed with (plan 86 §A4).
+    token, the one the Prometheus template is installed with.
     """
     from app.services import metrics_token_service
     token = request.args.get('token') or request.headers.get('X-Prometheus-Token')

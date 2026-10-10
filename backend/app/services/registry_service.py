@@ -60,7 +60,7 @@ _FIELDS = {
     'max_panel_version': None,
     'source': '',
     'sha256': None,
-    # Index schema v3 (plan 55 D3): optional ed25519 detached signature over
+    # Index schema v3: optional ed25519 detached signature over
     # the release zip + the publisher key id that must verify it. Absent in
     # v1/v2 indexes → the entry is treated as unsigned (consent, not a block).
     'signature': None,
@@ -156,7 +156,7 @@ def _read_index_payload(payload, base_url=None):
     return [e for e in (_normalize(x, base_url) for x in exts) if e]
 
 
-# One remote-catalog engine (plan 77 F1): fetch -> TTL -> last-good ->
+# One remote-catalog engine: fetch -> TTL -> last-good ->
 # bundled, with the failure-retry throttling theme_registry had already
 # hardened to. This module stays a thin normalizer (_read_index_payload).
 _index = CachedRemoteIndex(

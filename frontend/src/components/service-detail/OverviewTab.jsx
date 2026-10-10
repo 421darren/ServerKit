@@ -331,16 +331,16 @@ const OverviewTab = ({ app, deployConfig }) => {
             {/* Traffic (timed access log; hidden until requests exist) */}
             <RequestMetricsCard appId={app.id} />
 
-            {/* Bottleneck hints from the traffic above (plan 86 §A5) */}
+            {/* Bottleneck hints from the traffic above */}
             <HintsCard app={app} />
 
-            {/* Cache / storage / queue this app uses (plan 86 §C4) */}
+            {/* Cache / storage / queue this app uses */}
             <AttachmentsCard app={app} />
 
-            {/* PgBouncer beside an installed PostgreSQL (plan 86 §D1) */}
+            {/* PgBouncer beside an installed PostgreSQL */}
             <PoolerCard app={app} />
 
-            {/* A/B slot deploys: live release, warm standby, switch back (plan 87) */}
+            {/* A/B slot deploys: live release, warm standby, switch back */}
             <SlotsCard app={app} />
 
             {/* Recent Deployments */}

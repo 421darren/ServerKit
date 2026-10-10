@@ -57,16 +57,16 @@ FROM_SERVICE_PROPERTIES = (
     'connectionString', 'host', 'port', 'database', 'username', 'password', 'url',
 )
 
-# Appliance tier (plan 35): a service's own advertised identity.
+# Appliance tier: a service's own advertised identity.
 FROM_SERVER_PROPERTIES = ('publicIp', 'hostname')
 
 BACKUP_SCHEDULES = ('hourly', 'daily', 'weekly', 'monthly')
 
-# Appliance tier (plan 35): typed L4 port publishes.
+# Appliance tier: typed L4 port publishes.
 PORT_PROTOCOLS = ('tcp', 'udp')
 PORT_EXPOSURES = ('public', 'local')
 
-# Recipes (plan 68): the execution type is deliberately small and closed. The
+# Recipes: the execution type is deliberately small and closed. The
 # ``kind`` within each type is capability-gated by the runtime registry, so a
 # catalog entry can never smuggle an arbitrary command into an older panel.
 RECIPE_STEP_TYPES = ('probe', 'derive', 'apply', 'handoff', 'verify')
@@ -675,7 +675,7 @@ class ManifestSpecService:
 
     @classmethod
     def _normalize_ports(cls, raw: Any, prefix: str, errors: List[str]) -> List[Dict[str, Any]]:
-        """Typed L4 publishes (plan 35). Legacy scalar ``port`` is unaffected —
+        """Typed L4 publishes. Legacy scalar ``port`` is unaffected —
         it keeps its HTTP/nginx semantics. ``ports`` are raw tcp/udp publishes
         (the appliance escape hatch): NULL/[] means "no raw ports declared".
         """
@@ -709,7 +709,7 @@ class ManifestSpecService:
 
     @classmethod
     def _normalize_bootstrap(cls, raw: Any) -> Optional[Dict[str, Any]]:
-        """First-boot bootstrap (plan 35): ``{command, timeoutSeconds?}``."""
+        """First-boot bootstrap: ``{command, timeoutSeconds?}``."""
         if not isinstance(raw, dict):
             return None
         command = raw.get('command')
@@ -723,7 +723,7 @@ class ManifestSpecService:
 
     @classmethod
     def _normalize_host_requirements(cls, raw: Any) -> Optional[Dict[str, Any]]:
-        """hostRequirements (plan 35): privileged/capAdd/sysctls/devices/kernelModules."""
+        """hostRequirements: privileged/capAdd/sysctls/devices/kernelModules."""
         if not isinstance(raw, dict):
             return None
         hr = {
@@ -770,7 +770,7 @@ class ManifestSpecService:
     @classmethod
     def _normalize_containers(cls, svc: Dict[str, Any], prefix: str,
                               errors: List[str]) -> List[Dict[str, Any]]:
-        """A multi-container unit (plan 35, Decision 6). ``containers`` is a
+        """A multi-container unit. ``containers`` is a
         mapping of name -> container spec, rendered as ONE compose project.
 
         Mutually exclusive with the buildpack keys; dependsOn must reference a

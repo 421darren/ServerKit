@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
- * Resolve a declaratively-keyed label from a data object (plan 79 §E).
+ * Resolve a declaratively-keyed label from a data object.
  *
  * Data tables — sidebar items, tab tables, column definitions, wizard steps —
  * carry the pair

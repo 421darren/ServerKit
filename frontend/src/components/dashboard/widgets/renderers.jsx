@@ -2,7 +2,7 @@ import { statusColor } from '@/components/ds/status';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/utils/time';
 /**
- * The 13 core dashboard widget renderers (plan 62).
+ * The 13 core dashboard widget renderers.
  *
  * Every renderer is presentational — all fetching lives in ./useWidgetData.
  * Every renderer handles three states: loading, empty and error. Nothing here

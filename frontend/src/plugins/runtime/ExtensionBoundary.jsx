@@ -1,12 +1,12 @@
 /**
- * Per-extension error boundary + failure card (plan 25 Phase 2 #7, Decision 5).
+ * Per-extension error boundary + failure card.
  *
  * Fail soft, loudly: a runtime extension bundle that fails to load (integrity or
  * import error), or whose component throws at render, shows a contained card on
  * its own routes — never a white screen, never silent absence. The same failure
  * is surfaced on the Marketplace: the installed row shows a runtime load-state
  * badge (loaded / SDK-incompatible / failed) read from the loader's
- * `getRuntimeLoadState`, with the error string in a popover (plan 32 #5).
+ * `getRuntimeLoadState`, with the error string in a popover.
  */
 import { Component } from 'react';
 import { Trans, useTranslation } from 'react-i18next';

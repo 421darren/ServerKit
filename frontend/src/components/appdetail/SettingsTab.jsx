@@ -27,7 +27,7 @@ const SettingsTab = ({ app, onUpdate }) => {
 
     async function handleDelete() {
         // Surface the schedules this delete will strand (kept but detached) so the
-        // operator decides with eyes open — the honest-delete half of plan 34 #3.
+        // operator decides with eyes open — the honest-delete half of cron completion.
         let cronNote = '';
         try {
             const jobs = (await api.getCronJobsForApp(app.id))?.jobs || [];

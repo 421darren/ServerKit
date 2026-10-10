@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Reads are scoped to callers who can access the
+# Bucket: PER-APP. Reads are scoped to callers who can access the
 # app (can_access_app); mutations + install stay admin-only.
 """Per-application WAF (ModSecurity v3 + OWASP CRS) API.
 
@@ -19,7 +19,7 @@ waf_bp = Blueprint('waf', __name__)
 
 
 def _get_application_or_404(app_id):
-    """Resolve the app and enforce read access (plan 29 #9): owner / admin / grant /
+    """Resolve the app and enforce read access: owner / admin / grant /
     workspace member. A caller who can't access it gets the same 404 as a missing
     app (sealed-from-open, no existence leak)."""
     application = Application.query_active().filter_by(id=app_id).first()

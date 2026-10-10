@@ -294,7 +294,7 @@ def health_check():
     canonical_domain = SettingsService.get('canonical_domain', '') or ''
     https_enabled = bool(SettingsService.get('canonical_https_enabled', False))
 
-    # Staging instances (plan 37 testbed) run with SERVERKIT_STAGING set. Echo
+    # Staging instances run with SERVERKIT_STAGING set. Echo
     # it here so the verify step can prove WHICH instance answered and the UI
     # can show its STAGING banner.
     staging = env_bool('SERVERKIT_STAGING')

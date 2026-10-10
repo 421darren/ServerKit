@@ -1,4 +1,4 @@
-"""Per-app deploy settings (plan 87).
+"""Per-app deploy settings.
 
 Stored as one JSON object on ``Application.deploy_settings``; NULL or a
 missing key means the default below. ``effective(app)`` is what every reader

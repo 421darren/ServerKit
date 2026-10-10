@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app cron routes gate via the app-grant
+# Bucket: PER-APP. Per-app cron routes gate via the app-grant
 # family (can_access_app / can_edit_app). See docs/WORKSPACE_SCOPING.md.
 """
 Cron Job Management API
@@ -263,7 +263,7 @@ def ingest_run():
     """
     # The cron-run shim posts DIRECTLY to the panel's loopback gunicorn port
     # (cli_api_client base http://127.0.0.1:<port>), never through nginx, so no
-    # X-Forwarded-For is present and ProxyFix (plan 48) leaves remote_addr as the
+    # X-Forwarded-For is present and ProxyFix leaves remote_addr as the
     # real 127.0.0.1 peer. A request routed through nginx instead carries the
     # real client as the rightmost hop, so this gate can't be spoofed to 127.0.0.1.
     remote = (request.remote_addr or '')

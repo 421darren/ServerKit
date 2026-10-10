@@ -157,7 +157,7 @@ const DashboardLayout = () => {
     );
 };
 
-// The managed-profile gate (plan 25). A held capability's route still renders —
+// The managed-profile gate. A held capability's route still renders —
 // it renders the managed card instead of the page content, so deep links,
 // handoffs and exports keep landing somewhere truthful. When the policy has
 // lapsed (Cloud unreachable past the expiry window) the full panel is back and

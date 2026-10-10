@@ -1,4 +1,4 @@
-// One scorer for the command palette (plan 41). A single subsequence fuzzy
+// One scorer for the command palette. A single subsequence fuzzy
 // matcher with a word-start bonus, used across every provider so results from
 // pages, settings, actions, and entities rank on the same scale. cmdk's own
 // matcher is disabled (shouldFilter={false}) so this is the ONLY filter.

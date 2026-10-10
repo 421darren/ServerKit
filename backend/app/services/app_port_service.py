@@ -1,4 +1,4 @@
-"""Appliance-tier typed L4 port publishes (plan 35).
+"""Appliance-tier typed L4 port publishes.
 
 Ports declared in a serverkit.yaml ``ports:`` list are persisted as a JSON list
 on ``Application.ports`` and rendered as raw docker publishes at deploy time.

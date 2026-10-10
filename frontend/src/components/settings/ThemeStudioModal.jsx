@@ -31,7 +31,7 @@ function seedTokens(theme, mode) {
     return { ...stock, ...from };
 }
 
-// Theme Studio (plan 60, Phase 4) — the "SDK" for a data format is docs +
+// Theme Studio — the "SDK" for a data format is docs +
 // tooling. Edit colors over the LIVE panel (every change applies instantly via
 // the skin preview), start from any installed theme, then Export a valid
 // theme.json, Save it into this panel, or Submit it to the registry.

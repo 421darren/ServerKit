@@ -136,7 +136,7 @@ const Backups = () => {
     const [stats, setStats] = useState(null);
     const scheduleStore = useBackupSchedules();
     const { schedules, refresh: reloadSchedules } = scheduleStore;
-    // Backup scheduling held by ServerKit Cloud (plan 25): the page and local
+    // Backup scheduling held by ServerKit Cloud: the page and local
     // restore stay, the scheduling and destination surfaces become the card.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();
     const backupsManaged = isControlHeld('backup-scheduling');

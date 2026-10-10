@@ -1,4 +1,4 @@
-"""The browser tunnel, panel side (ServerKit Cloud plan 01 M3).
+"""The browser tunnel, panel side.
 
 When somebody presses "Open panel" in ServerKit Cloud, their browser talks
 to the relay, and the relay opens streams down this panel's connection:

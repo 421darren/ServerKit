@@ -1,4 +1,4 @@
-"""The manifest apply engine (plan 17, Phase 2).
+"""The manifest apply engine.
 
 resolve → plan → apply. Turns a normalized v1 manifest into an ordered action
 plan and executes it through the existing imperative services, inside a
@@ -38,7 +38,7 @@ _SCHEDULE_CRON = {
 # db engines the managed-database layer can actually record
 _MANAGED_DB_ENGINES = {'postgresql', 'mysql'}
 # manifest db types provisioned by installing the engine template of the same
-# id (plan 86 §C3); consumers bind with fromService over the shared network
+# id; consumers bind with fromService over the shared network
 _ENGINE_TEMPLATE_TYPES = {'redis': 'redis'}
 
 # ordering weight per step type (dbs before consumers; domains last)
@@ -201,7 +201,7 @@ class ManifestApplyService:
             expected['healthcheck_path'] = resolved['healthcheck_path']
             observed['healthcheck_path'] = app.healthcheck_path
 
-        # Appliance tier (plan 35): track raw ports + BYO image.
+        # Appliance tier: track raw ports + BYO image.
         declared_ports = resolved.get('ports') or []
         if declared_ports:
             from app.services.app_port_service import AppPortService
@@ -266,7 +266,7 @@ class ManifestApplyService:
 
         steps.extend(cls._plan_domains(project, normalized.get('domains', [])))
 
-        # Appliance-tier blockers (plan 35): plan-time refusals distinct from
+        # Appliance-tier blockers: plan-time refusals distinct from
         # advisory `issues`. Apply refuses (nothing executed) while any exist.
         blockers, appliance_issues = cls._appliance_blockers(project, resolved_all)
         issues.extend(appliance_issues)
@@ -333,7 +333,7 @@ class ManifestApplyService:
                        ('app_type', 'port', 'healthcheck_path', 'runtime',
                         'build_command', 'start_command', 'cpu', 'memory')}
             payload['name'] = name
-            # BYO image (plan 35): stamp the declared image + private registry
+            # BYO image: stamp the declared image + private registry
             if resolved.get('image'):
                 payload['image'] = resolved['image']
                 if resolved.get('registry'):
@@ -370,7 +370,7 @@ class ManifestApplyService:
                     'payload': {'app_id': app.id, 'changes': changes},
                 })
 
-        # typed L4 port publishes (appliance tier, plan 35)
+        # typed L4 port publishes (appliance tier)
         ports = resolved.get('ports') or []
         if ports:
             from app.services.app_port_service import AppPortService
@@ -445,13 +445,13 @@ class ManifestApplyService:
                     'files', app.id if app else None, backup):
                 steps.append(cls._files_backup_step(name, app, mount, backup))
 
-        # unit disk backups (plan 35) — the bytes live in a synthetic per-container
+        # unit disk backups — the bytes live in a synthetic per-container
         # docker volume, so the backup routes at that volume name.
         for ub in resolved.get('unit_backups') or []:
             if not cls._backup_policy_current('files', app.id if app else None, ub['backup']):
                 steps.append(cls._unit_backup_step(name, app, ub))
 
-        # first-boot bootstrap (appliance tier, plan 35) — once per app; a unit
+        # first-boot bootstrap (appliance tier) — once per app; a unit
         # runs each of its containers' bootstraps under the one bootstrap_done flag
         bootstraps = resolved.get('bootstraps') or []
         if bootstraps and (app is None or not getattr(app, 'bootstrap_done', False)):
@@ -517,7 +517,7 @@ class ManifestApplyService:
                         'schedule': backup['schedule'], 'retain': backup['retain']},
         }
 
-    # -- blockers engine (appliance tier, plan 35) --------------------------
+    # -- blockers engine (appliance tier) --------------------------
 
     # An appliance FEATURE is anything the manifest can now express that a
     # target may be unable to provide. Later phases extend `_service_features`.
@@ -551,7 +551,7 @@ class ManifestApplyService:
             name = resolved['name']
             server_ref = resolved.get('server')
 
-            # fromServer publicIp must resolve (plan 35) — independent of the
+            # fromServer publicIp must resolve — independent of the
             # other appliance features; a service may bind only its own IP.
             needs_ip = any(
                 r.get('source') == 'server'
@@ -580,7 +580,7 @@ class ManifestApplyService:
                 continue
             need = ' and '.join(feats)
 
-            # Remote target: appliance apply runs on the panel host only (plan 17's
+            # Remote target: appliance apply runs on the panel host only (the manifest engine's
             # remote-dispatch deferral). Say so instead of half-deploying.
             if server_ref:
                 srv = cls._resolve_server_obj(server_ref)
@@ -624,7 +624,7 @@ class ManifestApplyService:
                         'message': f'no manageable firewall detected — public ports for {name} '
                                    f'will be published but not firewall-managed.'})
 
-            # BYO image (plan 35): a private registry must be known + credentialed.
+            # BYO image: a private registry must be known + credentialed.
             for ref in cls._image_registry_refs(resolved):
                 reg_name = ref.get('registry')
                 if not reg_name:
@@ -638,7 +638,7 @@ class ManifestApplyService:
                                    + ('unknown' if reg is None else 'missing a stored credential')
                                    + f' — add the registry credential, then re-apply.'})
 
-            # Host requirements (plan 35): listed in plain words, never silent.
+            # Host requirements: listed in plain words, never silent.
             for hr in resolved.get('host_requirements') or []:
                 for phrase in cls._hostreq_phrases(hr):
                     issues.append({'service': name, 'kind': 'host_requirement',
@@ -800,7 +800,7 @@ class ManifestApplyService:
         env = environment or cls._default_environment(project)
         plan = cls.plan(project, normalized, env)
 
-        # Appliance-tier blockers (plan 35): refuse before executing anything.
+        # Appliance-tier blockers: refuse before executing anything.
         # No force flag — the operator must clear the cause and re-apply.
         if plan.get('blockers'):
             if manifest_row is not None:
@@ -836,7 +836,7 @@ class ManifestApplyService:
 
         cls._finish_job(job, failed, results)
 
-        # Host requirements never apply silently (plan 35): audit every one.
+        # Host requirements never apply silently: audit every one.
         hr_issues = [i for i in plan.get('issues', []) if i.get('kind') == 'host_requirement']
         if hr_issues:
             try:
@@ -1080,7 +1080,7 @@ class ManifestApplyService:
         if any(v.mount_path == payload['mount_path'] for v in (app.volumes or [])):
             return {'exists': True}
         vol = VolumeService.create(app, payload['name'], payload['mount_path'])
-        # persist the manifest-declared size cap (plan 35); measured usage stays
+        # persist the manifest-declared size cap; measured usage stays
         # on size_bytes.
         declared = payload.get('size')
         if declared is not None and vol is not None:
@@ -1143,7 +1143,7 @@ class ManifestApplyService:
             return {'policy': 'database', 'db': payload['db_name']}
         # files — for a manifest disk the real bytes live in the named docker
         # volume, so record the volume mount so backup resolves the live HOST
-        # mountpoint (plan 35). `paths` stays as a graceful fallback.
+        # mountpoint. `paths` stays as a graceful fallback.
         app_id = payload.get('app_id') or cls._resolve_app_id(project, payload)
         meta = {'paths': [payload['mount_path']], 'managed_by': 'manifest'}
         if payload.get('volume_mount'):

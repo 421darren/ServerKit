@@ -1,4 +1,4 @@
-"""Slot deploys for compose apps (plan 87 §C).
+"""Slot deploys for compose apps.
 
 Each slot is its own compose project, ``<name>-a`` / ``<name>-b``, rendered
 from the app's merged compose config (``docker compose config`` over the base
@@ -259,7 +259,7 @@ def render_data(app, config: dict, web: str) -> dict:
 def write(path: str, rendered: dict) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8') as fh:
-        fh.write('# Rendered by ServerKit for A/B slot deploys (plan 87). Do not edit:\n'
+        fh.write('# Rendered by ServerKit for A/B slot deploys. Do not edit:\n'
                  '# it is regenerated from the app\'s compose file on every deploy.\n')
         yaml.safe_dump(rendered, fh, sort_keys=False, default_flow_style=False)
 

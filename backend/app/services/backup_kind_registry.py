@@ -48,7 +48,7 @@ def register(target_type: str, resolve, execute, restore=None, replace: bool = F
 
     Namespace it after your plugin (``minecraft.world``); the bare words core
     uses are reserved. ('wordpress_site' is the WordPress extension's kind —
-    it left the core set under plan 52 D4.)
+    it left the core set.)
 
     ``label`` / ``restore_scopes`` are optional UI metadata surfaced by
     ``GET /api/v1/backups/target-types`` so the Protection panel/restore

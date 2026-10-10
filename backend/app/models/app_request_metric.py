@@ -1,4 +1,4 @@
-"""Per-app request rollups from the timed nginx access log (plan 86 §A2).
+"""Per-app request rollups from the timed nginx access log.
 
 One row per (app, level, bucket). ``level`` is ``minute`` or ``hour``; the
 sampler writes both on ingest, so downsampling is just a coarser bucket, not a

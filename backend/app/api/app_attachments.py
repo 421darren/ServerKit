@@ -1,6 +1,6 @@
-# Bucket: PER-APP (plan 29 #9). Reads gate on can_access_app; attach/detach
+# Bucket: PER-APP. Reads gate on can_access_app; attach/detach
 # gate on can_edit_app for the app AND can_access_app for the service used.
-"""Attach services an app uses (plan 86 §C2/§C4). Mounted under ``/api/v1/apps``.
+"""Attach services an app uses. Mounted under ``/api/v1/apps``.
 
   GET    /<app_id>/attachments                 — this app's attachments
   GET    /attachments/services?kind=<kind>     — installed services for a kind
@@ -90,7 +90,7 @@ def detach(app_id, attachment_id):
     return jsonify(body)
 
 
-# ==================== CONNECTION POOLING (plan 86 §D1) ====================
+# ==================== CONNECTION POOLING ====================
 
 @app_attachments_bp.route('/<int:app_id>/pooler', methods=['GET'])
 @viewer_required
@@ -121,7 +121,7 @@ def set_pooler(app_id):
     return jsonify(result)
 
 
-# ==================== BOTTLENECK HINTS (plan 86 §A5) ====================
+# ==================== BOTTLENECK HINTS ====================
 
 @app_attachments_bp.route('/<int:app_id>/hints', methods=['GET'])
 @viewer_required
@@ -133,7 +133,7 @@ def get_hints(app_id):
     return jsonify({'hints': BottleneckHintsService.hints(app)})
 
 
-# ==================== IMMUTABLE ASSETS (plan 86 §B2) ====================
+# ==================== IMMUTABLE ASSETS ====================
 
 @app_attachments_bp.route('/<int:app_id>/immutable-assets', methods=['PUT'])
 @developer_required

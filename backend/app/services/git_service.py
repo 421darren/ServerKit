@@ -467,7 +467,7 @@ class GitService:
             }
 
         # Emit a panel event so Automations (tramo) workflows can trigger on a
-        # git push through the events bridge (plan 45 Ph4, ported from the
+        # git push through the events bridge (ported from the
         # retired Workflow Builder's 'git_push').
         try:
             from app.services.event_service import EventService
@@ -484,7 +484,7 @@ class GitService:
         result = cls.deploy(app_id, trigger='webhook')
 
         # Push-to-reconfigure: re-read serverkit.yaml at the new commit and
-        # reconcile (plan 17 #17). Best-effort — never affects the deploy result.
+        # reconcile. Best-effort — never affects the deploy result.
         try:
             from app.services.manifest_sync_service import ManifestSyncService
             commit = (payload.get('after')
@@ -638,8 +638,8 @@ class GitService:
 
     # ------------------------------------------------------------------
     # The Gitea self-host half (install/lifecycle/config + repo browsing
-    # via GiteaAPIService) moved to the serverkit-git extension (plan 52
-    # Phase 6). Everything above IS the deploy pipeline and stays core:
+    # via GiteaAPIService) moved to the serverkit-git extension.
+    # Everything above IS the deploy pipeline and stays core:
     # apps.py / buildpacks.py / deploy.py / deployment_service.py /
     # manifest_apply_service.py import it, extension installed or not.
     # NginxService.create/remove/get_gitea_config remain core helpers the

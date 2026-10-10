@@ -1,4 +1,4 @@
-"""Per-app request rate, errors and latency from nginx access logs (plan 86 §A2).
+"""Per-app request rate, errors and latency from nginx access logs.
 
 A one-minute builtin tick (``builtin.request_metrics``) tails each live app's
 ``/var/log/nginx/<app>.access.log`` from a stored byte offset. It never
@@ -10,7 +10,7 @@ re-parses a whole day, and it rolls the new lines up into
 
 Both levels are written on ingest, and old rows are pruned on the same tick,
 so the table's size is bounded from day one. Tables like this one filled the
-disk before (plan 85).
+disk before.
 
 Lines in the timed format (``NginxService.TIMED_LOG_FORMAT``) contribute
 latency and cache status. Plain combined lines, from vhosts written before the
@@ -358,7 +358,7 @@ class RequestMetricsService:
         # Only live apps' cursors are kept, so a deleted app's entry goes too.
         if new_cursors != cursors:
             SystemSettings.set(CURSOR_SETTING_KEY, new_cursors, value_type='json',
-                               description='Request-metrics log offsets (plan 86 §A2)')
+                               description='Request-metrics log offsets')
         db.session.commit()
         if stats['skipped_bytes']:
             logger.info('request metrics skipped %d backlog bytes',

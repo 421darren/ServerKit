@@ -378,7 +378,7 @@ class DockerService:
                 # The panel emits the `app.stopped` event via the audit trail
                 # (AuditService.log('app.stop') -> EventService.emit_for_audit),
                 # so this low-level helper no longer emits its own event -- doing
-                # so would double-fire it for Automations triggers (plan 45 Ph4).
+                # so would double-fire it for Automations triggers.
                 return {'success': True}
             return {'success': False, 'error': result['error']}
         except Exception as e:
@@ -526,7 +526,7 @@ class DockerService:
         app_id = cls._app_attr(app, 'id')
         if (app_id and not isinstance(app, dict)
                 and cls._app_attr(app, 'slot_deploys_enabled') and cls._app_attr(app, 'active_slot')):
-            # A slot app (plan 87): the live slot, its standby, its workers
+            # A slot app: the live slot, its standby, its workers
             # (for compose, the live and standby projects).
             from app.services.slot_deploy_service import SlotDeployService
             return SlotDeployService.containers(app)
@@ -534,7 +534,7 @@ class DockerService:
         if not containers and app_id and cls._app_attr(app, 'buildpack_type'):
             # A build-pack app is not a compose project: its deploy runs
             # `serverkit-app-<id>` plus one `serverkit-app-<id>-<process>` per
-            # Procfile worker (plan 86 §C3). Anchored so app 5 never lists 50.
+            # Procfile worker. Anchored so app 5 never lists 50.
             listed = cls.run(['ps', '-a', '--filter', f'name=^serverkit-app-{app_id}$',
                               '--filter', f'name=^serverkit-app-{app_id}-',
                               '--format', '{{json .}}'], timeout=30)
@@ -911,7 +911,7 @@ class DockerService:
 
     @staticmethod
     def ensure_network(name, driver='bridge'):
-        """Idempotently ensure a Docker network exists (appliance tier, plan 35).
+        """Idempotently ensure a Docker network exists (appliance tier).
 
         The shared external ``serverkit`` network lets manifest-generated app
         projects resolve each other by container name (fromService.host)."""
@@ -1180,7 +1180,7 @@ class DockerService:
         """Start Docker Compose services, streaming each output line to on_line.
 
         Same overlay/command construction as ``compose_up``, but runs via Popen
-        with plain, ANSI-free progress (plan 51 D5) and delivers output
+        with plain, ANSI-free progress and delivers output
         line-by-line so the Deploy Console shows the real pull/build/start
         transcript live (the biggest reason template-install errors used to be
         unreadable). Returns ``{success, exit_code}``; the actual failure output
@@ -1341,7 +1341,7 @@ class DockerService:
     def compose_build(cls, project_path, service=None, compose_file=None, no_cache=False):
         """Build the project's images without starting anything.
 
-        The deploy preflight (plan 72 B.1) runs this *before* the live
+        The deploy preflight runs this *before* the live
         containers are stopped, so a build failure can no longer take a site
         down: the subsequent ``up --build`` re-uses the layer cache.
         """
@@ -1446,7 +1446,7 @@ class DockerService:
         ``cpu_limit`` / ``memory_limit`` (task #23) emit ``cpus`` / ``mem_limit``
         on the app's service block so Docker enforces the caps.
 
-        ``host_requirements`` (appliance tier, plan 35) emits
+        ``host_requirements`` (appliance tier) emits
         ``privileged`` / ``cap_add`` / ``sysctls`` / ``devices`` — exactly the
         fields catalog templates already pass through.
         """
@@ -1499,7 +1499,7 @@ class DockerService:
 
             if networks:
                 # Attach to shared external network(s) so manifest apps resolve
-                # each other by container name (fromService.host, plan 35).
+                # each other by container name (fromService.host).
                 for net in networks:
                     DockerService.ensure_network(net)
                 compose['services'][app_name]['networks'] = list(networks)

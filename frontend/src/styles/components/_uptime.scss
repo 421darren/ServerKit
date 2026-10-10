@@ -304,7 +304,7 @@
     }
 }
 
-// Legacy `.uptime-stats-grid` (double-defined) removed (Plan 20 #21) — unused;
+// Legacy `.uptime-stats-grid` (double-defined) removed — unused;
 // summary metric grids use the KpiBand primitive (`.sk-kpiband`).
 .uptime-stat {
     display: flex;

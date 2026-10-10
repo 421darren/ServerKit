@@ -1,4 +1,4 @@
-"""Setup Health registry — "how set up is this panel" (plan 22).
+"""Setup Health registry — "how set up is this panel".
 
 A small, cheap registry of setup-health *items* the operator should complete to
 get a fully-working panel. Each item is a doctor-style check

@@ -1,5 +1,5 @@
 /**
- * Widget type registry for the dashboard grid (plan 62).
+ * Widget type registry for the dashboard grid.
  *
  * A widget TYPE describes a placeable kind of widget:
  *   { id, name, icon, cat, desc, w, h, min: [w,h], defaultCfg, component?, plugin? }

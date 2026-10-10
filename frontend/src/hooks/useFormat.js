@@ -3,7 +3,7 @@ import { useLocale } from '../contexts/useLocale.js';
 import * as intl from '../utils/intl';
 
 /**
- * The format door for components (plan 79 §C).
+ * The format door for components.
  *
  * Same implementation as `utils/intl` — this is a subscription, not a second
  * door. Components need it because a locale switch has to re-render them;

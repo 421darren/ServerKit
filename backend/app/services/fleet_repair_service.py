@@ -1,4 +1,4 @@
-"""Allowlisted remote repairs over the agent (plan 26 Phase 5, Decision 6).
+"""Allowlisted remote repairs over the agent.
 
 Remote mutations are dangerous, so they go through an explicit allowlist that
 maps a repair *kind* → the agent command it dispatches + the capability the

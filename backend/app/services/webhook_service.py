@@ -493,7 +493,7 @@ class WebhookService:
                     actions.append('deployed')
                     log.status = 'processed'
                     log.status_message = f'Deployed v{deployment_result.get("version")} ({log.commit_sha[:7] if log.commit_sha else "unknown"})'
-                    # Push-to-reconfigure: re-read serverkit.yaml (plan 17 #17).
+                    # Push-to-reconfigure: re-read serverkit.yaml.
                     try:
                         from app.services.manifest_sync_service import ManifestSyncService
                         ManifestSyncService.resync_for_app(

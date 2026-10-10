@@ -13,7 +13,7 @@ import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 
 // Coexistence — the honest "running ServerKit alongside another control panel"
-// surface (plan 27 #15, plan 31). Mirrors docs/COEXISTENCE.md: the three
+// surface. Mirrors docs/COEXISTENCE.md: the three
 // adoption modes (Observe / Migrate / Manage), the read-only guarantees, and the
 // never-supported two-writers case. Any Observed servers currently paired are
 // listed with a link into the survey/migrate → DNS-cutover journey.

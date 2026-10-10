@@ -1,5 +1,5 @@
 /**
- * Host vendor sharing for runtime-loaded extension bundles (plan 25 Decision 2).
+ * Host vendor sharing for runtime-loaded extension bundles.
  *
  * A runtime extension bundle externalizes the shared libraries (react,
  * react-dom, react/jsx-runtime, react-router-dom, i18next, react-i18next,

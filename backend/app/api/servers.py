@@ -131,7 +131,7 @@ PERMISSION_PROFILES = {
             'docker:volume:read',
             'docker:network:read',
             'system:metrics:read',
-            # Fleet doctor / survey reads (plan 28 #7): let the panel probe
+            # Fleet doctor / survey reads: let the panel probe
             # host health without granting any mutating verb.
             'doctor:read',
             'systemd:read',

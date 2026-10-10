@@ -1,4 +1,4 @@
-"""Themes API (plan 60) — /api/v1/themes.
+"""Themes API — /api/v1/themes.
 
 A theme is data, not code: a validated map of CSS custom-property tokens. This
 blueprint lists themes (bundled seeds + installed), imports a pasted/uploaded

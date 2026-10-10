@@ -20,7 +20,7 @@ from app.models.server import Server
 logger = logging.getLogger(__name__)
 
 # The per-IP auth rate limiter is transport-neutral state and lives with the
-# shared handshake door in agent_registry (plan 77 A2). Re-exported here for
+# shared handshake door in agent_registry. Re-exported here for
 # callers/tests that historically reached it via the gateway module.
 from app.services.agent_registry import (  # noqa: F401
     _AUTH_RATE_LIMIT,
@@ -53,8 +53,8 @@ class AgentNamespace(Namespace):
         """
         Handle agent authentication.
 
-        Thin adapter over agent_registry.authenticate_and_register (plan 77
-        A2) — the handshake sequence itself is transport-neutral and shared
+        Thin adapter over agent_registry.authenticate_and_register — the
+        handshake sequence itself is transport-neutral and shared
         with the long-poll /connect endpoint; this handler only translates
         the outcome into socket emits/disconnects.
 

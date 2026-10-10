@@ -13,7 +13,7 @@ import { useToast } from '../../contexts/useToast.js';
 import Spinner from '../Spinner';
 import { useTranslation } from 'react-i18next';
 
-// Per-domain reversible DNS cutover (plan 31 #5/#6). One shared slide-over,
+// Per-domain reversible DNS cutover. One shared slide-over,
 // reached from the /domains detail drawer and from the Import wizard's final
 // step, so the survey → migrate → cutover journey ends in the same place.
 //

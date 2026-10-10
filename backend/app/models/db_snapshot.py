@@ -3,7 +3,7 @@ Database snapshot & sync-job models.
 
 These are generic database point-in-time snapshot and environment-sync
 records. They physically lived in ``wordpress_site.py`` historically; they were
-relocated here (plan 52 Phase 1) so the WordPress model file no longer owns
+relocated here so the WordPress model file no longer owns
 generic machinery. The tables (``database_snapshots``, ``sync_jobs``) are
 unchanged — this was a pure module move. Their foreign keys still reference
 ``wordpress_sites`` (the only environment kind that uses them today); that is a

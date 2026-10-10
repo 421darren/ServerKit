@@ -1,4 +1,4 @@
-"""Extension release signing — ed25519 detached signatures (plan 55, D3).
+"""Extension release signing — ed25519 detached signatures.
 
 Signature format (minisign-style envelope, base64 of 74 bytes)::
 

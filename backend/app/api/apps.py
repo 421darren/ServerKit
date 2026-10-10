@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app routes gate on the shared app-access
+# Bucket: PER-APP. Per-app routes gate on the shared app-access
 # seam via the file-local _can_access_app (reads) / _can_edit_app (writes)
 # helpers, or the hand-rolled owner-or-admin idiom; host/system ops stay admin.
 import os
@@ -1775,7 +1775,7 @@ def set_micro_cache(app_id):
 @apps_bp.route('/<int:app_id>/micro-cache/purge', methods=['POST'])
 @jwt_required()
 def purge_micro_cache(app_id):
-    """Clear this site's cached pages (plan 86 §B3).
+    """Clear this site's cached pages.
 
     The zone is shared, but the cache key carries the host, so only entries
     for this app's domains are removed. No nginx reload is needed.
@@ -2373,7 +2373,7 @@ def create_app_db_snapshot(app_id):
         return jsonify({'error': 'This service is not a WordPress site'}), 400
     # Resolve the extension only once we know this IS a WordPress site — with
     # serverkit-wordpress uninstalled a non-WP app must get the 400, not an
-    # import error (plan 52 Phase 5 graceful absence). A WP SITE with the
+    # import error (graceful absence). A WP SITE with the
     # extension missing/disabled gets a clean 503, not an uncaught
     # WordPressExtensionMissingError → 500 (audit F3).
     from app.services.wordpress_bridge import (

@@ -30,7 +30,7 @@ def ensure_loadable():
 def load(module_name):
     """Import a module from the extension backend (e.g. ``'cloudflare_service'``).
 
-    Resolution order (plan 52 Ph2 cutover): a copy-installed extension first
+    Resolution order (cutover): a copy-installed extension first
     (the registry install lands under the normal ``app.plugins`` path), then
     the builtin registration (pre-cutover trees), then the historical core
     location. Callers get ImportError when the extension truly is absent —

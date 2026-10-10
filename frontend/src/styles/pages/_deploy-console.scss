@@ -1,6 +1,6 @@
 // ============================================
 // DEPLOY CONSOLE  (/deployments/:jobId)
-// The signature "watch it deploy live" full-page console (plan 51).
+// The signature "watch it deploy live" full-page console.
 // ============================================
 
 // Console log-level colors (mirrors the terminal/logs treatment).
@@ -86,7 +86,7 @@ $dc-surface-line: rgba(255, 255, 255, 0.04);
         &--succeeded { @include status-variant(var(--green), var(--green-bg)); }
         &--failed { @include status-variant(var(--red), var(--red-bg)); }
 
-        // Demo/simulated jobs (plan 51.5): visually distinct from status pills.
+        // Demo/simulated jobs: visually distinct from status pills.
         &--demo {
             background: transparent;
             color: $text-tertiary;
@@ -613,7 +613,7 @@ $dc-surface-line: rgba(255, 255, 255, 0.04);
     to { transform: rotate(360deg); }
 }
 
-// ---- log sections, chips and match navigation (plan 51.6 console parity) ----
+// ---- log sections, chips and match navigation (console parity) ----
 .deploy-console {
     // Error / warning counts in the toolbar. They read as a summary first and
     // filter second, so they stay visible even when a filter is off.

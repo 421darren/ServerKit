@@ -363,7 +363,7 @@ location = /wordpress {{
     }}
 '''
 
-    # ==================== TIMED ACCESS LOG (plan 86 §A1) ====================
+    # ==================== TIMED ACCESS LOG ====================
     # Every vhost ServerKit writes logs in this format. The combined fields come
     # first, unchanged, so every existing combined-format reader (bandwidth
     # accounting, the fail2ban `^<HOST> -` filters) keeps matching; the timing
@@ -380,7 +380,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
                            'cs=$upstream_cache_status h=$host';
 """
 
-    # ==================== COMPRESSION (plan 86 §B1) ====================
+    # ==================== COMPRESSION ====================
     # gzip (and brotli when the module is loaded) for every site, as one
     # http-level conf.d snippet. Stock configs already set some of these —
     # Debian's nginx.conf ships `gzip on;` — and a repeated http-level
@@ -409,7 +409,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
         ('brotli_types', COMPRESSION_TYPES),
     )
 
-    # ==================== IMMUTABLE ASSETS (plan 86 §B2) ====================
+    # ==================== IMMUTABLE ASSETS ====================
     # Opt-in, proxied sites only: a fingerprinted asset (a hash in its name)
     # never changes, so the browser may keep it a year. Off by default because
     # the panel cannot know an app's asset layout. The hash must be 8+ chars
@@ -433,7 +433,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
     # per site does not scale (and can't be added/removed without touching a
     # global file per site). Purge is still per site: the cache key carries
     # $host, and purge_micro_cache(hosts) deletes only the files whose KEY
-    # line names that host (plan 86 §B3). proxy_* and fastcgi_* caches cannot
+    # line names that host. proxy_* and fastcgi_* caches cannot
     # share a keys_zone, hence two zones over one base directory.
     MICROCACHE_CONF_NAME = 'serverkit-microcache.conf'
     MICROCACHE_DIR = '/var/cache/nginx/serverkit-microcache'
@@ -459,7 +459,7 @@ fastcgi_cache_path /var/cache/nginx/serverkit-microcache/fastcgi levels=1:2 keys
     if ($request_uri ~* "^/(wp-admin|wp-login|admin|login|cart|checkout|my-account)") { set $sk_skip_cache 1; }
 '''
 
-    # Page-cache behaviour (plan 86 §B3):
+    # Page-cache behaviour:
     #   * the key is `$scheme://$host$request_uri`, so the cache files of one
     #     site can be found by host and purged alone (the proxy default key is
     #     `$scheme$proxy_host$request_uri` — the upstream port, not the site);
@@ -787,7 +787,7 @@ location /p/ {{
         match = re.search(r'^    location / \{\n(.*?)^    \}\n', config, re.MULTILINE | re.DOTALL)
         if not match:
             return config
-        block = ('\n    # ServerKit: fingerprinted assets never change (plan 86 §B2)\n'
+        block = ('\n    # ServerKit: fingerprinted assets never change\n'
                  f'    location ~* "{cls.IMMUTABLE_ASSET_PATTERN}" {{\n'
                  + match.group(1) + cls.IMMUTABLE_ASSET_HEADERS + '    }\n')
         return config[:match.end()] + block + config[match.end():]
@@ -950,7 +950,7 @@ location /p/ {{
 
     @classmethod
     def ensure_compression(cls) -> Dict:
-        """Write the compression snippet once, best-effort (plan 86 §B1).
+        """Write the compression snippet once, best-effort.
 
         Skips when the snippet exists. A snippet that fails ``nginx -t`` is
         removed again, so compression can never take the web server down —
@@ -985,7 +985,7 @@ location /p/ {{
     def purge_micro_cache(cls, hosts: Optional[List[str]] = None) -> Dict:
         """Clear cached pages. Linux-only; no nginx reload needed.
 
-        With ``hosts`` only that site's entries go (plan 86 §B3). nginx writes
+        With ``hosts`` only that site's entries go. nginx writes
         each entry's key as a ``KEY: <scheme>://<host><uri>`` header line in
         the cache file, so a fixed-string grep for ``KEY: http[s]://<host>/``
         finds exactly this site's files; the trailing ``/`` keeps

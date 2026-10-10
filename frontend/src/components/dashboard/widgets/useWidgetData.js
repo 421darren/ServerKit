@@ -1,5 +1,5 @@
 /**
- * Data hooks shared by the dashboard widget renderers (plan 62).
+ * Data hooks shared by the dashboard widget renderers.
  *
  * Renderers stay presentational: everything that talks to the API lives here.
  *

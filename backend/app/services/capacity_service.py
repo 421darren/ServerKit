@@ -69,7 +69,7 @@ def parse_size(value):
 
 # Re-exported so existing `from app.services.capacity_service import format_size`
 # callers keep working; the implementation moved to the leaf utils module when
-# host_inventory_service turned out to hold a byte-for-byte copy (plan 75 §F1).
+# host_inventory_service turned out to hold a byte-for-byte copy.
 from app.utils.formatting import format_size  # noqa: E402,F401
 
 
@@ -266,7 +266,7 @@ def _local_headroom():
         # Not hardcoded `/` any more: images, volumes and backups may live on an
         # attached volume, and measuring root would then answer a question
         # nobody asked. `mountpoint` records which filesystem this actually is,
-        # so an unlabelled number can never be misread again (plan 74).
+        # so an unlabelled number can never be misread again.
         mountpoint, disk = host_inventory_service.data_path_usage()
         result.update({
             'memory_total': memory.total,

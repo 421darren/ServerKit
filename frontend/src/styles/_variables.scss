@@ -91,7 +91,7 @@ $accent-bg-soft: var(--accent-bg-soft);
 // COLORS - Semantic
 // --------------------------------------------
 // Redesign "infra console" semantic palette. $success/$warning/$danger/$info
-// are var()-backed so runtime themes (plan 60: --green/--amber/--red/--cyan)
+// are var()-backed so runtime themes (--green/--amber/--red/--cyan)
 // recolor them; the *-raw hex twins feed SCSS compile-time functions
 // (fade()/rgba()/darken()) that can't operate on a var().
 $success-raw: #3ddc97;
@@ -146,7 +146,7 @@ $color-star: #f59e0b;
 // --------------------------------------------
 // TYPOGRAPHY
 // --------------------------------------------
-// var()-backed so runtime themes (plan 60: --sans/--mono) can swap the stacks.
+// var()-backed so runtime themes (--sans/--mono) can swap the stacks.
 $font-main: var(--sans, 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
 $font-mono: var(--mono, 'IBM Plex Mono', ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace);
 

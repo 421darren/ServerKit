@@ -260,7 +260,7 @@ def create_app(config_name=None):
         SettingsService.initialize_defaults()
         SettingsService.migrate_legacy_roles()
         if not app.config.get('TESTING'):
-            # Size-aware retention defaults, once per install (plan 85 §C).
+            # Size-aware retention defaults, once per install.
             # Skipped under test: the result would depend on the test host's disk.
             try:
                 from app.services import storage_profile_service
@@ -276,7 +276,7 @@ def create_app(config_name=None):
             n_dns = DNSProviderService.encrypt_legacy_secrets()
             n_store = StorageProviderService.encrypt_legacy_secrets()
             # Cloud-provider legacy-secret encryption moved out with the
-            # serverkit-cloud-provision extension (plan 47). It was a one-time
+            # serverkit-cloud-provision extension. It was a one-time
             # migration of pre-encryption rows; any panel reaching this version
             # already ran it in an earlier boot (idempotent), and the extension
             # encrypts on write, so there's nothing left for core to do here.
@@ -306,7 +306,7 @@ def create_app(config_name=None):
             import logging as _logging
             _logging.getLogger(__name__).warning(f'Legacy secret encryption skipped: {e}')
 
-        # Record this boot's hardware and compare it to the last one (plan 74).
+        # Record this boot's hardware and compare it to the last one.
         # Boot is the right hook: a VPS resize requires a power-off, so the
         # change and the restart are the same event — and the in-memory spec
         # cache that used to be the only "before" value dies with the process.
@@ -370,7 +370,7 @@ def create_app(config_name=None):
             import logging
             logging.getLogger(__name__).warning(f'Extension auto-install: {e}')
 
-        # Upgrade parity for the extracted security suite (plan 47 Ph3b-4):
+        # Upgrade parity for the extracted security suite:
         # a panel that was actually using fail2ban/clamav/lynis/auto-updates/
         # image scanning gets the matching registry extension once its entry
         # is published. Fail-soft, retries per boot until then. Best-effort.
@@ -382,7 +382,7 @@ def create_app(config_name=None):
             logging.getLogger(__name__).warning(f'Security-suite auto-install: {e}')
 
         # One-shot: re-acquire the now-extracted backend for converted builtins
-        # that first shipped frontend-only (plan 47 Phase 2), so an upgraded panel
+        # that first shipped frontend-only, so an upgraded panel
         # that installed them frontend-only doesn't lose the API. Best-effort.
         try:
             from app.services.extension_migration import run_backend_acquisition
@@ -450,7 +450,7 @@ def create_app(config_name=None):
             DeploymentJobService.register_jobs()
             from app.services.recipe_execution_service import RecipeExecutionService
             RecipeExecutionService.register_jobs()
-            # WorkflowEngine.register_jobs() removed in plan 45 Phase 4 (engine retired).
+            # WorkflowEngine.register_jobs() removed (engine retired).
             from app.services.backup_service import BackupService
             BackupService.register_jobs()
             from app.services.backup_policy_service import BackupPolicyService
@@ -463,7 +463,7 @@ def create_app(config_name=None):
             MetadataGuardService.register_jobs()
             if not app.config.get('TESTING'):
                 MetadataGuardService.ensure()  # converge the metadata egress rule (no-op when unsupported)
-                # Bound the log files the panel writes or causes (plan 85 A5).
+                # Bound the log files the panel writes or causes.
                 from app.services import log_limits_service
                 log_limits_service.converge()
             from app.services.speed_test_service import SpeedTestService

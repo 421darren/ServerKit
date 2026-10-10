@@ -27,7 +27,7 @@ class SystemSettings(JsonColumnMixin, db.Model):
         if self.value_type == 'integer':
             return int(self.value)
         if self.value_type == 'json':
-            # Corrupt JSON degrades to None instead of raising (plan 77 B4).
+            # Corrupt JSON degrades to None instead of raising.
             return self._json_read('value', None)
         return self.value
 

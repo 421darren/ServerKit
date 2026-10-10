@@ -1,4 +1,4 @@
-"""A/B slot deploys for apps (plan 87 §B).
+"""A/B slot deploys for apps.
 
 The panel's own updater builds the new version into the idle slot while the
 live one serves, flips a symlink, health-checks, and flips back if the check

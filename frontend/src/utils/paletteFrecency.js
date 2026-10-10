@@ -1,4 +1,4 @@
-// Per-user "frecency" for the command palette (plan 41): frequency + recency of
+// Per-user "frecency" for the command palette: frequency + recency of
 // selections, kept in localStorage so an empty query can surface Recently used
 // and a matched query can boost the things you actually pick. Client-only —
 // server-side sync across devices is explicitly out of scope.

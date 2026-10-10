@@ -6,7 +6,7 @@ public resolvers, and revert — restoring the pre-cutover world byte-for-byte.
 
 Read verbs (ttl-guidance, list/get snapshots, verify) are open to any
 authenticated user; the mutating verbs (snapshot, cutover, revert) are
-admin-only (plan 31 #1/#2/#3).
+admin-only.
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required

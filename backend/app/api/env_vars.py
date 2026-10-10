@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Env-var routes converge on the app-access seam:
+# Bucket: PER-APP. Env-var routes converge on the app-access seam:
 # reads use can_access_app (owner/admin/any grant — a viewer grant can read,
 # with secrets still masked), writes use can_edit_app (owner/admin/editor grant).
 """
@@ -19,7 +19,7 @@ env_vars_bp = Blueprint('env_vars', __name__)
 
 
 def check_app_access(app_id, user_id, write=False):
-    """Check that the user may access the application's env vars (plan 29 #9).
+    """Check that the user may access the application's env vars.
 
     Reads (``write=False``) require can_access_app (owner/admin/any grant);
     writes require can_edit_app (owner/admin/editor grant — a viewer grant is

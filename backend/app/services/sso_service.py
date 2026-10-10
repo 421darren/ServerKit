@@ -38,7 +38,7 @@ PROVIDER_ENDPOINTS = {
 
 def _legacy_fernet():
     """The pre-C2 Fernet (key derived from app SECRET_KEY) — read-only,
-    kept so tokens written before the fold-in still decrypt (plan 77 C2)."""
+    kept so tokens written before the fold-in still decrypt."""
     key_bytes = current_app.config['SECRET_KEY'].encode('utf-8')
     digest = hashlib.sha256(key_bytes).digest()
     return Fernet(base64.urlsafe_b64encode(digest))

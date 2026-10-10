@@ -667,7 +667,7 @@ export default function Databases() {
                     if (node.conn?.dbType === 'docker' && node.conn.container) {
                         // Curated config tuner is container-scoped (docker-only).
                         actions.splice(2, 0, { labelKey: 'app.databases.configTuner', label: 'Config tuner', icon: SlidersHorizontal, onClick: () => setTunerTarget({ container: node.conn.container, engine: node.engine, password: node.conn.password }) });
-                        // Top queries + hit ratio (plan 86 §A3), docker-only too.
+                        // Top queries + hit ratio, docker-only too.
                         actions.splice(2, 0, { labelKey: 'app.databases.insights', label: 'Insights', icon: Gauge, onClick: () => openInsights(node.conn, node.engine) });
                     }
                     actions.splice(2, 0, { labelKey: 'app.databases.backUpDatabase', label: 'Back up database', icon: DatabaseBackup, onClick: () => backupDatabase(node) });

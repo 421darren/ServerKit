@@ -1,5 +1,5 @@
 """Bounded fan-out over connected agents — the one primitive every fleet
-sweep reuses (Fleet Parity Sweep, plan 26, Decision 4).
+sweep reuses (Fleet Parity Sweep).
 
 A "sweep" runs the same per-server probe across every targeted server, with a
 bounded worker pool, a per-agent timeout, and a hard wall-clock budget so a

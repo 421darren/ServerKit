@@ -535,7 +535,7 @@ export async function getCurrentDeployment(appId) {
     return this.request(`/builds/apps/${appId}/current-deployment`);
 }
 
-// Services an app uses (plan 86 §C4): storage (own bucket + scoped key),
+// Services an app uses: storage (own bucket + scoped key),
 // cache and queue (env references to an installed engine).
 export async function getAppAttachments(appId) {
     return this.request(`/apps/${appId}/attachments`);
@@ -556,7 +556,7 @@ export async function detachService(appId, attachmentId) {
     return this.request(`/apps/${appId}/attachments/${attachmentId}`, { method: 'DELETE' });
 }
 
-// Opt-in PgBouncer beside an installed PostgreSQL (plan 86 §D1).
+// Opt-in PgBouncer beside an installed PostgreSQL.
 export async function getAppPooler(appId) {
     return this.request(`/apps/${appId}/pooler`);
 }
@@ -565,17 +565,17 @@ export async function setAppPooler(appId, enabled) {
     return this.request(`/apps/${appId}/pooler`, { method: 'PUT', body: { enabled } });
 }
 
-// Rule-based bottleneck hints for an app (plan 86 §A5).
+// Rule-based bottleneck hints for an app.
 export async function getAppHints(appId) {
     return this.request(`/apps/${appId}/hints`);
 }
 
-// Long-cache fingerprinted assets in the vhost (plan 86 §B2).
+// Long-cache fingerprinted assets in the vhost.
 export async function setImmutableAssets(appId, enabled) {
     return this.request(`/apps/${appId}/immutable-assets`, { method: 'PUT', body: { enabled } });
 }
 
-// A/B slot deploys (plan 87): slot state + eligibility, the opt-in, and the
+// A/B slot deploys: slot state + eligibility, the opt-in, and the
 // instant switch back to the standby.
 export async function getAppSlots(appId) {
     return this.request(`/apps/${appId}/slots`);

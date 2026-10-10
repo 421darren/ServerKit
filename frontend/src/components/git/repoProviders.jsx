@@ -3,7 +3,7 @@ import { Trans } from 'react-i18next';
 import { SiGithub, SiGitlab, SiGitea, SiBitbucket } from 'react-icons/si';
 import api from '../../services/api';
 
-// Provider behaviour for RepoPicker (plan 79 G1). Everything visual lives in
+// Provider behaviour for RepoPicker. Everything visual lives in
 // the component; these describe only what actually differs between providers —
 // which API to call, how a clone URL is shaped, and what to say when the
 // provider is not usable yet.

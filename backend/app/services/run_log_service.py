@@ -7,7 +7,7 @@ truthful in-memory tail of the last output for failure reporting, records per-st
 timings, sanitizes ANSI/`\\r` noise, caps the persisted row count, and matches a
 plain-language hint against the failure output.
 
-Design contract (plan 51, D4/D5/D6/D10):
+Design contract:
 
 - ``stream.log(level, message, step_index=None, data=None)`` — NEVER raises.
 - ``stream.set_step(index, name)`` — flush, update the job row, emit a status.
@@ -145,7 +145,7 @@ def _make_default_emit_status(run_kind: str) -> Callable:
 class RunLogStream:
     """Batched, crash-proof log writer for one run.
 
-    Generalized (plan 77 E1) over any model implementing the small RunLike
+    Generalized over any model implementing the small RunLike
     protocol: an ``id``, a ``__run_kind__`` class attribute, a ``to_dict()``
     for status emits, and — optionally — ``get_result``/``set_result`` (for
     close-time enrichment) and ``current_step``/``current_step_name`` (for

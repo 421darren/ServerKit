@@ -1,4 +1,4 @@
-"""One of an app's two deploy slots (plan 87 §B).
+"""One of an app's two deploy slots.
 
 The panel updater keeps two installs, ``/opt/serverkit-a`` and ``-b``, and
 flips between them. An app with slot deploys enabled gets the same: rows

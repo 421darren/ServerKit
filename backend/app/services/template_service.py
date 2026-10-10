@@ -111,7 +111,7 @@ class TemplateService:
         'https://raw.githubusercontent.com/serverkit/templates',
     }
 
-    # Provider-owned templates (plan 52 D4 hook inversion): these ids are
+    # Provider-owned templates (hook inversion): these ids are
     # listed and installable ONLY while the owning extension has registered as
     # their provider (i.e. it is installed + active this boot — registration
     # happens via the manifest ``core_hooks`` seam). The map itself is core;
@@ -682,8 +682,8 @@ class TemplateService:
     # Whole-name magic tokens (no ``<NAME>`` suffix) -> internal kind. One
     # table so the resolver and the catalog validator agree on what exists.
     MAGIC_EXACT_TOKENS = {
-        'SERVER_PUBLIC_IP': 'server_public_ip',       # appliance tier (plan 35)
-        'SERVERKIT_METRICS_TOKEN': 'metrics_token',   # plan 86 §A4
+        'SERVER_PUBLIC_IP': 'server_public_ip',       # appliance tier
+        'SERVERKIT_METRICS_TOKEN': 'metrics_token',
     }
 
     # Matches ``${SERVICE_...}`` magic tokens specifically (a subset of the
@@ -1141,7 +1141,7 @@ class TemplateService:
             for app in apps:
                 if app.port:
                     used_ports.add(app.port)
-            # A slot app holds two ports (plan 87): the live one is app.port,
+            # A slot app holds two ports: the live one is app.port,
             # the standby's stays reserved for the switch back.
             from app.models.app_slot import AppSlot
             used_ports.update(row.host_port for row in
@@ -1216,7 +1216,7 @@ class TemplateService:
         disk" view, which ``build_repo_index`` needs to describe the bundle
         faithfully for publishing. Provider-owned templates are hidden from
         the *catalog* instead — :meth:`list_all_templates` and
-        :meth:`get_template` apply the availability gate (plan 52 D4), so an
+        :meth:`get_template` apply the availability gate, so an
         absent extension means hidden cards and refused installs even though
         the YAML remains bundled.
 
@@ -1807,7 +1807,7 @@ class TemplateService:
                 variables[var_name] = cls.generate_value(var_config)
 
         # Provider-owned templates validate through their provider's hook
-        # (plan 52 D4 — the WordPress external-DB preflight lives in the WP
+        # (the WordPress external-DB preflight lives in the WP
         # extension now), never through hardcoded per-template branches here.
         veto = cls._run_provider_validate(template_id, variables)
         if veto:
@@ -1946,7 +1946,7 @@ class TemplateService:
                 variables[var_name] = cls.generate_value(var_config)
 
         # Validate provider-owned templates through their provider hook
-        # (plan 52 D4 — e.g. the external-DB connection preflight for
+        # (e.g. the external-DB connection preflight for
         # wordpress-external-db is supplied by the WordPress extension).
         veto = cls._run_provider_validate(template_id, variables)
         if veto:
@@ -2285,7 +2285,7 @@ class TemplateService:
     def _update_slot_app(cls, app, template, variables, install_info, info_path,
                          compose_path, backup_path, compose_content, config, user_id,
                          log_callback):
-        """Template update for a slot app (plan 87 §C): write the new compose,
+        """Template update for a slot app: write the new compose,
         then deploy it into the idle slot. The live slot keeps serving until
         the new one passes its gate; any failure puts the old files back."""
         from app.services.deployment_service import DeploymentService
@@ -2331,7 +2331,7 @@ class TemplateService:
         """Update an installed app to the latest template version.
 
         The new compose is rendered, validated and its images resolved *before*
-        the running containers are stopped (plan 72 B.1) — a template whose new
+        the running containers are stopped — a template whose new
         version does not render, does not validate or cannot pull now fails
         with the old stack still serving.
         """

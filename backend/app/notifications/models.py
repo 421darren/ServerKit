@@ -46,7 +46,7 @@ class Notification(db.Model):
     # (e.g. 'admins', 'user:42', 'ops@example.com'). Not used for routing.
     audience = db.Column(db.String(255))
 
-    # Deep link to this notification's subject (plan 24 Phase 5). Stored RELATIVE
+    # Deep link to this notification's subject. Stored RELATIVE
     # (e.g. '/domains') and computed at send time — from the catalog link builder
     # or a producer override — so a later route move never breaks old rows. The
     # bell/history navigate here; email/chat resolve it to an absolute URL.
@@ -104,7 +104,7 @@ class NotificationDelivery(db.Model):
     STATUS_SENT = 'sent'          # handed to the channel successfully
     STATUS_FAILED = 'failed'      # exhausted retries (dead-letter on the queue)
     STATUS_SKIPPED = 'skipped'    # intentionally not sent (e.g. no target)
-    # Held for the periodic digest (plan 24 Phase 3): a digestable email or a
+    # Held for the periodic digest: a digestable email or a
     # quiet-hours catch-up. Never enqueued; the digest job groups these, sends
     # ONE branded email, then flips them to STATUS_SENT.
     STATUS_QUEUED_DIGEST = 'queued_digest'

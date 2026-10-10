@@ -1,4 +1,4 @@
-# Bucket: PER-APP read (plan 29 #9). Per-app bandwidth is scoped to callers who
+# Bucket: PER-APP read. Per-app bandwidth is scoped to callers who
 # can access the app (can_access_app); the cross-app overview stays panel-wide.
 """REST surface for per-domain bandwidth accounting.
 
@@ -35,7 +35,7 @@ def get_apps_bandwidth():
 @viewer_required
 def get_app_bandwidth(app_id):
     """Full daily series (default 90 days) + current-month total for one app,
-    scoped to the app's workspace visibility (plan 29 #9 — foreign caller 404)."""
+    scoped to the app's workspace visibility (foreign caller 404)."""
     app = Application.query_active().filter_by(id=app_id).first()
     user = get_current_user()
     if app is None or not ResourceGrantService.can_access_app(user, app):
@@ -57,8 +57,8 @@ def get_app_bandwidth(app_id):
 @viewer_required
 def get_app_request_metrics(app_id):
     """Request rate, status classes, latency percentiles and cache hit ratio
-    from the timed access log (plan 86 §A2). ``period``: 1h, 24h, 7d or 30d."""
-    # Same 404 for a missing and a foreign app (plan 29 #9); a bad period is a
+    from the timed access log. ``period``: 1h, 24h, 7d or 30d."""
+    # Same 404 for a missing and a foreign app; a bad period is a
     # ValidationError (400). Both go through the global handler.
     app = RequestMetricsService.live_app(app_id)
     if app is None or not ResourceGrantService.can_access_app(get_current_user(), app):

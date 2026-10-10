@@ -10,7 +10,7 @@ from app.models.json_column_mixin import JsonColumnMixin
 # folded in from the legacy BackupService so a single BackupPolicy/BackupRun
 # system covers all data-protection backups.
 #
-# This is the CORE set only (plan 52 D4): extension-owned target types — e.g.
+# This is the CORE set only: extension-owned target types — e.g.
 # 'wordpress_site', registered by the serverkit-wordpress extension at load —
 # come from app.services.backup_kind_registry at runtime, so an absent
 # extension means an absent type. The valid set at any moment is this constant
@@ -70,7 +70,7 @@ class BackupPolicy(TimestampMixin, JsonColumnMixin, db.Model):
     # Remote
     remote_copy = db.Column(db.Boolean, default=False, nullable=False)
 
-    # Restore-drill cadence (plan 23). 'off' | 'weekly' | 'monthly'. A single
+    # Restore-drill cadence. 'off' | 'weekly' | 'monthly'. A single
     # daily sweep enqueues due drills; last_drill_* is the denormalized cache
     # that powers the "last proven restore" badge + doctor staleness check.
     drill_cadence = db.Column(db.String(12), default='off', nullable=False)

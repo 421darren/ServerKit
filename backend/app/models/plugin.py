@@ -110,7 +110,7 @@ class InstalledPlugin(JsonColumnMixin, db.Model):
             # Schema only — saved VALUES may hold secrets and are served
             # exclusively by the admin-gated /config endpoint.
             'config_schema': manifest.get('config_schema') or {},
-            # Install-time signature verdict (plan 55): None for sources that
+            # Install-time signature verdict: None for sources that
             # predate stamping, else {status: verified|untrusted_key|unsigned,
             # key_id?, publisher?}. Panel-managed (reserved config key).
             'signature': (self.config or {}).get('_signature'),

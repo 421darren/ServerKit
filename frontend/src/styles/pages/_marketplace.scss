@@ -585,7 +585,7 @@
         line-height: $line-height-normal;
     }
 
-    // Signature verdict explainer under the description (plan 55): plain for
+    // Signature verdict explainer under the description: plain for
     // unsigned / unknown-publisher, red when the signature failed to verify.
     &__sig-note {
         margin: 0;
@@ -691,7 +691,7 @@
 }
 
 // Read-only permissions + pending-dependencies dialog for an installed
-// extension (plan 55 tasks 6+7). Rows are prose-first on purpose: the
+// extension (tasks 6+7). Rows are prose-first on purpose: the
 // distinction between "the gate saw nothing" and "there is no gate" only
 // survives if each row can say it in a sentence, so nothing here compresses
 // a permission down to a bare chip.

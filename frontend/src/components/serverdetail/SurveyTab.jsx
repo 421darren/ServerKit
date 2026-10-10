@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { toastError } from '@/utils/errorMessage';
 
-// Survey tab (plan 27/28) — the read-only "Server Map" for a paired agent.
+// Survey tab — the read-only "Server Map" for a paired agent.
 //
 // A survey is a strictly read-only "flight": the agent runs a declarative probe
 // catalog and returns what's running on the box; the panel normalizes it into a

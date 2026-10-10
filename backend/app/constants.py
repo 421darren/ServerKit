@@ -1,4 +1,4 @@
-"""Shared wire-protocol constants (plan 77 E3).
+"""Shared wire-protocol constants.
 
 ``SOCKET_EVENTS`` is mirrored verbatim by ``frontend/src/constants/events.js``
 so a renamed event cannot fail silently — ``tests/test_socket_contract.py``
@@ -28,7 +28,7 @@ SOCKET_EVENTS = {
     'DEPLOY_LOG': 'deploy_log',
     'DEPLOY_STATUS': 'deploy_status',
 
-    # generalized run envelope (plan 77 E1) — one event pair for every run kind
+    # generalized run envelope — one event pair for every run kind
     'RUN_LOG': 'run_log',
     'RUN_STATUS': 'run_status',
 

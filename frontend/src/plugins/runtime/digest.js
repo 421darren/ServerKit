@@ -1,5 +1,5 @@
 /**
- * Digest seam (plan 32 Decision 2) — the SINGLE place `crypto.subtle` is used.
+ * Digest seam — the SINGLE place `crypto.subtle` is used.
  *
  * `digestBytes()` returns the lowercase sha256 hex of a bundle's bytes,
  * choosing the implementation by context:

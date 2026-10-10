@@ -51,7 +51,7 @@ const SEVERITY_ORDER = ['critical', 'error', 'warning', 'info', 'debug'];
 // knows, or the badge silently renders without its background. `label` is the
 // one spelling of a severity the whole page uses: the pill, the filter drawer's
 // option list and the built-in view names all read from here.
-// Severity tones ride the shared vocabulary (plan 77 D3); labels are local.
+// Severity tones ride the shared vocabulary; labels are local.
 const SEVERITY_LABEL = {
     critical: 'Critical', error: 'Error', warning: 'Warning',
     info: 'Info', debug: 'Debug',

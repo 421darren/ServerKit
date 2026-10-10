@@ -18,7 +18,7 @@ LIFECYCLE_DURABLE_CANDIDATE = 'durable_candidate'
 
 THREAD_OWNERSHIP = {
     'app/utils/background_loop.py:start:self._run': {
-        'owner': 'BackgroundLoop helper (plan 77 E5)',
+        'owner': 'BackgroundLoop helper',
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': (
             'The ONE spawn site for Event-stopped process polling loops; '

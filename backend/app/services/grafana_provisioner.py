@@ -1,4 +1,4 @@
-"""Wire an installed Grafana to Prometheus / Loki (plan 86 §A4).
+"""Wire an installed Grafana to Prometheus / Loki.
 
 Attaching ``metrics`` (Prometheus) or ``logs`` (Loki) to a Grafana install
 creates the data source through Grafana's HTTP API, at the loopback port its

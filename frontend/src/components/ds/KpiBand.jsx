@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { Button as SharedButton } from '@/components/ui/button';
 
 // KpiBand — the one responsive grid wrapper for KPI/stat tiles (design-system
-// primitive, plan 20). Lays a row of <MetricCard> tiles into a single grid so
+// primitive). Lays a row of <MetricCard> tiles into a single grid so
 // every page's summary strip shares the same spacing + collapse behaviour
 // instead of ~20 hand-rolled `*-kpis` grids.
 //

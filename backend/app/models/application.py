@@ -18,7 +18,7 @@ from app.utils.ingress import (
 class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     """A managed app.
 
-    SOFT DELETED (plan 70). `Application.query` therefore returns TOMBSTONES —
+    SOFT DELETED. `Application.query` therefore returns TOMBSTONES —
     read `query_active()` anywhere you mean "an app that still exists". That
     distinction is not cosmetic here: this model drives nginx vhosts, container
     lifecycles, DNS, backups and outbound registry calls, and the equivalent
@@ -54,10 +54,10 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     # Populated from a manifest at import, editable in Settings. NULL => no gate
     # (the restart falls back to a fixed wait).
     healthcheck_path = db.Column(db.String(255), nullable=True)
-    # JSON: health-gate timeout / 4xx rule and the other deploy knobs
-    # (plan 87). NULL = defaults; read through app.services.deploy_settings.
+    # JSON: health-gate timeout / 4xx rule and the other deploy knobs.
+    # NULL = defaults; read through app.services.deploy_settings.
     deploy_settings = db.Column(db.Text, nullable=True)
-    # A/B slot deploys (plan 87 §B): opt-in, and which slot is live.
+    # A/B slot deploys: opt-in, and which slot is live.
     slot_deploys_enabled = db.Column(db.Boolean, nullable=False, server_default='0', default=False)
     active_slot = db.Column(db.String(1), nullable=True)
 
@@ -95,7 +95,7 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     # Traefik/Caddy). NULL is treated as the default. See app/utils/ingress.py.
     ingress_plane = db.Column(db.String(20), nullable=True)
 
-    # Appliance tier (plan 35): typed port declarations (JSON list of
+    # Appliance tier: typed port declarations (JSON list of
     # {container, host, protocol, ...}) and a one-shot bootstrap-completed flag.
     ports = db.Column(db.Text, nullable=True)
     bootstrap_done = db.Column(db.Boolean, nullable=False, server_default='0', default=False)
@@ -117,12 +117,12 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
     # the site's vhost, with bypasses for auth/admin/cart traffic. NULL/False
     # = off (today's behavior).
     micro_cache_enabled = db.Column(db.Boolean, default=False, nullable=True)
-    # Page-cache TTL in seconds (plan 86 §B3). NULL = the 10s default; the
+    # Page-cache TTL in seconds. NULL = the 10s default; the
     # renderer clamps to NginxService.MICROCACHE_TTL_MAX.
     micro_cache_ttl = db.Column(db.Integer, nullable=True)
-    # Opt-in PgBouncer sidecar for a PostgreSQL engine app (plan 86 §D1).
+    # Opt-in PgBouncer sidecar for a PostgreSQL engine app.
     pooler_enabled = db.Column(db.Boolean, nullable=True)
-    # Long-cache fingerprinted assets in the vhost (plan 86 §B2).
+    # Long-cache fingerprinted assets in the vhost.
     immutable_assets = db.Column(db.Boolean, nullable=True)
 
     # Environment linking

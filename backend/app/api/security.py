@@ -1,7 +1,7 @@
-# Bucket: PER-APP (plan 29 #9). Per-app scan/security routes gate on the shared
+# Bucket: PER-APP. Per-app scan/security routes gate on the shared
 # app-access seam; host-level surfaces stay admin-only.
 #
-# Lean core (plan 47 Ph3b-4 / plan 55 Phase 3): this blueprint keeps only the
+# Lean core: this blueprint keeps only the
 # baseline that works with zero host packages — status/config, legacy
 # integrity, suspicious activity, events, SSH keys, IP lists, the audit and
 # scoped FIM. The install-gated tool surfaces (/clamav/*, /scan/*,

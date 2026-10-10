@@ -1,4 +1,4 @@
-"""Manifest-powered previews (plan 17, Phase 5, #20).
+"""Manifest-powered previews.
 
 A PR preview for a manifest-managed app is an apply with a namespace prefix and
 a TTL: it clones the manifest-resolved config (env + the existing

@@ -1,4 +1,4 @@
-"""Garage admin operations through its own CLI (plan 86 §C2).
+"""Garage admin operations through its own CLI.
 
 ``garage json-api <Endpoint> <payload>`` invokes the admin API over the node's
 RPC socket and prints the JSON result, so the panel drives Garage with

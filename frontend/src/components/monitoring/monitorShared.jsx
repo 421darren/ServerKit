@@ -46,5 +46,5 @@ export function monitorStateOf(monitor) {
 
 export const INCIDENT_STATES = ['investigating', 'identified', 'monitoring', 'resolved'];
 
-// Impact levels ride the shared vocabulary (plan 77 D3).
+// Impact levels ride the shared vocabulary.
 export const impactTone = (impact) => statusKind(impact);

@@ -146,7 +146,7 @@ class Deployment(JsonColumnMixin, db.Model):
         A deploy marks the release it replaces ``rolled_back``, so "was live
         once" is live-or-rolled_back with a completed deploy. Matching only
         ``live`` found nothing for any app deployed twice: rollback without a
-        version always failed and no diff was ever generated (plan 87 §A6).
+        version always failed and no diff was ever generated.
         """
         return cls.query.filter(
             cls.app_id == app_id,

@@ -374,7 +374,7 @@ class RemoteDockerService:
             return flat
 
         def h(value):
-            # Probe honesty (plan 75 §A3): a counter the agent could not
+            # Probe honesty: a counter the agent could not
             # determine stays None — never 0, which would render as a real
             # reading — and gets no human string.
             return cls._human_bytes(value) if value is not None else None

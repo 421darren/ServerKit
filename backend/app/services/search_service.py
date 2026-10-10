@@ -1,4 +1,4 @@
-"""Unified entity omnisearch (plan 41, Phase 4).
+"""Unified entity omnisearch.
 
 Fans a short search term out across the panel's core entity types and returns a
 flat list of lightweight, deep-linkable rows. Each entity type reuses its

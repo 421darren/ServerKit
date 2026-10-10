@@ -1,4 +1,4 @@
-// Proving test for the load-time SDK gate (plan 32 Decision 1).
+// Proving test for the load-time SDK gate.
 //
 // The gate is the pure half of the runtime loader's version check, split out so
 // it runs under plain node. This covers the refusal matrix: grace (no range),

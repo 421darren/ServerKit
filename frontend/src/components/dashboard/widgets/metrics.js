@@ -1,5 +1,5 @@
 /**
- * Metric catalog for the dashboard widget grid (plan 62).
+ * Metric catalog for the dashboard widget grid.
  *
  * Every entry here is backed by a REAL field on a real payload — there is no
  * synthetic data anywhere in the widget stack. Two history payloads exist and

@@ -14,7 +14,7 @@ const fmtSeconds = (s) => {
 // Long enough to read the outcome, short enough that you don't sit waiting.
 const AUTO_RETURN_SECONDS = 10;
 
-// Completion banner (plan 51 §1.1): total duration, per-step timings, and the
+// Completion banner: total duration, per-step timings, and the
 // payoff actions — Open app (when a live URL exists), View service, View
 // runtime logs.
 //

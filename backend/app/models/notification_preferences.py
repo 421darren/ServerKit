@@ -41,14 +41,14 @@ class NotificationPreferences(TimestampMixin, JsonColumnMixin, db.Model):
     # JSON object with category: boolean
     categories = db.Column(db.Text, default='{"system": true, "security": true, "backups": true, "apps": true}')
 
-    # Digest rollup cadence (plan 24 Phase 3): 'off' | 'daily' | 'weekly'.
+    # Digest rollup cadence: 'off' | 'daily' | 'weekly'.
     # Default 'off' preserves immediate-send back-compat (digests are opt-in).
     # Backed by migration 060; the digest job (app/notifications/digest.py)
     # batches this user's `queued_digest` deliveries into one branded email.
     digest_cadence = db.Column(db.String(12), default='off')
     digest_last_sent_at = db.Column(db.DateTime, nullable=True)
 
-    # Per-event channel overrides (plan 24 Phase 2):
+    # Per-event channel overrides:
     # {"<event_key>": {"<channel>": bool}}. The resolution/catalog surface was
     # lost in the 2026-07 data loss; the column stays mapped so migration
     # 059's data survives and the schema matches the migrations

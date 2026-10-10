@@ -166,14 +166,14 @@ def run_checked(cmd: Union[List[str], str], *, privileged: bool = False,
                 timeout: Optional[int] = 60, input: Optional[str] = None,
                 cwd: Optional[str] = None, env: Optional[dict] = None,
                 merge_stderr: bool = False, **kwargs) -> dict:
-    """Run a command and get a result, not a ``CompletedProcess`` (plan 75 §G1).
+    """Run a command and get a result, not a ``CompletedProcess``.
 
     The result-shaped door. Around ``backend/app``'s raw ``subprocess`` calls
     sit 220 copies of ``capture_output=True, text=True``, 56 hand-rolled
     ``except subprocess.TimeoutExpired`` handlers, 19 hand-rolled
     ``except FileNotFoundError`` handlers, and 1,164 literal
     ``{'success': False, 'error': ...}`` constructions. Each of those is a
-    place where an exec failure can be — and per plan 74 has been — converted
+    place where an exec failure can be — and has been — converted
     into a false fact about the operator's server.
 
     Returns::
@@ -375,14 +375,14 @@ def run_from_gzip(cmd: List[str], src: str, *, env: Optional[dict] = None,
 def write_privileged_file(path: str, content: str, *, append: bool = False,
                           mode: Optional[str] = None,
                           owner: Optional[str] = None) -> dict:
-    """Write *content* to *path* with privilege escalation. One door (plan 75 §G2).
+    """Write *content* to *path* with privilege escalation. One door.
 
     The write-a-root-owned-file sequence was pasted at 15+ call sites in **two
     competing forms**: ``run_privileged(['tee', path], input=content)`` and a
     raw ``subprocess.run(['sudo', 'tee', path], ...)``. The second form is the
     drift this plan exists to remove — it hardcodes ``sudo`` instead of asking
     :func:`_needs_sudo`, so it fails on a panel already running as root (no
-    sudo binary in a minimal container) exactly the way plan 74's outage did.
+    sudo binary in a minimal container) exactly the way a past outage did.
 
     Returns a result dict rather than a ``CompletedProcess`` because every one
     of those call sites immediately converted one into the other:
@@ -448,7 +448,7 @@ def unit_is_active(unit: str, *, timeout: int = 10) -> Optional[bool]:
     that timed out — and is deliberately not ``False``. The five hand-rolled
     copies of this ``systemctl is-active`` call all collapsed those cases into
     "not running", which is how a working service gets reported as down on a
-    host the panel simply could not ask (plan 74's outage, one layer up).
+    host the panel simply could not ask (the same outage, one layer up).
 
     Callers that genuinely want two states write ``unit_is_active(u) is True``
     and are then saying so out loud.
@@ -641,7 +641,7 @@ class ServiceControl:
         The translation was re-implemented per service with subtly divergent
         failure shapes ('error' vs 'message' carrying stderr); keep the key
         and fallback parametrized so converting a site is parity, not a
-        contract change (plan 75 §F5).
+        contract change.
         """
         if proc.returncode == 0:
             return {'success': True, 'message': ok_message}

@@ -3,7 +3,7 @@ import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 
 /**
- * STAGING banner — a full-width amber strip shown only on the plan-37 staging
+ * STAGING banner — a full-width amber strip shown only on the staging
  * testbed. Driven by the public /system/health endpoint echoing `staging:true`
  * (set via the SERVERKIT_STAGING env var on the staging instance). Renders
  * nothing on a normal instance and never throws on fetch errors.

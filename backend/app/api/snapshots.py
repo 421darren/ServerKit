@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Snapshot reads (list/get/diff) require app
+# Bucket: PER-APP. Snapshot reads (list/get/diff) require app
 # access (can_access_app); restore requires write access (can_edit_app) on top
 # of the panel-wide @developer_required.
 """
@@ -24,7 +24,7 @@ snapshots_bp = Blueprint('snapshots', __name__)
 
 
 def _get_app_or_404(app_id, write=False):
-    """Resolve the app and enforce per-app access (plan 29 #9). ``write`` requires
+    """Resolve the app and enforce per-app access. ``write`` requires
     can_edit_app (owner/admin/editor); otherwise can_access_app. A caller without
     the needed tier gets a 403 (the resource itself exists)."""
     app = Application.query_active().filter_by(id=app_id).first()

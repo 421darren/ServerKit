@@ -1,5 +1,5 @@
 """JSON-file config persistence — one door for the load-or-default /
-dump-or-error mechanics (plan 75 §F4).
+dump-or-error mechanics.
 
 Five services shipped byte-identical ``save_config`` copies and seven more the
 same ``get_config`` skeleton, each a place a fix (an atomic write, a better
@@ -8,7 +8,7 @@ the per-service parts stay per-service: the path, the default, and any extra
 behaviour around the write (cache invalidation, secret merging — those keep
 their own methods and may call these helpers inside).
 
-The write is atomic (plan 75 §G6). The consolidation that created this module
+The write is atomic. The consolidation that created this module
 deliberately kept the copies' plain ``open(..., 'w')`` so that no behaviour
 change rode along with it, and noted that atomic writes, if ever wanted, would
 land here once. This is that once: a truncating write that dies mid-``json.dump``

@@ -7,7 +7,7 @@ import { useLocale } from '../../contexts/useLocale.js';
 import useSettingFocus from '../../hooks/useSettingFocus';
 
 /**
- * Panel language (plan 79 B3).
+ * Panel language.
  *
  * Lives next to the theme picker because it is the same shape of choice: a
  * per-user preference that changes how every screen reads. It also persists

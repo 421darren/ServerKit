@@ -95,7 +95,7 @@ class DeploymentService:
 
         This is the main entry point for deployments. It holds the app's deploy
         lock for the whole run, so a second deploy of the same app waits for
-        this one instead of racing it (plan 87 §A5).
+        this one instead of racing it.
         """
         from app.services.deploy_lock import deploy_lock, DeployLockTimeout
         try:
@@ -242,8 +242,8 @@ class DeploymentService:
                 keep_count = build_config.get('keep_deployments', 5)
                 Deployment.cleanup_old_deployments(app_id, keep_count)
 
-            # One image per deploy is a disk leak unless something prunes it
-            # (plan 85). Keeps the newest few for rollback.
+            # One image per deploy is a disk leak unless something prunes it.
+            # Keeps the newest few for rollback.
             if app.app_type == 'docker' and not app.server_id:
                 from app.services import app_image_retention, deploy_settings
                 app_image_retention.prune(app_id, keep=deploy_settings.get(app, 'keep_images'),
@@ -254,7 +254,7 @@ class DeploymentService:
 
             # app.deployed was in the event catalog but nothing emitted it.
             # Webhook subscribers and in-process listeners (a CDN purge,
-            # plan 86 §B4) hear it now. Best-effort: never fails the deploy.
+            # hear it now. Best-effort: never fails the deploy.
             try:
                 from app.services.event_service import EventService
                 EventService.emit('app.deployed', {
@@ -352,7 +352,7 @@ class DeploymentService:
 
         from app.services.slot_deploy_service import SlotDeployService, SlotDeployError
         if app.slot_deploys_enabled:
-            # A/B slots (plan 87 §C): the project boots as <name>-<idle slot>
+            # A/B slots: the project boots as <name>-<idle slot>
             # beside the live one instead of recreating it in place.
             verdict = SlotDeployService.eligibility(app)
             if not verdict['eligible']:
@@ -417,7 +417,7 @@ class DeploymentService:
         from app.services.env_service import EnvService
         env = EnvService.get_effective_env(app.id)
 
-        # ---- preflight (plan 72 B.1) -------------------------------------
+        # ---- preflight -------------------------------------------------
         # Everything that can fail while the old container keeps serving runs
         # HERE, above the stop. The image is the only pre-traffic requirement
         # this path has: a build already ran to completion in deploy() step 1,
@@ -451,7 +451,7 @@ class DeploymentService:
 
         from app.services.slot_deploy_service import SlotDeployService
         if app.slot_deploys_enabled:
-            # A/B slots (plan 87 §B): boot beside the live release, gate,
+            # A/B slots: boot beside the live release, gate,
             # switch, watch. Eligibility is re-checked on every deploy; an app
             # that stopped qualifying fails here rather than silently taking
             # the downtime of an in-place deploy.
@@ -504,8 +504,8 @@ class DeploymentService:
                 if app.live_domains:
                     SiteDomainService.write_app_vhost(app)
                     SlotDeployService._reapply_vhost_extras(app)
-            # Procfile worker/scheduler lines run as siblings of the same image
-            # (plan 86 §C3). Best-effort: the web process is already live.
+            # Procfile worker/scheduler lines run as siblings of the same image.
+            # Best-effort: the web process is already live.
             workers = WorkerProcessService.deploy(
                 app, image_tag, env, volumes, log=log_callback)
             if workers['failed'] and log_callback:

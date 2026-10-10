@@ -33,7 +33,7 @@ const SidebarSettings = () => {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
     const register = useSettingFocus();
-    // Items ServerKit Cloud holds under the managed profile (plan 25) are not
+    // Items ServerKit Cloud holds under the managed profile are not
     // offered as things to re-add — they left every preset already.
     const { hiddenSidebarIds: managedHidden } = useManagedProfile();
 

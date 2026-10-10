@@ -66,18 +66,18 @@ BUILTIN_EXTENSIONS_DIR = os.environ.get(
 # file copy — its backend loads straight from builtin-extensions/ and its frontend
 # is pre-bundled (D5). A user uninstall records a marker so it stays gone.
 #
-# serverkit-wordpress GRADUATED from this list in plan 52 Phase 5: it left the
+# serverkit-wordpress GRADUATED from this list: it left the
 # tree into its own repo and now distributes through the registry (the
 # k8s/tramo model — bundled index entry + GitHub release zip), offered during
 # onboarding via RECOMMENDED_EXTENSIONS_BY_USE_CASE. Its uninstall-marker
 # semantics are preserved (the settings key machinery below is untouched), so
 # a user who uninstalled WP before the extraction is never re-seeded.
-FLAGSHIP_SLUGS = []  # cloudflare-ops left the tree (plan 52 Ph2 cutover); machinery kept for future flagships
+FLAGSHIP_SLUGS = []  # cloudflare-ops left the tree (cutover); machinery kept for future flagships
 _FLAGSHIP_UNINSTALLED_KEY = 'extensions.flagship_uninstalled'
 
-# Wizard-optional flagships (plan 47): offered — not force-installed — during
+# Wizard-optional flagships: offered — not force-installed — during
 # onboarding. Currently EMPTY: WordPress (the only member) left the tree in
-# plan 52 Phase 5 and is now a registry extension the wizard offers like any
+# its own repo and is now a registry extension the wizard offers like any
 # other recommendation. The machinery stays — a future in-tree flagship that
 # should be wizard-optional goes here.
 WIZARD_OPTIONAL_FLAGSHIP_SLUGS = []
@@ -672,8 +672,8 @@ def install_from_url(url, user_id=None, expected_sha256=None, force=False,
         expected_sha256: if given, the downloaded zip must match this digest
             before extraction — a mismatch is a hard failure (no partial install)
         expected_signature / expected_key_id: if given, the downloaded zip is
-            verified against this base64 ed25519 signature envelope (plan 55
-            D3) under the pinned publisher key named by expected_key_id. A bad
+            verified against this base64 ed25519 signature envelope under the
+            pinned publisher key named by expected_key_id. A bad
             signature is a hard failure; an unpinned key installs but is
             recorded as 'untrusted_key'.
         force: allow reinstalling over an already-active plugin (used by updates)
@@ -791,7 +791,7 @@ def preview_from_url(url):
     buf.seek(0)
     manifest = _read_manifest_from_buffer(buf)
 
-    # Signature verdict for the consent card (plan 55): the detached .minisig
+    # Signature verdict for the consent card: the detached .minisig
     # beside the release asset, verified against the panel's pinned publisher
     # keys. Unsigned is a verdict, not an error — the card says so honestly.
     sig_b64 = _fetch_detached_signature(resolved)
@@ -1099,7 +1099,7 @@ def _install_from_buffer(buf, source_url, source_type, user_id=None, force=False
                     # them runs pip with the backend's privileges, which means
                     # arbitrary code via setup.py hooks. Operators must opt in
                     # by setting SERVERKIT_ALLOW_PLUGIN_PIP=1.
-                    # Same predicate the admin surface reports (plan 55 task 6)
+                    # Same predicate the admin surface reports (task 6)
                     # — if the two ever disagreed, the page would describe a
                     # behaviour the installer does not have.
                     req_content = zf.read(member).decode('utf-8')
@@ -1160,7 +1160,7 @@ def _install_from_buffer(buf, source_url, source_type, user_id=None, force=False
         plugin.entry_point = entry_point
         plugin.url_prefix = url_prefix
         plugin.frontend_entry = manifest.get('frontend_entry', '')
-        # Runtime-frontend integrity (plan 25 #6, core-slim #39): pin the sha256
+        # Runtime-frontend integrity (core-slim #39): pin the sha256
         # of the prebuilt ESM bundle so the client loader can verify the bytes it
         # blob-imports match what was installed. No-op for baked .jsx builtins.
         if has_frontend:
@@ -1872,7 +1872,7 @@ def plugin_pip_enabled():
 
 
 def pending_requirements(plugin):
-    """The Python dependencies an install declined to pip-install (plan 55).
+    """The Python dependencies an install declined to pip-install.
 
     When the opt-in is off, install writes the plugin's requirements.txt into
     its backend dir and moves on with a log line nobody reads — the extension
@@ -1929,7 +1929,7 @@ def pending_requirements(plugin):
 
 # Plugin-config keys the panel owns — never user-editable, preserved across a
 # config PUT. The runtime-frontend loader's per-bundle sha256 hashes live here,
-# and so does the install-time signature verdict (plan 55).
+# and so does the install-time signature verdict.
 RESERVED_PLUGIN_CONFIG_KEYS = ('_frontend_hashes', '_signature')
 
 
@@ -2025,7 +2025,7 @@ def list_builtin_extensions():
     return out
 
 
-# ── Onboarding wizard: use-case → recommended extension slugs (plan 47) ──
+# ── Onboarding wizard: use-case → recommended extension slugs ──
 #
 # Drives the setup wizard's "Recommended for you" install checkboxes. Every slug
 # here MUST resolve to a real bundled builtin (builtin-extensions/) or a registry
@@ -2097,7 +2097,7 @@ def recommend_extensions_for_use_cases(use_cases):
     return out
 
 
-# Wizard round 2 (plan 47 Ph5): "How much security tooling?" The extracted
+# Wizard round 2: "How much security tooling?" The extracted
 # security suite installs by chosen posture, not per-tool nagging. Slugs here
 # resolve through the same catalog index as the use-case map — an entry that
 # is not yet published (or a registry that is unreachable) silently drops out,
@@ -2134,7 +2134,7 @@ def finalize_setup_flagships():
     """Keep the panel lean after onboarding completes: any wizard-optional
     flagship (WordPress) the user didn't install during the wizard gets the
     uninstall marker so the boot-time flagship seeder won't re-add it on later
-    boots. Called from the complete-onboarding endpoint (plan 47)."""
+    boots. Called from the complete-onboarding endpoint."""
     for slug in WIZARD_OPTIONAL_FLAGSHIP_SLUGS:
         if not InstalledPlugin.query.filter_by(slug=slug).first():
             _set_flagship_uninstalled(slug, True)
@@ -2144,7 +2144,7 @@ def get_installed_extension_attr(slug, module, attr, default=None):
     """Return ``attr`` from an installed extension's backend module, else default.
 
     A core seam that calls into a feature which now lives in an extracted
-    extension (plan 47) uses this so it no-ops cleanly when the extension isn't
+    extension uses this so it no-ops cleanly when the extension isn't
     installed. Resolves ``app.plugins.<slug>.<module>`` (the dashed package the
     plugin loader wires up on install); any import/lookup failure yields
     ``default``."""
@@ -2285,7 +2285,7 @@ def _seed_flagship_row(entry):
 
 def _wizard_optional_flagships_suppressed():
     """True when wizard-optional flagships (WordPress) should NOT be boot-seeded:
-    a fresh install whose setup wizard hasn't completed (plan 47).
+    a fresh install whose setup wizard hasn't completed.
 
     Bypassed under TESTING so the extensive WordPress test suite keeps its
     seeded flagship; the real gate is exercised by dedicated proving tests that
@@ -2316,7 +2316,7 @@ def seed_flagship_extensions():
     for slug in FLAGSHIP_SLUGS:
         if slug in uninstalled:
             continue
-        # Fresh install (plan 47): don't seed wizard-optional flagships (WordPress)
+        # Fresh install: don't seed wizard-optional flagships (WordPress)
         # until the setup wizard installs them. Existing/completed-setup installs
         # fall through and seed as before.
         if suppress_optional and slug in WIZARD_OPTIONAL_FLAGSHIP_SLUGS:
@@ -2361,7 +2361,7 @@ def install_registry_extension(slug, user_id=None):
     """Install an extension listed in the remote registry (checksum-verified).
 
     When the index entry carries a ``signature``/``publisher_key_id`` pair
-    (index schema v3, plan 55 D3) the downloaded zip is also verified against
+    (index schema v3) the downloaded zip is also verified against
     the panel's pinned publisher keys — a bad signature is a hard failure
     even when the sha256 matches."""
     from app.services import registry_service

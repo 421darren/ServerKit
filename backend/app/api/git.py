@@ -1,11 +1,11 @@
-# Bucket: PER-APP (plan 29 #9, #11). The per-app deployment read gates on app
+# Bucket: PER-APP. The per-app deployment read gates on app
 # visibility (require_app_member); webhook reads are scoped to the linked app's
 # visibility (an unlinked webhook stays panel-wide viewer-visible). Webhook
 # mutations and the Gitea host lifecycle stay admin-only.
 """Git webhook + deployment API — the deploy-pipeline half.
 
 The Gitea self-host surface (lifecycle + repo browsing) moved to the
-serverkit-git extension (plan 52 Phase 6), which mounts it back at this same
+serverkit-git extension, which mounts it back at this same
 /api/v1/git prefix when installed."""
 
 from flask import Blueprint, request, jsonify
@@ -25,7 +25,7 @@ git_bp = Blueprint('git', __name__)
 def _webhook_visible_to(user, webhook):
     """A webhook with no app linkage is a panel-wide viewer-visible resource; an
     app-linked webhook is visible only to callers who can reach that app
-    (owner/admin/grant/workspace member — plan 29 #11)."""
+    (owner/admin/grant/workspace member)."""
     if not getattr(webhook, 'app_id', None):
         return True
     # Deliberately unfiltered: this gate falls through to "panel-wide visible"
@@ -44,7 +44,7 @@ def _webhook_visible_to(user, webhook):
 @git_bp.route('/webhooks', methods=['GET'])
 @viewer_required
 def list_webhooks():
-    """List webhooks the caller can see (plan 29 #11): every unlinked webhook
+    """List webhooks the caller can see: every unlinked webhook
     plus any app-linked webhook whose app they can reach."""
     user = get_current_user()
     result = WebhookService.list_webhooks()

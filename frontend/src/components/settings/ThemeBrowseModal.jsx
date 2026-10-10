@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
 import { toastError } from '@/utils/errorMessage';
 
-// Browse & install community themes from the registry (plan 60, Phase 3).
+// Browse & install community themes from the registry.
 // Offline-tolerant: if the registry is unreachable the panel falls back to the
 // bundled index, so this never hard-fails — it just shows fewer (or no) cards.
 const ThemeBrowseModal = ({ open, onOpenChange }) => {

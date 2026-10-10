@@ -34,7 +34,7 @@ function writeCache(key, version, snapshot) {
 }
 
 /**
- * Runtime self-capture of skeleton bones (Phase 3 of plan 50).
+ * Runtime self-capture of skeleton bones.
  *
  * After a page's real content has rendered, snapshot the referenced region into
  * bones and cache them in `localStorage` under `sk-bones:<key>`; on the NEXT load

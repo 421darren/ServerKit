@@ -616,8 +616,7 @@ class BuildService:
 
         Auto-detects build method if set to 'auto'. ``image_tag`` names the
         image; a deploy passes an immutable per-deployment tag so a rollback
-        redeploys the image that actually ran, not whatever ``:latest`` is now
-        (plan 87 §A1).
+        redeploys the image that actually ran, not whatever ``:latest`` is now.
         """
         build_config = cls.get_app_build_config(app_id)
         if not build_config:

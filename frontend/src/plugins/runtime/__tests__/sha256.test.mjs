@@ -1,5 +1,5 @@
-// Proving test for the dependency-free SHA-256 + the digest seam (plan 32
-// Decision 2). The HTTP-only panel path (pure-JS sha256) MUST compute the same
+// Proving test for the dependency-free SHA-256 + the digest seam. The
+// HTTP-only panel path (pure-JS sha256) MUST compute the same
 // digest as the secure-context path (crypto.subtle). This asserts the pure-JS
 // implementation against known vectors AND against Node's crypto for random
 // inputs, and asserts the digest seam agrees with the pure-JS hash.

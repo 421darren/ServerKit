@@ -1,5 +1,5 @@
 """Fleet health doctor — the panel-host doctor, extended across the agent fleet
-(Fleet Parity Sweep, plan 26 Phase 2-4).
+(Fleet Parity Sweep).
 
 The panel-host :class:`doctor_service.DoctorService` answers "is *this* box
 healthy?" and stores a single ``doctor_last_report`` blob. This service answers

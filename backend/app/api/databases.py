@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). The per-app docker DB read (/docker/app/<app_id>)
+# Bucket: PER-APP. The per-app docker DB read (/docker/app/<app_id>)
 # gates on can_access_app; the bare-container docker routes have no app linkage
 # and are system-level admin-only, matching their kill/drop siblings.
 # The host-level raw routes (engine lists, tables/structure, users/privileges,
@@ -963,7 +963,7 @@ def kill_docker_db_process(container, pid):
     return jsonify(result), 200
 
 
-# ==================== INSIGHTS (plan 86 §A3) ====================
+# ==================== INSIGHTS ====================
 # Read-only top queries + connection / cache-hit gauges for a Docker database
 # container, and the one write it offers: turning pg_stat_statements on
 # (through the config tuner, so its rollback undoes it).

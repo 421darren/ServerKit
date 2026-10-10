@@ -1716,7 +1716,7 @@ class EnvironmentPipelineService:
 
             # Set permissions
             # run_privileged, not a hardcoded sudo: this is escalation, and
-            # _needs_sudo() is the one place that decides it (plan 75 §G2).
+            # _needs_sudo() is the one place that decides it.
             run_privileged(['chown', '-R', 'www-data:www-data', target_dir],
                            timeout=60)
 

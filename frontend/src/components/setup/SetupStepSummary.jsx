@@ -41,7 +41,7 @@ const SetupStepSummary = ({ accountInfo, useCases, twoFactorEnabled, onFinish })
     const [installing, setInstalling] = useState(false);
     const [installState, setInstallState] = useState({}); // slug -> 'installing'|'done'|'error'
 
-    // Security posture (plan 47 Ph5). Levels come catalog-resolved from the
+    // Security posture. Levels come catalog-resolved from the
     // backend — a level only lists extensions that are installable right now,
     // so this section renders honestly even before every security extension
     // is published. 'minimal' is the lean default.
@@ -215,7 +215,7 @@ const SetupStepSummary = ({ accountInfo, useCases, twoFactorEnabled, onFinish })
                         </span>
                     </div>
 
-                    {/* Security posture (plan 47 Ph5): how much tooling to
+                    {/* Security posture: how much tooling to
                         install now. Only levels that resolve at least one
                         installable extension differ from "minimal"; each card
                         names exactly what it would install. */}

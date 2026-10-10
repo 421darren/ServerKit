@@ -1,5 +1,5 @@
 /**
- * Dependency-free SHA-256 (plan 32 Decision 2).
+ * Dependency-free SHA-256.
  *
  * The runtime loader verifies each bundle's sha256 against the install-recorded
  * hash. In a SECURE context the browser's `crypto.subtle` does this natively;

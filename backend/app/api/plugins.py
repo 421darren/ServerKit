@@ -65,7 +65,7 @@ def install_plugin():
     # Optional checksum continuity: the preview step returns the resolved URL +
     # sha256; passing them here pins the install to the exact previewed bytes.
     expected_sha256 = (data.get('sha256') or None)
-    # Optional signature continuity (plan 55): when the preview verified a
+    # Optional signature continuity: when the preview verified a
     # detached signature, pass it through so the install re-verifies the exact
     # pinned bytes. A bad signature is a hard failure; no signature = the
     # consent card's "unsigned" path.
@@ -337,7 +337,7 @@ def recommendations():
     use_cases = [u.strip() for u in raw.split(',') if u.strip()]
     return jsonify({
         'recommendations': recommend_extensions_for_use_cases(use_cases),
-        # Wizard round 2 (plan 47 Ph5): the security-posture chooser. Each
+        # Wizard round 2: the security-posture chooser. Each
         # level lists only extensions the catalog can actually install today —
         # unpublished slugs drop out rather than rendering dead checkboxes.
         'security_postures': {
@@ -518,7 +518,7 @@ def get_manifest_spec():
 @plugins_bp.route('/<int:plugin_id>/permissions', methods=['GET'])
 @jwt_required()
 def get_plugin_permissions(plugin_id):
-    """Declared vs actually-observed permission use for one extension (plan 55).
+    """Declared vs actually-observed permission use for one extension.
 
     Admin-only: it describes what a piece of third-party code has been reaching
     for, which is operator information.

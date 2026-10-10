@@ -27,7 +27,7 @@ const DEFAULT_TEMPLATES = {
 // Until the server says otherwise (a Grafana install also takes metrics/logs).
 const DEFAULT_KINDS = ['cache', 'storage', 'queue', 'tracing'];
 
-// "Attach → Cache / Storage / Queue" (plan 86 §C4): reuse an installed
+// "Attach → Cache / Storage / Queue": reuse an installed
 // service or install one, write the env references, then offer a redeploy.
 export default function AttachmentsCard({ app }) {
     const { t } = useTranslation();

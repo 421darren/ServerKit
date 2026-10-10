@@ -1,4 +1,4 @@
-"""Unified entity omnisearch API (plan 41, Phase 4).
+"""Unified entity omnisearch API.
 
 A single authz-aware endpoint the command palette calls to search across the
 core entity types (services, servers, domains, databases, WordPress sites, cron

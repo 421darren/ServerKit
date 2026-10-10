@@ -5,7 +5,7 @@ import { CopyButton } from '@/components/CopyButton';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
 
-// Pinned failure card (plan 51 §1.1): failed step name, the one-line error, a
+// Pinned failure card: failed step name, the one-line error, a
 // plain-language hint when a heuristic matched, actions (Retry / Copy / Ask AI)
 // and the persisted failure tail behind a disclosure.
 //

@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). App-linked job reads gate on the app-grant
+# Bucket: PER-APP. App-linked job reads gate on the app-grant
 # seam (can_access_app); retries require can_operate_app. App-less jobs
 # (template installs, simulated deploys) are requester-or-admin only. The
 # job list is admin-only globally and app-access-gated when app_id is given.
@@ -51,7 +51,7 @@ def _job_payload(job, user, include_plan=False, include_logs=False):
 @deployment_jobs_bp.route('/simulate', methods=['GET'])
 @jwt_required()
 def get_simulate_info():
-    """Simulated-deploy availability + scenario catalog (plan 51.5 dev tool).
+    """Simulated-deploy availability + scenario catalog (dev tool).
 
     404 when the DEMO_DEPLOYS_ENABLED gate is off (production default), so the
     surface simply doesn't exist outside dev.
@@ -152,8 +152,8 @@ def get_deployment_job(job_id):
 @deployment_jobs_bp.route('/<job_id>/retry', methods=['POST'])
 @jwt_required()
 def retry_deployment_job(job_id):
-    """Retry a failed deployment job by cloning it and enqueuing a fresh run
-    (plan 51 D8). Only failed jobs may be retried."""
+    """Retry a failed deployment job by cloning it and enqueuing a fresh run.
+Only failed jobs may be retried."""
     job = DeploymentJob.query.get(job_id)
     if not job:
         raise not_found('deployment')

@@ -1,6 +1,6 @@
-# Bucket: PER-APP (plan 29 #9). Reads gate on can_access_app; changes gate on
+# Bucket: PER-APP. Reads gate on can_access_app; changes gate on
 # can_edit_app.
-"""A/B slot deploys (plan 87). Mounted under ``/api/v1/apps``.
+"""A/B slot deploys. Mounted under ``/api/v1/apps``.
 
   GET  /<app_id>/slots               — slots, active slot, eligibility + reasons
   PUT  /<app_id>/slots               — {enabled}: opt in (adopts the current

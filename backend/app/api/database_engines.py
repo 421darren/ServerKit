@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). The per-app extension routes
+# Bucket: PER-APP. The per-app extension routes
 # (/<app_id>/extensions) address one installed engine, so they gate on
 # can_access_app; the catalog reads above them are system-level and carry no
 # app linkage, and every mutation is admin-only.

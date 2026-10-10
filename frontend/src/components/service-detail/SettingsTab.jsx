@@ -344,7 +344,7 @@ const SettingsTab = ({ app, deployConfig, domains, primaryDomain, onUpdate }) =>
                     </div>
                 )}
 
-                {/* Cache — opt-in nginx micro-cache (task #21, plan 86 §B3):
+                {/* Cache — opt-in nginx micro-cache:
                     short-TTL page cache with auth/admin/cart bypasses, stale
                     serving, and a per-site purge. */}
                 {section === 'cache' && (
@@ -354,8 +354,8 @@ const SettingsTab = ({ app, deployConfig, domains, primaryDomain, onUpdate }) =>
                     </div>
                 )}
 
-                {/* Health & Rollout (Docker only) — the deploy health gate
-                    (plan 87): where a new release is asked, and for how long. */}
+                {/* Health & Rollout (Docker only) — the deploy health gate:
+where a new release is asked, and for how long. */}
                 {section === 'health' && (
                     <div className="svc-settings__section">
                         <h3 className="svc-settings__section-title">{t('app.settingsTab.healthRollout', 'Health and rollout')}</h3>

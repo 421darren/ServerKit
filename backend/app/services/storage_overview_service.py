@@ -1,4 +1,4 @@
-"""Where the panel host's disk goes (plan 85 §D1).
+"""Where the panel host's disk goes.
 
 Read-only: measures, never deletes. Cleanup stays in
 ``disk_reclaim_service`` (its safe candidates are what the Storage page

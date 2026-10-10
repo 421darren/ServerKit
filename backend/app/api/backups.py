@@ -12,7 +12,7 @@ from app.exceptions import field_required, not_found
 backups_bp = Blueprint('backups', __name__)
 
 
-# UI-facing metadata for the CORE target types (plan 52 D4). Extension kinds
+# UI-facing metadata for the CORE target types. Extension kinds
 # carry their own label/scopes in backup_kind_registry. 'server' is listed
 # but flagged unimplemented so the UI never shows a dead whole-server button.
 _CORE_TARGET_META = {

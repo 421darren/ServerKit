@@ -236,7 +236,7 @@ const RequirementsSection = ({ requirements }) => {
     );
 };
 
-// Per-extension honesty surface (plan 55 tasks 6 + 7): what the extension
+// Per-extension honesty surface (tasks 6 + 7): what the extension
 // declared, what the panel actually saw it do, what it was refused, and which
 // Python packages the panel declined to install.
 const ExtensionPermissionsDialog = ({ plugin, onClose }) => {

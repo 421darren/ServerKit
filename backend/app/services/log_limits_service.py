@@ -1,4 +1,4 @@
-"""Bound the log files ServerKit writes or causes (plan 85 A5).
+"""Bound the log files ServerKit writes or causes.
 
 Four files grew without limit:
 
@@ -34,7 +34,7 @@ def logrotate_config(log_dir):
     # copytruncate: gunicorn holds access/error.log open and is never told to
     # reopen them, so moving the file away would keep it writing to the old one.
     return (
-        '# Managed by ServerKit (plan 85 A5) - rewritten at panel start.\n'
+        '# Managed by ServerKit - rewritten at panel start.\n'
         f'{paths} {{\n'
         '    weekly\n'
         '    maxsize 50M\n'

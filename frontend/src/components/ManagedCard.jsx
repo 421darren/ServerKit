@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import useLabel from '../i18n/labels';
 import { MANAGED_CAPABILITY_MAP } from './sidebarItems';
 
-// The managed card (plan 25): what a held capability's page shows instead of
+// The managed card: what a held capability's page shows instead of
 // its content. It names the capability, who holds it and since when, and links
 // to the server's page in ServerKit Cloud through the support URL the signed
 // policy carried. It never claims the page is gone — hidden is not removed:

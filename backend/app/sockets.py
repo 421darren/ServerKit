@@ -150,7 +150,7 @@ def _prune_audience(room=None):
             socketio.server.leave_room(sid, room, namespace='/')
 
 
-# ==================== DECLARATIVE CHANNEL REGISTRY (plan 77 E2) ====================
+# ==================== DECLARATIVE CHANNEL REGISTRY ====================
 #
 # Eight hand-rolled subscribe/unsubscribe pairs used four different registry
 # shapes and re-checked auth inconsistently. register_channel() generates the
@@ -514,7 +514,7 @@ def handle_leave_room(data):
 
 # ==================== DEPLOY CONSOLE STREAMING ====================
 #
-# Live push for the Deploy Console (plan 51). Room is per DeploymentJob
+# Live push for the Deploy Console. Room is per DeploymentJob
 # (`deploy_{job_id}`); the RunLogStream seam batches writes and emits one
 # `deploy_log` (a batch of persisted lines) per flush plus `deploy_status`
 # (the job summary dict) on step/terminal transitions. This is an ACCELERATOR
@@ -569,7 +569,7 @@ def emit_deploy_status(job_id: str, status: dict):
     }, room=rooms.deploy_room(job_id))
 
 
-# ==================== GENERALIZED RUN ENVELOPE (plan 77 E1) ====================
+# ==================== GENERALIZED RUN ENVELOPE ====================
 #
 # One event pair for every run kind, keyed by (run_kind, run_id) in the room
 # run_<kind>_<id>. The deploy kind dual-emits the legacy deploy_log /

@@ -504,8 +504,8 @@ class DbConfigTunerService:
 
     @classmethod
     def enable_pg_stat_statements(cls, target):
-        """Preload pg_stat_statements, restart, and create the extension
-        (plan 86 §A3), through the same backup/restart/verify path as
+        """Preload pg_stat_statements, restart, and create the extension,
+through the same backup/restart/verify path as
         :meth:`apply`, so :meth:`rollback` undoes it.
 
         ``shared_preload_libraries`` is a list: the current value is kept and

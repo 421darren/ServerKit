@@ -239,7 +239,7 @@ const Templates = () => {
     const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Deploying targets a fleet ServerKit Cloud operates under the managed
-    // profile (plan 25): the catalog stays browsable, the Deploy control goes.
+    // profile: the catalog stays browsable, the Deploy control goes.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();
     const deployManaged = isControlHeld('templates-deploy');
 

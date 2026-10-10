@@ -19,7 +19,7 @@ class ManagedDatabase(SoftDeleteMixin, db.Model):
     ``SourceConnection``); it is masked in API responses and revealed only through
     an explicit, audited action.
 
-    Soft-deletable (plan 77 B5): a plain delete tombstones the row into the
+    Soft-deletable: a plain delete tombstones the row into the
     Recycle Bin — the actual database server-side is untouched and any managed
     backup policy keeps running, so restore brings everything back intact. The
     explicit ``?drop=true`` path stays immediately destructive. Read paths use

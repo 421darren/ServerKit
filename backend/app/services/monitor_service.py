@@ -118,7 +118,7 @@ class MonitorService:
 
         With the WordPress extension absent (or the site removed) the bind
         fails loudly here instead of creating an orphan monitor that never
-        gets health-synced (plan 52 task 17). The model itself stays core
+        gets health-synced (task 17). The model itself stays core
         (D1), so the check is a plain row lookup.
         """
         if site_id is None:

@@ -1,4 +1,4 @@
-"""Recipe run API (plan 68).
+"""Recipe run API.
 
 Starts runs from three manifest sources — a registry slug (the curated
 ``serverkit-recipes`` catalog), reviewed inline YAML/JSON, or a manifest

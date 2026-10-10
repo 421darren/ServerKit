@@ -1,4 +1,4 @@
-"""Theme service (plan 60).
+"""Theme service.
 
 Business logic for the themes platform: load the bundled seed themes, list /
 import / delete installed themes, resolve the panel-default theme (for pre-auth

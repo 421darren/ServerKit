@@ -11,7 +11,7 @@ import {
 } from '../../components/managedCapabilities.js';
 import { CORE_ROUTES } from '../routeManifest.js';
 
-// The drift guard for the managed capability map (plan 25 §Risks): the mapping
+// The drift guard for the managed capability map: the mapping
 // from capability to sidebar ids, routes and in-page controls lives in ONE
 // table (components/managedCapabilities.js, re-exported from sidebarItems.js),
 // and this test is what keeps it true as pages move. A failure here means the

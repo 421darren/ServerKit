@@ -1,4 +1,4 @@
-// Static top-level pages for the command palette (plan 41). Extracted from the
+// Static top-level pages for the command palette. Extracted from the
 // old inline STATIC_PAGES so the palette component stays about orchestration.
 //
 // `navId` ties a page to its sidebar item id, letting the palette apply the SAME

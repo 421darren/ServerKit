@@ -1,6 +1,6 @@
 """Deploy preflight — prove a deploy can work BEFORE anything live is stopped.
 
-Plan 72 B.1. Every redeploy path used to reach its point of no return (a
+Every redeploy path used to reach its point of no return (a
 ``compose down`` / ``docker stop``) *before* anything had validated the new
 configuration. An invalid compose file, an image that no longer pulls, or a
 port somebody else took took the live site down and left it down: nginx 502s
@@ -53,7 +53,7 @@ KIND_BUILD_FAILED = 'build_failed'
 KIND_PORT_CONFLICT = 'port_conflict'
 KIND_DISK_LOW = 'disk_low'
 
-# Free space a pull/build needs (plan 85 D4). Under the floor the deploy is
+# Free space a pull/build needs. Under the floor the deploy is
 # refused — images cannot fit and a full disk also stops the panel's database
 # writing. Under the warning line it proceeds with a warning.
 DISK_BLOCK_BYTES = 512 * 1024 ** 2

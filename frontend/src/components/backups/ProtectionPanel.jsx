@@ -47,7 +47,7 @@ export default function ProtectionPanel({ targetType, targetId, targetName, show
     const [detailRun, setDetailRun] = useState(null);
     const [restoreRun, setRestoreRun] = useState(null);
     // Restore scopes this target type supports, from the target-types API
-    // (extension-provided types declare their own — plan 52 D4). Null until
+    // (extension-provided types declare their own). Null until
     // loaded; RestoreDrawer falls back to its built-in defaults then.
     const [restoreScopes, setRestoreScopes] = useState(null);
     const reloadTimers = useRef([]);

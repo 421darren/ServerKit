@@ -57,7 +57,7 @@ class UptimeService:
     def _save_history(cls, history: Dict) -> bool:
         """Save uptime history to file. ``True`` when it was actually written.
 
-        Was ``except Exception: pass`` over a truncating write (plan 75 §G6):
+        Was ``except Exception: pass`` over a truncating write:
         a full disk both destroyed the existing history and reported nothing,
         so the panel went on rendering an uptime figure computed from a file
         that had stopped being updated. Now the write is atomic and the failure

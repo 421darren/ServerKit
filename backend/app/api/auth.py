@@ -208,7 +208,7 @@ def complete_onboarding():
 
     # Slugs the wizard installed (recorded for Setup Health / support). The
     # actual installs happen client-side via the plugin install endpoints; this
-    # just persists what onboarding did (plan 47).
+    # just persists what onboarding did.
     installed_extensions = data.get('installed_extensions', [])
     if not isinstance(installed_extensions, list):
         return jsonify({'error': 'installed_extensions must be a list'}), 400
@@ -216,7 +216,7 @@ def complete_onboarding():
         s for s in installed_extensions if isinstance(s, str) and s.strip()
     ]
 
-    # Security posture (plan 47 Ph5) — persisted separately from use_cases so
+    # Security posture — persisted separately from use_cases so
     # posture and purpose stay orthogonal. Absent/invalid falls back to the
     # lean default rather than failing the whole onboarding.
     security_posture = data.get('security_posture', 'minimal')
@@ -232,7 +232,7 @@ def complete_onboarding():
                         user_id=user.id)
 
     # Keep the panel lean: suppress wizard-optional flagships (WordPress) the
-    # user didn't install so the boot seeder won't re-add them (plan 47).
+    # user didn't install so the boot seeder won't re-add them.
     try:
         from app.services import plugin_service
         plugin_service.finalize_setup_flagships()

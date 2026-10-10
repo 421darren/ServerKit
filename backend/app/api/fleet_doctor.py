@@ -1,5 +1,5 @@
 """REST surface for the fleet health doctor — the panel-host doctor extended
-across the agent fleet (plan 26 / ``docs/FLEET_CONTRACT.md``).
+across the agent fleet (``docs/FLEET_CONTRACT.md``).
 
 Mounted at /api/v1/doctor/fleet (registered in app/__init__.py). Admin-only:
 the fleet is not workspace-scoped (Fleet Contract, "explicitly out of scope").

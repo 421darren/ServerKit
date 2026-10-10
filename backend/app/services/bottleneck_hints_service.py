@@ -1,4 +1,4 @@
-"""Name an app's likely bottleneck from what the panel measures (plan 86 §A5).
+"""Name an app's likely bottleneck from what the panel measures.
 
 A rule-based doctor, no AI: it reads the app's request metrics (§A2), its
 container's CPU, and, for a PostgreSQL / MySQL it reaches through
@@ -13,7 +13,7 @@ Rules (all over the last 24 h):
 
   slow + app busy + database idle  → page cache (micro-cache) or a bigger box
   slow + database busy + one query dominates → a cache, or an index
-  5xx inside a deploy window        → A/B slot deploys (plan 87)
+  5xx inside a deploy window        → A/B slot deploys
   micro-cache on, low hit ratio     → the pages vary too much, or the TTL is short
 
 Not covered, deliberately: "large static share of bytes" and "slow POST
@@ -189,7 +189,7 @@ class BottleneckHintsService:
                     'params': {'errors': errors},
                     'signal': f'{errors} server errors during deploys in the last 24 h',
                     'hint': 'Visitors hit the gap while the old container stops and the '
-                            'new one starts. A/B slot deploys (plan 87) keep the old copy '
+                            'new one starts. A/B slot deploys keep the old copy '
                             'serving until the new one passes its health check.',
                     'action': None,
                     'failure_mode': 'Two copies run briefly during the switch; a migration '

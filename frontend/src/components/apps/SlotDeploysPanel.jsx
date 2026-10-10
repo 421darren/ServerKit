@@ -20,7 +20,7 @@ function intIn(value, min, max) {
     return Number.isInteger(n) && n >= min && n <= max ? n : null;
 }
 
-// A/B slot deploys (plan 87 §F): the opt-in and its knobs. Eligibility comes
+// A/B slot deploys: the opt-in and its knobs. Eligibility comes
 // from the server with its reasons, so the toggle never promises what a
 // deploy would then refuse.
 const SlotDeploysPanel = ({ app, onChanged }) => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-// Imported from the SDK exactly as a third-party extension would (plan 79):
+// Imported from the SDK exactly as a third-party extension would:
 // these resolve to the HOST's i18next instance and format door, so this
 // extension follows the panel's language and locale with no wiring of its own.
 import { useTranslation, useFormat } from 'serverkit-sdk';

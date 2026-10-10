@@ -7,7 +7,7 @@
 // returned unchanged, letting callers pass placeholders like an em dash
 // straight through.
 //
-// Plan 79 §C: both used to build `new Intl.NumberFormat('en')` at module load
+// Both used to build `new Intl.NumberFormat('en')` at module load
 // -- a hardcoded locale AND a formatter that could never follow a switch.
 // They now delegate to the format door.
 

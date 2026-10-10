@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 
-// Admin control for the require-2FA policy (plan 22 #14). A policy, never a
+// Admin control for the require-2FA policy. A policy, never a
 // default: 'off' (nobody forced), 'admins', or 'all'. Within the grace window a
 // user still logs in with a password + a nudge; past it, login yields an
 // enrollment-scoped token until they add a passkey or authenticator app.

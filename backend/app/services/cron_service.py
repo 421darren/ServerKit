@@ -112,7 +112,7 @@ class CronService:
         """Check if running on Linux."""
         return platform.system() == 'Linux'
 
-    # ── the crontab door (plan 75 §G1) ────────────────────────────────────
+    # ── the crontab door ────────────────────────────────────
     # `crontab -l` followed by a Popen-with-stdin `crontab -` was written out
     # five times in this file, each with its own capture_output/text/timeout
     # boilerplate and its own error wording. Two helpers, one run_checked.
@@ -244,7 +244,7 @@ class CronService:
                 })
 
         # Enrich exactly like jobs_for_application(): a human schedule, the next
-        # fire time, and the last-run join (plan 34). The admin list page renders
+        # fire time, and the last-run join. The admin list page renders
         # Last run / Next run / Status columns off these, so both surfaces have
         # to agree — leaving it out here is what left /cron showing enabled-only.
         for job in jobs:
@@ -410,7 +410,7 @@ class CronService:
         `application_id` optionally attributes the job to an application so the
         member-facing /cron/jobs/for-app surface can show it. Scope
         (workspace/project) is never stored here — it is derived from the app at
-        read time (plan 19 Decision 3)."""
+        read time."""
         # Validate schedule format
         if not cls._validate_schedule(schedule):
             return {'success': False, 'error': 'Invalid cron schedule format'}
@@ -942,7 +942,7 @@ class CronService:
     @classmethod
     def jobs_for_application(cls, application_id) -> List[Dict]:
         """All jobs attributed to `application_id`, enriched with a human
-        schedule, the next run time, and a read-time last-run join (plan 34)."""
+        schedule, the next run time, and a read-time last-run join."""
         metadata = cls._load_jobs_metadata()
         jobs = []
         for job_id, job_data in metadata.get('jobs', {}).items():

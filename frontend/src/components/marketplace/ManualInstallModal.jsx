@@ -55,7 +55,7 @@ const SourceInput = ({
     </div>
 );
 
-// Signature verdict badge for the consent card (plan 55). 'verified' means the
+// Signature verdict badge for the consent card. 'verified' means the
 // release zip's ed25519 signature checked out against a publisher key pinned
 // by this panel; everything else is an honest not-verified treatment.
 const SignatureBadge = ({ signature }) => {

@@ -111,10 +111,10 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
     auto_upgrade = db.Column(db.Boolean, default=False)
     upgrade_channel = db.Column(db.String(20), default='stable')  # stable, beta
 
-    # Managed vs observed (plan 27 D1, plan 31 #10). Migrations 065/068 have
+    # Managed vs observed. Migrations 065/068 have
     # always carried these columns; the model fields and MANAGEMENT_MODES were
     # lost in the 2026-07 data loss, which left the survey management-mode
-    # routes raising AttributeError (restored via plan 82's migration↔model
+    # routes raising AttributeError (restored via the migration↔model
     # drift gate). Observed boxes refuse mutating agent commands;
     # allow_agent_update_observed is the explicit break-glass that still
     # permits agent:update on an observed box.
@@ -126,7 +126,7 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
 
     @property
     def is_managed(self):
-        """False only for observed boxes (plan 27 D1)."""
+        """False only for observed boxes."""
         return (self.management_mode or 'managed') != 'observed'
 
     # System Info (reported by agent)
@@ -156,7 +156,7 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
     api_key_pending_prefix = db.Column(db.String(12))  # Prefix of pending new API key
     api_secret_pending_encrypted = db.Column(db.Text)  # Encrypted pending new API secret
 
-    # One crypto path (plan 77 C1): descriptor-backed accessors over the
+    # One crypto path: descriptor-backed accessors over the
     # *_encrypted columns. Encrypt failures RAISE (the old accessors printed
     # and silently stored nothing — a data-loss path).
     api_secret = EncryptedSecret('api_secret_encrypted')
@@ -343,7 +343,7 @@ class Server(TimestampMixin, JsonColumnMixin, db.Model):
         'read', 'get', 'inspect', 'status', 'info',
         'search', 'logs', 'stats', 'available',
         'installed', 'current', 'show',
-        # Fleet doctor / survey probes are Observed-safe reads (plan 28 #7):
+        # Fleet doctor / survey probes are Observed-safe reads:
         # they only discover host state, so they classify as reads and expand
         # to `<ns>:read` rather than `<ns>:write`.
         'probe', 'survey',

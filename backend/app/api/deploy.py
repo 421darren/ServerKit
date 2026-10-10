@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Deploy config reads/writes gate on the shared
+# Bucket: PER-APP. Deploy config reads/writes gate on the shared
 # app-access seam (can_access_app / can_edit_app); the public inbound webhook is
 # token/signature-verified (ALLOWLISTed — no per-app user session).
 import os

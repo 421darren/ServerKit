@@ -1553,7 +1553,7 @@
     }
 }
 
-// Micro-cache panel (plan 86 §B3): TTL input + save, hit-ratio readout.
+// Micro-cache panel: TTL input + save, hit-ratio readout.
 .micro-cache {
     &__ttl {
         display: flex;

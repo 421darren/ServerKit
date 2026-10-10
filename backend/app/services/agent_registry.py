@@ -26,10 +26,10 @@ from app.models.server import Server, ServerCommand, AgentSession
 # ---------------------------------------------------------------------------
 # Per-IP auth rate limiter — transport-neutral state shared by the WS
 # namespace and the long-poll /connect endpoint (moved here from
-# agent_gateway in plan 77 A2 so the handshake door owns its own throttle).
+# agent_gateway so the handshake door owns its own throttle).
 # Guarded by a lock: async_mode='threading' means both transports can call
 # concurrently. Buckets are swept so one-off IPs don't accumulate forever.
-# request.remote_addr upstream is the ProxyFix-corrected client IP (plan 48).
+# request.remote_addr upstream is the ProxyFix-corrected client IP.
 # ---------------------------------------------------------------------------
 _auth_attempts = defaultdict(list)
 _auth_attempts_lock = threading.Lock()
@@ -151,10 +151,10 @@ class AgentRegistry:
 
         # Connected agents by server_id
         self._agents: Dict[str, ConnectedAgent] = {}
-        # Commands refused by the Observe guard per server (plan 31 #11's
+        # Commands refused by the Observe guard per server (the
         # "blocked N commands" counter). In-memory like all registry state —
         # single-worker by architecture. The dispatch-level guard itself is
-        # still hollow post-loss (plan 82 §H); until it is restored the
+        # still hollow post-loss; until it is restored the
         # counter only grows where callers record blocks explicitly.
         self._observed_blocks: Dict[str, int] = {}
         # Socket ID to server ID mapping
@@ -489,7 +489,7 @@ class AgentRegistry:
                 self._observed_blocks.get(server_id, 0) + 1)
 
     def observed_blocked_count(self, server_id: str) -> int:
-        """Commands the Observe guard refused for this server (plan 31 #11)."""
+        """Commands the Observe guard refused for this server."""
         with self._lock:
             return self._observed_blocks.get(server_id, 0)
 
@@ -792,7 +792,7 @@ class AgentRegistry:
     # ==================== Authentication ====================
 
     # ------------------------------------------------------------------
-    # Transport-neutral handshake + state ingest (plan 77 A2). The WS
+    # Transport-neutral handshake + state ingest. The WS
     # namespace (agent_gateway) and the long-poll endpoints (api/agent_poll)
     # are thin adapters over these two doors; neither may re-implement the
     # sequence (ratcheted by tests/test_agent_handshake_matrix.py).
@@ -1126,7 +1126,7 @@ class AgentRegistry:
             return
         try:
             # TunnelBrokerService lives in the serverkit-remote-access
-            # extension (plan 47); reach it only when installed, no-op
+            # extension; reach it only when installed, no-op
             # otherwise.
             from app.services.plugin_service import get_installed_extension_attr
             TunnelBrokerService = get_installed_extension_attr(

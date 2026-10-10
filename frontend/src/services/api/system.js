@@ -127,7 +127,7 @@ export async function checkUpdate() {
     return this.request('/system/check-update');
 }
 
-// ServerKit Cloud connect state and the managed presentation policy (plan 25).
+// ServerKit Cloud connect state and the managed presentation policy.
 // Both are admin-only on the backend; callers treat a refusal as "no profile".
 export async function getConnectStatus() {
     return this.request('/connect/status');
@@ -799,7 +799,7 @@ export async function testUserNotification() {
 
 // Email Server management moved into the serverkit-email extension
 // (builtin-extensions/serverkit-email/frontend/services/email.js) with the
-// Email page — plan 52 Phase 2. Core keeps only the two email-adjacent
+// Email page. Core keeps only the two email-adjacent
 // surfaces that core Settings → Connections renders: the DNS-provider
 // connections below (served by the core dns_providers blueprint, which owns
 // the historical /email/dns-providers prefix) and the outbound relay tile

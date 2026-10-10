@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app Python runtime routes gate on the shared
+# Bucket: PER-APP. Per-app Python runtime routes gate on the shared
 # app-access seam (can_access_app for reads, can_edit_app for mutations);
 # host-level interpreter management stays admin-only.
 from flask import Blueprint, request, jsonify

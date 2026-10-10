@@ -117,7 +117,7 @@ class SystemService:
     def get_network_metrics(cls):
         """Get network usage metrics.
 
-        Probe honesty (plan 75 §A3): mirrors the disk I/O block — when
+        Probe honesty: mirrors the disk I/O block — when
         net_io_counters/net_if_* fail or return nothing, the corresponding
         section is None/empty rather than raising (which would kill the whole
         live metrics broadcast) or fabricating zeros.

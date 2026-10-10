@@ -137,7 +137,7 @@
 }
 
 // --------------------------------------------
-// Palette v2 (plan 41): omnisearch item rows rendered inside the cmdk
+// Palette v2: omnisearch item rows rendered inside the cmdk
 // .ui-command-item. Icon + label/sublabel body + optional external marker.
 // --------------------------------------------
 .command-palette__item-icon {
@@ -301,7 +301,7 @@
 }
 
 // --------------------------------------------
-// Settings deep-link flash (plan 41, Phase 2): a palette result lands on the
+// Settings deep-link flash: a palette result lands on the
 // exact card via ?focus=setting:<id>; useSettingFocus scrolls it into view and
 // adds .is-setting-focused for ~2s. Token-based ring + brief background wash.
 // --------------------------------------------

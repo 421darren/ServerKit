@@ -41,7 +41,7 @@ _CATALOG = {
         'severity': 'critical',
         'category': 'backups',
     },
-    # Restore-proof edge alerts (plan 23 #17): fire once on a state transition
+    # Restore-proof edge alerts: fire once on a state transition
     # when a restore drill or backup verification starts failing / recovers.
     'backup.drill_failed': {
         'title': 'Restore drill failed: {target}',
@@ -81,7 +81,7 @@ _CATALOG = {
         'severity': 'success',
         'category': 'apps',
     },
-    # Slot deploys (plan 87): a release that never went live, one that was
+    # Slot deploys: a release that never went live, one that was
     # switched back automatically, and a switch back that did not work.
     'app.deploy_aborted': {
         'title': 'Deploy stopped, site unchanged: {app}',
@@ -114,7 +114,7 @@ _CATALOG = {
         'category': 'system',
     },
     # The panel host's own hardware moved between boots — a VPS resize, a
-    # volume attached or detached (plan 74). Informational: the operator
+    # volume attached or detached. Informational: the operator
     # usually caused it, but until now nothing confirmed it landed.
     'host.specs_changed': {
         'title': "This server's hardware changed",
@@ -219,7 +219,7 @@ DEFAULT_ENTRY = {
 
 
 # --------------------------------------------------------------------------- #
-# Deep links (plan 24 Phase 5)
+# Deep links
 #
 # Maps an ``event_key`` to the relative in-app path its notification should link
 # to. Resolved at send time and PERSISTED on the notification row (see

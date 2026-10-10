@@ -4,7 +4,7 @@ from app.services.workspace_service import WorkspaceService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 # The workspace guards now live in middleware/rbac.py so any resource blueprint
-# can reuse them (plan 19 Decision 2). Re-exported here for existing callers.
+# can reuse them. Re-exported here for existing callers.
 from app.middleware.rbac import (
     admin_required, get_current_user, require_workspace_access, require_workspace_role,
 )

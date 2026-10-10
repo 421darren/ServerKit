@@ -44,7 +44,7 @@ export function formatDateTime(iso) {
     });
 }
 
-// Pill kind for a run/policy status, from the ONE shared vocabulary (plan 77 D3).
+// Pill kind for a run/policy status, from the ONE shared vocabulary.
 export { statusKind } from '../ds/status';
 
 // Where a run is stored, from its size/remote fields.

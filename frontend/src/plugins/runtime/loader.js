@@ -1,5 +1,5 @@
 /**
- * Runtime extension frontend loader (plan 25 Phase 2, Decision 1).
+ * Runtime extension frontend loader.
  *
  * For an installed extension that ships a prebuilt ESM bundle, the panel:
  *   1. fetches the bundle through the JWT-authed assets route (raw bytes),
@@ -47,7 +47,7 @@ export function getRuntimeLoadState(slug) {
 }
 
 // Thrown when a bundle is refused BEFORE any bytes are fetched because its
-// declared SDK range doesn't cover the panel's SDK version (plan 32 Decision 1).
+// declared SDK range doesn't cover the panel's SDK version.
 // Carried as a distinct load state ('refused') so the Marketplace can tell an
 // SDK mismatch apart from an integrity/fetch failure.
 class SdkRefusedError extends Error {}
@@ -59,7 +59,7 @@ export function isRuntimeFrontend(frontends, slug) {
     return Boolean(frontends && frontends[slug]);
 }
 
-// Load-time SDK gate (plan 32 Decision 1). Refuse a bundle whose declared
+// Load-time SDK gate. Refuse a bundle whose declared
 // `sdk_version` range doesn't cover the panel's SDK version, BEFORE fetching any
 // bytes — the failure card then explains the version gap instead of a cryptic
 // import error. A missing/blank range is a one-release grace: warn (dev) and

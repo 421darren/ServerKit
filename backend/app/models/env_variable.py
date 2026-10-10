@@ -43,7 +43,7 @@ class EnvironmentVariable(TimestampMixin, JsonColumnMixin, db.Model):
         db.UniqueConstraint('application_id', 'key', name='unique_app_env_key'),
     )
 
-    # One crypto path (plan 77 C2): new writes encrypt via utils/crypto
+    # One crypto path: new writes encrypt via utils/crypto
     # (SERVERKIT_ENCRYPTION_KEY). Reads dual-read: the one path first, then
     # the legacy SECRET_KEY-derived Fernet this model historically used —
     # rows written before the fold-in decrypt forever without a bulk

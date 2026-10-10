@@ -1,4 +1,4 @@
-"""One SQL-exec dispatcher (plan 75 §G5).
+"""One SQL-exec dispatcher.
 
 `engine × host` dispatch — mysql/postgres crossed with native/docker — was
 written three times: `db_config_tuner_service`, `db_process_service`, and

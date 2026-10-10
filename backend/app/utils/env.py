@@ -1,4 +1,4 @@
-"""One door for call-time environment access (plan 77 F4).
+"""One door for call-time environment access.
 
 Boolean env parsing existed in three incompatible variants across the app —
 `('1', 'true', 'yes', 'on')` in config.py, `('1', 'true', 'yes')` in

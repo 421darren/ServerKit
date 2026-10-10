@@ -1,4 +1,4 @@
-"""Per-app deploy lock (plan 87 §A5).
+"""Per-app deploy lock.
 
 Two webhook pushes a second apart used to run two deploys of the same app at
 once: both stopped the container, both started one, and whichever lost the
