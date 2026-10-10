@@ -178,8 +178,9 @@ USER serverkit
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check. Boot runs schema sync, migrations and settings seeding; the
+# 40s grace matches docker-compose.yml so a slow first boot is not unhealthy.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f "http://localhost:${SERVERKIT_BACKEND_PORT:-5000}/api/v1/system/health" || exit 1
 
 # Working directory for the backend
