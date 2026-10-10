@@ -266,18 +266,6 @@
 // SHARED CHIPS (other consumers live outside these pages)
 // ============================================
 
-// Used by components/LinkAppModal.jsx
-.app-type-badge {
-    display: inline-flex;
-    align-items: center;
-    height: 20px; // geometry: badge height (20px badge spec)
-    font-size: $text-xs;
-    font-weight: $font-weight-medium;
-    @include status-variant(var(--accent-bright), var(--accent-bg));
-    padding: 0 $space-tight;
-    border-radius: $radius-badge;
-}
-
 // Used by pages/Firewall.jsx
 .port-status {
     font-size: $text-xs;
@@ -299,8 +287,6 @@
     color: var(--text-faint);
     font-size: $text-sm;
 }
-
-// Icon-only button (legacy global utility; LinkedAppsSection consumes it)
 
 // ============================================
 // APP DETAIL — SHARED BASE CHROME

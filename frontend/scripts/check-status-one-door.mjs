@@ -22,7 +22,6 @@ const ALLOWED = new Set([
   'pages/DeployConsole.jsx',               // STATUS_META: labels+icons+css classes (D4 territory)
   'components/NotificationBell.jsx',       // SEVERITY_DOT hex dots (D4 territory)
   'pages/Notifications.jsx',               // SEVERITY_DOT hex dots (D4 territory)
-  'components/LinkedAppsSection.jsx',      // css-class map (D4 territory)
   'components/apps/AppWafPanel.jsx',       // WAF mode map (block=green is domain-inverted) + ModSec severities
   'components/monitoring/MonitoringOverview.jsx', // metric-series colors (cpu/mem/disk), not statuses
   'components/security/FirewallTab.jsx',   // firewall rule-TYPE tones, not statuses
