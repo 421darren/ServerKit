@@ -1,9 +1,7 @@
 import os
 import json
-import subprocess
 import shutil
 import tarfile
-import gzip
 import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
@@ -17,7 +15,9 @@ from app import paths
 from app.utils import backup_crypto
 from app.utils.config_store import load_json_config, save_json_config
 from app.utils.formatting import format_bytes
-from app.utils.system import is_command_available, run_checked
+from app.utils.system import (
+    is_command_available, run_checked, run_from_gzip, run_to_gzip,
+)
 from app.services.telemetry_service import TelemetryService, generate_correlation_id
 from app.services import backup_schedule_service
 
@@ -200,9 +200,7 @@ class BackupService:
                     cmd.extend(['-h', config['host']])
                 cmd.append(db_name)
 
-                with gzip.open(backup_file, 'wt') as f:
-                    result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
-                                         timeout=None)
+                result = run_to_gzip(cmd, backup_file)
 
                 if not result['success']:
                     return {'success': False, 'error': result['error']}
@@ -222,9 +220,7 @@ class BackupService:
                     cmd.extend(['-h', config['host']])
                 cmd.append(db_name)
 
-                with gzip.open(backup_file, 'wt') as f:
-                    result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
-                                         env=env, timeout=None)
+                result = run_to_gzip(cmd, backup_file, env=env)
 
                 if not result['success']:
                     return {'success': False, 'error': result['error']}
@@ -457,8 +453,7 @@ class BackupService:
                     cmd.extend(['-h', host])
                 cmd.append(db_name)
 
-                with gzip.open(backup_path, 'rt') as f:
-                    result = run_checked(cmd, stdin=f, timeout=None)
+                result = run_from_gzip(cmd, backup_path)
 
             elif db_type == 'postgresql':
                 if not is_command_available('psql'):
@@ -475,8 +470,7 @@ class BackupService:
                     cmd.extend(['-h', host])
                 cmd.extend(['-d', db_name])
 
-                with gzip.open(backup_path, 'rt') as f:
-                    result = run_checked(cmd, stdin=f, env=env, timeout=None)
+                result = run_from_gzip(cmd, backup_path, env=env)
 
             else:
                 return {'success': False, 'error': f'Unknown database type: {db_type}'}

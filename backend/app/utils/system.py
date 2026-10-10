@@ -271,6 +271,84 @@ def _never_ran(error: str) -> dict:
             'returncode': None, 'error': error}
 
 
+_CHUNK = 1024 * 1024
+
+
+def _streamed(cmd: List[str], pump, *, env: Optional[dict], timeout: Optional[int],
+              **popen_kwargs) -> dict:
+    """Run *cmd* while *pump(proc)* moves bytes through its pipes.
+
+    A ``gzip.open()`` handle can't be passed as ``stdin=``/``stdout=``: the
+    child gets the underlying fd and reads or writes the compressed bytes
+    raw. So the bytes are pumped through Python instead. stderr goes to a
+    temp file so a chatty child can't fill a pipe and deadlock the pump.
+    """
+    import tempfile
+    try:
+        with tempfile.TemporaryFile() as err:
+            proc = subprocess.Popen(cmd, stderr=err, env=env, **popen_kwargs)
+            try:
+                pump(proc)
+            except BrokenPipeError:
+                pass  # the child exited early; its exit code says why
+            except BaseException:
+                proc.kill()
+                proc.wait()
+                raise
+            try:
+                proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                return _never_ran(f'timed out after {timeout}s')
+            err.seek(0)
+            stderr = err.read().decode('utf-8', 'replace')
+    except FileNotFoundError as exc:
+        return _never_ran(f'{cmd[0]} not found: {exc}')
+    except OSError as exc:
+        return _never_ran(str(exc))
+    return {
+        'success': proc.returncode == 0,
+        'output': '',
+        'stderr': stderr,
+        'returncode': proc.returncode,
+        'error': (stderr.strip() or f'command failed (exit {proc.returncode})')
+                 if proc.returncode != 0 else None,
+    }
+
+
+def run_to_gzip(cmd: List[str], dest: str, *, env: Optional[dict] = None,
+                timeout: Optional[int] = None) -> dict:
+    """Run *cmd* and gzip its stdout into *dest*; *dest* is removed on failure."""
+    import gzip
+
+    def pump(proc):
+        with gzip.open(dest, 'wb') as out:
+            shutil.copyfileobj(proc.stdout, out, _CHUNK)
+        proc.stdout.close()
+
+    result = _streamed(cmd, pump, env=env, timeout=timeout, stdout=subprocess.PIPE)
+    if not result['success'] and os.path.exists(dest):
+        os.remove(dest)
+    return result
+
+
+def run_from_gzip(cmd: List[str], src: str, *, env: Optional[dict] = None,
+                  timeout: Optional[int] = None) -> dict:
+    """Run *cmd* with the decompressed contents of *src* on its stdin."""
+    import gzip
+
+    def pump(proc):
+        try:
+            with gzip.open(src, 'rb') as data:
+                shutil.copyfileobj(data, proc.stdin, _CHUNK)
+        finally:
+            proc.stdin.close()
+
+    return _streamed(cmd, pump, env=env, timeout=timeout,
+                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+
+
 def write_privileged_file(path: str, content: str, *, append: bool = False,
                           mode: Optional[str] = None,
                           owner: Optional[str] = None) -> dict:

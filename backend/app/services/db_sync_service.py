@@ -8,8 +8,7 @@ Supports WordPress-specific features like URL search-replace and data anonymizat
 import os
 import subprocess
 
-from app.utils.system import run_checked
-import gzip
+from app.utils.system import run_checked, run_from_gzip, run_to_gzip
 import shutil
 import json
 import re
@@ -106,23 +105,9 @@ class DatabaseSyncService:
 
             # Execute dump
             if compress:
-                # Pipe through gzip
-                dump_process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                with gzip.open(file_path, 'wb') as f:
-                    while True:
-                        chunk = dump_process.stdout.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-
-                dump_process.wait()
-                if dump_process.returncode != 0:
-                    error = dump_process.stderr.read().decode()
-                    return {'success': False, 'error': f'mysqldump failed: {error}'}
+                result = run_to_gzip(cmd, file_path)
+                if not result['success']:
+                    return {'success': False, 'error': f"mysqldump failed: {result['error']}"}
             else:
                 with open(file_path, 'w') as f:
                     result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
@@ -212,9 +197,8 @@ class DatabaseSyncService:
 
             # Handle compressed files
             if file_path.endswith('.gz'):
-                with gzip.open(file_path, 'rb') as f:
-                    # 30 min bound for large DBs
-                    result = run_checked(cmd, stdin=f, timeout=1800)
+                # 30 min bound for large DBs
+                result = run_from_gzip(cmd, file_path, timeout=1800)
             else:
                 with open(file_path, 'r') as f:
                     result = run_checked(cmd, stdin=f, timeout=1800)
@@ -695,23 +679,10 @@ class DatabaseSyncService:
             full_cmd = ['docker', 'compose', '-f', compose_path, 'exec', '-T', 'db'] + dump_cmd
 
             if compress:
-                process = subprocess.Popen(
-                    full_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                with gzip.open(output_path, 'wb') as f:
-                    while True:
-                        chunk = process.stdout.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                process.wait()
-                if process.returncode != 0:
-                    error = process.stderr.read().decode()
-                    if os.path.exists(output_path):
-                        os.remove(output_path)
-                    return {'success': False, 'error': f'Container mysqldump failed: {error}'}
+                result = run_to_gzip(full_cmd, output_path, timeout=600)
+                if not result['success']:
+                    return {'success': False,
+                            'error': f"Container mysqldump failed: {result['error']}"}
             else:
                 with open(output_path, 'w') as f:
                     result = run_checked(full_cmd, stdout=f, stderr=subprocess.PIPE,
@@ -772,8 +743,7 @@ class DatabaseSyncService:
             import_cmd.append(db_name)
 
             if snapshot_path.endswith('.gz'):
-                with gzip.open(snapshot_path, 'rb') as f:
-                    result = run_checked(import_cmd, stdin=f, timeout=1800)
+                result = run_from_gzip(import_cmd, snapshot_path, timeout=1800)
             else:
                 with open(snapshot_path, 'r') as f:
                     result = run_checked(import_cmd, stdin=f, timeout=1800)
