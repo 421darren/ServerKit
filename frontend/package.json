@@ -18,6 +18,7 @@
         "test:backups": "node scripts/backups-browser.mjs",
         "test:sanitize-svg": "node scripts/sanitize-svg-browser.mjs",
         "test:terminal-logs": "node scripts/terminal-logs-browser.mjs",
+        "test:docker-tabs": "node scripts/docker-tabs-browser.mjs",
         "lint:settings-index": "node scripts/check-settings-index.mjs",
         "lint:fonts": "node scripts/check-font-integrity.mjs",
         "lint:status": "node scripts/check-status-one-door.mjs",

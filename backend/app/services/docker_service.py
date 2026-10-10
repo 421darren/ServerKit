@@ -7,6 +7,7 @@ import shlex
 import yaml
 from datetime import datetime
 
+from app.exceptions import DependencyUnavailableError
 from app.utils.system import run_checked
 
 logger = logging.getLogger(__name__)
@@ -152,38 +153,45 @@ class DockerService:
 
     @staticmethod
     def list_containers(all_containers=True):
-        """List Docker containers."""
-        try:
-            args = ['ps', '--format', '{{json .}}']
-            if all_containers:
-                args.insert(1, '-a')
+        """List Docker containers.
 
-            result = DockerService.run(args, timeout=None)
-            if not result['success']:
-                return []
+        Raises DependencyUnavailableError when docker does not answer: an
+        empty list would tell the UI "no containers" on a box running many.
+        """
+        args = ['ps', '--format', '{{json .}}']
+        if all_containers:
+            args.insert(1, '-a')
 
-            containers = []
-            for line in result['output'].strip().split('\n'):
-                if line:
-                    container = json.loads(line)
-                    name = container.get('Names')
-                    containers.append({
-                        'id': container.get('ID'),
-                        'name': name,
-                        'image': container.get('Image'),
-                        'status': container.get('Status'),
-                        'state': container.get('State'),
-                        'ports': container.get('Ports'),
-                        'created': container.get('CreatedAt'),
-                        'size': container.get('Size'),
-                        # Flag ServerKit's own containers so the UI can hide
-                        # lifecycle controls; the API rejects them regardless.
-                        'protected': DockerService.is_protected_name(name),
-                    })
-            return containers
-        except Exception as e:
-            logger.error(f"Failed to list containers: {e}")
-            return []
+        result = DockerService.run(args, timeout=None)
+        if not result['success']:
+            raise DependencyUnavailableError(
+                'Docker is not reachable: '
+                + (result.get('stderr') or result.get('error') or 'docker ps failed'))
+
+        containers = []
+        for line in result['output'].strip().split('\n'):
+            if not line:
+                continue
+            try:
+                container = json.loads(line)
+            except ValueError:
+                logger.warning('Unparseable docker ps line: %r', line)
+                continue
+            name = container.get('Names')
+            containers.append({
+                'id': container.get('ID'),
+                'name': name,
+                'image': container.get('Image'),
+                'status': container.get('Status'),
+                'state': container.get('State'),
+                'ports': container.get('Ports'),
+                'created': container.get('CreatedAt'),
+                'size': container.get('Size'),
+                # Flag ServerKit's own containers so the UI can hide
+                # lifecycle controls; the API rejects them regardless.
+                'protected': DockerService.is_protected_name(name),
+            })
+        return containers
 
     # One `docker ps` row, tab-delimited. Tabs are used instead of
     # `--format '{{json .}}'` because the JSON form flattens every label into a

@@ -74,6 +74,9 @@ jobs:
       - name: Terminal log viewer browser regressions
         working-directory: frontend
         run: npm run test:terminal-logs
+      - name: Docker tabs browser regressions
+        working-directory: frontend
+        run: npm run test:docker-tabs
       - name: Upload Settings screenshots
         if: always()
         uses: actions/upload-artifact@v4

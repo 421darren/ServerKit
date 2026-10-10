@@ -42,7 +42,7 @@ class RemoteDockerService:
             # Use local Docker
             from app.services.docker_service import DockerService
             try:
-                containers = DockerService.list_containers(all=all)
+                containers = DockerService.list_containers(all_containers=all)
                 return {'success': True, 'data': containers}
             except Exception as e:
                 return {'success': False, 'error': str(e)}
