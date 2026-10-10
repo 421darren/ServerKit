@@ -1264,8 +1264,15 @@ fetch_release() {
                 halt "Checksum verification failed for release tarball."
             fi
             good "Checksum verified"
+        elif [ "${SERVERKIT_ALLOW_UNVERIFIED:-0}" = "1" ]; then
+            warn "No checksums.txt — installing UNVERIFIED (SERVERKIT_ALLOW_UNVERIFIED=1)"
         else
-            warn "Could not download checksums.txt — skipping verification"
+            # Every release publishes checksums.txt; without it the tarball
+            # cannot be trusted, so build from source instead.
+            warn "Could not download checksums.txt — not installing an unverified release; falling back to source."
+            rm -f "$tarball"
+            INSTALL_FROM_RELEASE=0
+            return 1
         fi
     fi
 

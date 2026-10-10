@@ -866,8 +866,13 @@ download_release() {
             halt "Checksum verification failed for release tarball."
         fi
         good "Checksum verified" >&2
+    elif [ "${SERVERKIT_ALLOW_UNVERIFIED:-0}" = "1" ]; then
+        warn "No checksums.txt — installing UNVERIFIED (SERVERKIT_ALLOW_UNVERIFIED=1)" >&2
     else
-        warn "Could not download checksums.txt — skipping verification" >&2
+        # Every release publishes checksums.txt; its absence means a broken
+        # mirror or a tampered download, and this replaces the running panel.
+        rm -rf "$tmp_dir"
+        halt "Could not download checksums.txt from ${base_url} — refusing an unverified release. Set SERVERKIT_ALLOW_UNVERIFIED=1 to override."
     fi
 
     echo "$output"
