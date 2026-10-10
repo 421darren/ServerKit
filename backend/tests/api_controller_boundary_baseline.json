@@ -3,7 +3,7 @@
   "policy": "Exact reviewed inventory of direct persistence, subprocess, and filesystem mutation calls in Flask API controllers. New calls are forbidden; remove entries as controllers delegate to services.",
   "counts": {
     "filesystem": 8,
-    "persistence": 480
+    "persistence": 471
   },
   "owners": {
     "api/admin.py": {
@@ -13,10 +13,6 @@
     "api/ai.py": {
       "owner": "ServerKit backend / ai domain",
       "rationale": "Legacy ai controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
-    },
-    "api/app_volumes.py": {
-      "owner": "ServerKit backend / app volumes domain",
-      "rationale": "Legacy app volumes controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
     },
     "api/apps.py": {
       "owner": "ServerKit backend / apps domain",
@@ -46,10 +42,6 @@
       "owner": "ServerKit backend / cron domain",
       "rationale": "Legacy cron controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
     },
-    "api/database_engines.py": {
-      "owner": "ServerKit backend / database engines domain",
-      "rationale": "Legacy database engines controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
-    },
     "api/databases.py": {
       "owner": "ServerKit backend / databases domain",
       "rationale": "Legacy databases controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
@@ -77,10 +69,6 @@
     "api/domains.py": {
       "owner": "ServerKit backend / domains domain",
       "rationale": "Legacy domains controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
-    },
-    "api/env_vars.py": {
-      "owner": "ServerKit backend / env vars domain",
-      "rationale": "Legacy env vars controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
     },
     "api/environments.py": {
       "owner": "ServerKit backend / environments domain",
@@ -186,10 +174,6 @@
       "owner": "ServerKit backend / two factor domain",
       "rationale": "Legacy two factor controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
     },
-    "api/waf.py": {
-      "owner": "ServerKit backend / waf domain",
-      "rationale": "Legacy waf controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
-    },
     "api/webhooks.py": {
       "owner": "ServerKit backend / webhooks domain",
       "rationale": "Legacy webhooks controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
@@ -250,8 +234,6 @@
     "api/ai.py::delete_conversation::persistence::db.session.delete(row)::1",
     "api/ai.py::list_conversations::persistence::AiConversation.query.filter_by(user_id=user.id).order_by(AiConversation.updated_at.desc()).limit(100).all()::1",
     "api/ai.py::rename_conversation::persistence::db.session.commit()::1",
-    "api/app_volumes.py::_load_app_for::persistence::Application.query_active().filter_by(id=app_id).first()::1",
-    "api/apps.py::_load_app_for_backup::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/apps.py::_resolve_project_env::persistence::Environment.query.get(environment_id)::1",
     "api/apps.py::_resolve_project_env::persistence::Project.query.get(project_id)::1",
     "api/apps.py::_sync_manual_app_status::persistence::db.session.commit()::1",
@@ -424,7 +406,6 @@
     "api/cron.py::_notify_run_transition::persistence::Application.query.get(int(aid))::1",
     "api/cron.py::_notify_run_transition::persistence::Workspace.query.get(app.workspace_id)::1",
     "api/cron.py::_validate_application_id::persistence::Application.query_active().filter_by(id=aid).first()::1",
-    "api/database_engines.py::_require_app_access::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/databases.py::get_app_databases::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/databases.py::get_app_databases::persistence::User.query.get(current_user_id)::1",
     "api/databases.py::list_all_docker_databases::persistence::Application.query_active().filter_by(app_type='docker')::1",
@@ -454,7 +435,6 @@
     "api/deployment_jobs.py::list_deployment_jobs::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/deployment_jobs.py::list_deployment_jobs::persistence::User.query.get(current_user_id)::1",
     "api/deployment_jobs.py::retry_deployment_job::persistence::DeploymentJob.query.get(job_id)::1",
-    "api/deployments.py::_access::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/deployments.py::app_history::persistence::Deployment.query.filter_by(app_id=app_id).order_by(Deployment.created_at.desc()).limit(limit).all()::1",
     "api/deployments.py::app_history::persistence::GitDeployment.query.filter_by(app_id=app_id).order_by(GitDeployment.created_at.desc()).limit(limit).all()::1",
     "api/deployments.py::get_deployment::persistence::Deployment.query.get(deployment_id)::1",
@@ -509,8 +489,6 @@
     "api/domains.py::update_domain::persistence::User.query.get(current_user_id)::1",
     "api/domains.py::update_domain::persistence::db.session.commit()::1",
     "api/domains.py::verify_domain::persistence::Domain.query_active().filter_by(id=domain_id).first()::1",
-    "api/env_vars.py::check_app_access::persistence::Application.query_active().filter_by(id=app_id).first()::1",
-    "api/env_vars.py::check_app_access::persistence::User.query.get(user_id)::1",
     "api/environments.py::_accessible_workspace_ids::persistence::Workspace.query.all()::1",
     "api/environments.py::create_environment::persistence::db.session.commit()::1",
     "api/files.py::upload_file::filesystem::os.makedirs(parent)::1",
@@ -542,7 +520,6 @@
     "api/notifications.py::test_user_notification::persistence::User.query.get(current_user_id)::1",
     "api/notifications.py::unmute_own_email::persistence::User.query.get(current_user_id)::1",
     "api/notifications.py::update_user_preferences::persistence::db.session.commit()::1",
-    "api/previews.py::_get_app_or_404::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/previews.py::destroy_preview::persistence::ApplicationPreview.query.filter_by(id=preview_id, application_id=app_id).first()::1",
     "api/previews.py::list_previews::persistence::ApplicationPreview.query.filter(ApplicationPreview.application_id == app_id, ApplicationPreview.status != ApplicationPreview.STATUS_DESTROYED).order_by(ApplicationPreview.pr_number.desc()).all()::1",
     "api/previews.py::redeploy_preview::persistence::ApplicationPreview.query.filter_by(id=preview_id, application_id=app_id).first()::1",
@@ -648,7 +625,6 @@
     "api/shared_resources.py::delete_variable::persistence::SharedVariable.query.get(variable_id)::1",
     "api/shared_resources.py::update_variable::persistence::SharedVariable.query.get(variable_id)::1",
     "api/site_imports.py::run_import::persistence::db.session.commit()::1",
-    "api/snapshots.py::_get_app_or_404::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/snapshots.py::_get_snapshot_or_404::persistence::DeploymentSnapshot.query.filter_by(id=snap_id, application_id=app_id).first()::1",
     "api/snapshots.py::diff_snapshot::persistence::DeploymentSnapshot.query.filter(DeploymentSnapshot.application_id == app_id, DeploymentSnapshot.created_at < snap.created_at).order_by(DeploymentSnapshot.created_at.desc(), DeploymentSnapshot.id.desc()).first()::1",
     "api/snapshots.py::list_snapshots::persistence::DeploymentSnapshot.query.filter_by(application_id=app_id).order_by(DeploymentSnapshot.created_at.desc(), DeploymentSnapshot.id.desc()).limit(limit).all()::1",
@@ -681,7 +657,6 @@
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::1",
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::2",
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::3",
-    "api/waf.py::_get_application_or_404::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/webhooks.py::receive_pull_request::persistence::ApplicationPreview.query.filter_by(application_id=webhook.app_id, pr_number=pr.get('pr_number')).first()::1",
     "api/webhooks.py::receive_pull_request::persistence::GitWebhook.query.filter_by(webhook_token=token).first()::1"
   ]

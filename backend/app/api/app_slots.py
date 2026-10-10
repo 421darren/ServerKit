@@ -19,35 +19,25 @@
 """
 from flask import Blueprint, jsonify, request
 
-from app.exceptions import ValidationError, not_found
+from app.exceptions import ValidationError
 from app.middleware.rbac import developer_required, get_current_user, viewer_required
-from app.services.resource_grant_service import ResourceGrantService
 from app.services.slot_deploy_service import SlotDeployService
+from app.api._access import require_app
 
 app_slots_bp = Blueprint('app_slots', __name__)
-
-
-def _app(app_id, write=False):
-    app = SlotDeployService.live_app(app_id)
-    user = get_current_user()
-    allowed = (ResourceGrantService.can_edit_app if write
-               else ResourceGrantService.can_access_app)
-    if app is None or not allowed(user, app):
-        raise not_found('service')
-    return app, user
 
 
 @app_slots_bp.route('/<int:app_id>/slots', methods=['GET'])
 @viewer_required
 def get_slots(app_id):
-    app, _ = _app(app_id)
+    app = require_app(app_id, conceal=True)
     return jsonify(SlotDeployService.status(app))
 
 
 @app_slots_bp.route('/<int:app_id>/slots', methods=['PUT'])
 @developer_required
 def set_slots(app_id):
-    app, _ = _app(app_id, write=True)
+    app = require_app(app_id, write=True, conceal=True)
     data = request.get_json(silent=True) or {}
     enabled = data.get('enabled')
     if not isinstance(enabled, bool):
@@ -61,8 +51,8 @@ def set_slots(app_id):
 @app_slots_bp.route('/<int:app_id>/slots/switch-back', methods=['POST'])
 @developer_required
 def switch_back(app_id):
-    app, user = _app(app_id, write=True)
-    result = SlotDeployService.switch_back(app, user_id=user.id)
+    app = require_app(app_id, write=True, conceal=True)
+    result = SlotDeployService.switch_back(app, user_id=get_current_user().id)
     if not result.get('success'):
         return jsonify(result), 409
     return jsonify(result)
@@ -71,7 +61,7 @@ def switch_back(app_id):
 @app_slots_bp.route('/<int:app_id>/slots/restore-db', methods=['POST'])
 @developer_required
 def restore_db(app_id):
-    app, _ = _app(app_id, write=True)
+    app = require_app(app_id, write=True, conceal=True)
     data = request.get_json(silent=True) or {}
     deployment_id = data.get('deployment_id')
     if not isinstance(deployment_id, int) or isinstance(deployment_id, bool):
@@ -85,7 +75,7 @@ def restore_db(app_id):
 @app_slots_bp.route('/<int:app_id>/slots/compose-split', methods=['GET'])
 @viewer_required
 def compose_split_preview(app_id):
-    app, _ = _app(app_id)
+    app = require_app(app_id, conceal=True)
     result = SlotDeployService.compose_split_preview(app)
     if not result.get('success'):
         return jsonify(result), 409
@@ -95,7 +85,7 @@ def compose_split_preview(app_id):
 @app_slots_bp.route('/<int:app_id>/slots/compose-split', methods=['POST'])
 @developer_required
 def compose_split_apply(app_id):
-    app, _ = _app(app_id, write=True)
+    app = require_app(app_id, write=True, conceal=True)
     data = request.get_json(silent=True) or {}
     if data.get('confirm') is not True:
         raise ValidationError("Moving the stateful services stops the service once; send "

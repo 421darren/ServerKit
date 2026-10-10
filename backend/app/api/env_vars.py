@@ -10,43 +10,20 @@ All values are encrypted at rest.
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import Application, User
 from app.services.env_service import EnvService
 from app.services.resource_grant_service import ResourceGrantService
-from app.exceptions import not_found, permission_denied
+from app.api._access import require_app
+from app.middleware.rbac import get_current_user
 
 env_vars_bp = Blueprint('env_vars', __name__)
-
-
-def check_app_access(app_id, user_id, write=False):
-    """Check that the user may access the application's env vars.
-
-    Reads (``write=False``) require can_access_app (owner/admin/any grant);
-    writes require can_edit_app (owner/admin/editor grant — a viewer grant is
-    read-only). Returns ``(user, app, None, None)`` on success or
-    ``(None, None, error_response, status)`` on failure."""
-    user = User.query.get(user_id)
-    app = Application.query_active().filter_by(id=app_id).first()
-
-    if not app:
-        raise not_found('service')
-
-    ok = (ResourceGrantService.can_edit_app(user, app) if write
-          else ResourceGrantService.can_access_app(user, app))
-    if not ok:
-        raise permission_denied()
-
-    return user, app, None, None
 
 
 @env_vars_bp.route('/<int:app_id>/env', methods=['GET'])
 @jwt_required()
 def get_env_vars(app_id):
     """Get all environment variables for an application."""
-    current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id)
-    if error:
-        return error, status
+    user = get_current_user()
+    app = require_app(app_id)
 
     # A read-only grant never sees secret values, whatever ?mask says.
     mask_secrets = (request.args.get('mask', 'false').lower() == 'true'
@@ -65,9 +42,7 @@ def get_env_vars(app_id):
 def create_env_var(app_id):
     """Create a new environment variable."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     data = request.get_json()
     if not data:
@@ -101,10 +76,8 @@ def create_env_var(app_id):
 @jwt_required()
 def get_env_var(app_id, key):
     """Get a single environment variable by key."""
-    current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id)
-    if error:
-        return error, status
+    user = get_current_user()
+    app = require_app(app_id)
 
     env_var = EnvService.get_env_var(app_id, key)
 
@@ -122,9 +95,7 @@ def get_env_var(app_id, key):
 def update_env_var(app_id, key):
     """Update an existing environment variable."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     data = request.get_json()
     if not data:
@@ -159,9 +130,7 @@ def update_env_var(app_id, key):
 def delete_env_var(app_id, key):
     """Delete an environment variable."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     success, err = EnvService.delete_env_var(app_id, key, current_user_id)
 
@@ -179,9 +148,7 @@ def delete_env_var(app_id, key):
 def bulk_set_env_vars(app_id):
     """Set multiple environment variables at once."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     data = request.get_json()
     if not data or 'env_vars' not in data:
@@ -203,9 +170,7 @@ def bulk_set_env_vars(app_id):
 def import_env_file(app_id):
     """Import environment variables from .env file content."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     data = request.get_json()
     if not data or 'content' not in data:
@@ -243,10 +208,8 @@ def import_env_file(app_id):
 @jwt_required()
 def export_env_file(app_id):
     """Export environment variables as .env file content."""
-    current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id)
-    if error:
-        return error, status
+    user = get_current_user()
+    app = require_app(app_id)
 
     include_secrets = (request.args.get('include_secrets', 'true').lower() == 'true'
                        and ResourceGrantService.can_edit_app(user, app))
@@ -263,10 +226,7 @@ def export_env_file(app_id):
 @jwt_required()
 def get_env_history(app_id):
     """Get change history for environment variables."""
-    current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id)
-    if error:
-        return error, status
+    app = require_app(app_id)
 
     limit = request.args.get('limit', 50, type=int)
     history = EnvService.get_history(app_id, limit=limit)
@@ -282,9 +242,7 @@ def get_env_history(app_id):
 def clear_all_env_vars(app_id):
     """Delete all environment variables for an application."""
     current_user_id = get_jwt_identity()
-    user, app, error, status = check_app_access(app_id, current_user_id, write=True)
-    if error:
-        return error, status
+    app = require_app(app_id, write=True)
 
     count = EnvService.clear_all(app_id, current_user_id)
 

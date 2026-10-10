@@ -48,6 +48,7 @@ from app.error_reporting import unexpected_response
 from app.exceptions import (
     PermissionDeniedError, ValidationError, field_required, not_found, permission_denied,
 )
+from app.api._access import require_app
 
 apps_bp = Blueprint('apps', __name__)
 
@@ -2200,25 +2201,11 @@ def get_app_status(app_id):
 
 # ==================== BACKUP PROTECTION (policy + runs) ====================
 
-def _load_app_for_backup(app_id, edit=False):
-    """Load an app the current user may access (or edit). Returns (app, error)."""
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        raise not_found('service')
-    allowed = _can_edit_app(user, app) if edit else _can_access_app(user, app)
-    if not allowed:
-        raise permission_denied()
-    return app, None
-
-
 @apps_bp.route('/<int:app_id>/backup-policy', methods=['GET'])
 @jwt_required()
 def get_app_backup_policy(app_id):
     """Return the protection policy + status for an app (creating a default)."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     return jsonify(BackupPolicyService.serialize_policy_view(policy))
 
@@ -2227,9 +2214,7 @@ def get_app_backup_policy(app_id):
 @jwt_required()
 def update_app_backup_policy(app_id):
     """Update the protection policy and re-sync its schedule."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         BackupPolicyService.update_policy(policy, request.get_json() or {})
@@ -2242,9 +2227,7 @@ def update_app_backup_policy(app_id):
 @jwt_required()
 def trigger_app_backup(app_id):
     """Enqueue a one-off backup for the app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         job = BackupPolicyService.run_policy_now(policy, manual=True)
@@ -2257,9 +2240,7 @@ def trigger_app_backup(app_id):
 @jwt_required()
 def list_app_backups(app_id):
     """List backup runs for the app."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     return jsonify({'runs': BackupPolicyService.list_runs(policy)})
 
@@ -2268,9 +2249,7 @@ def list_app_backups(app_id):
 @jwt_required()
 def restore_app_backup(app_id, run_id):
     """Enqueue a restore from a specific backup run."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         job = BackupPolicyService.request_restore(policy, run_id, request.get_json() or {})
@@ -2283,9 +2262,7 @@ def restore_app_backup(app_id, run_id):
 @jwt_required()
 def verify_app_backup(app_id, run_id):
     """Verify the remote copy of a backup run."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         result = BackupPolicyService.verify_run(policy, run_id)
@@ -2298,9 +2275,7 @@ def verify_app_backup(app_id, run_id):
 @jwt_required()
 def delete_app_backup(app_id, run_id):
     """Delete a backup run (local + remote + record)."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         BackupPolicyService.delete_run(policy, run_id)
@@ -2328,9 +2303,7 @@ def _wp_site_for_app(app):
 def app_wordpress_info(app_id):
     """Whether this app is a WordPress site, and the linked site id. Lets the
     generic Services surface discover the WordPress extension."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     site = _wp_site_for_app(app)
     if not site:
         return jsonify({'is_wordpress': False, 'site_id': None}), 200
@@ -2347,9 +2320,7 @@ def app_wordpress_info(app_id):
 @jwt_required()
 def list_app_db_snapshots(app_id):
     """List the WordPress DB snapshots for an app (unified app-id surface)."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     from app.models.wordpress_site import DatabaseSnapshot
     site = _wp_site_for_app(app)
     if not site:
@@ -2363,9 +2334,7 @@ def list_app_db_snapshots(app_id):
 @jwt_required()
 def create_app_db_snapshot(app_id):
     """Create a WordPress DB snapshot for an app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     from app.models.wordpress_site import DatabaseSnapshot
     from app.services.db_sync_service import DatabaseSyncService
     site = _wp_site_for_app(app)
@@ -2413,9 +2382,7 @@ def create_app_db_snapshot(app_id):
 @jwt_required()
 def delete_app_db_snapshot(app_id, snapshot_id):
     """Delete a WordPress DB snapshot for an app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     from app.models.wordpress_site import DatabaseSnapshot
     from app.services.db_sync_service import DatabaseSyncService
     site = _wp_site_for_app(app)
