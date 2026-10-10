@@ -22,8 +22,8 @@ from unittest.mock import patch
 
 import pytest
 
-from app.api import servers as servers_api
-from app.api.servers import _get_scripts_dir
+from app.api import servers_agents as servers_api
+from app.api.servers_agents import _get_scripts_dir
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

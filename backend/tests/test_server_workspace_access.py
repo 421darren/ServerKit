@@ -35,7 +35,7 @@ def test_outsider_is_refused(client, setup, method, url, body):
     body = {k: setup['own_ws'] if v == '{own_ws}' else v for k, v in body.items()}
     before = Server.query.get(setup['server'])
     token_hash, ws_id = before.registration_token_hash, before.workspace_id
-    with patch('app.api.servers.TerminalService.create_session',
+    with patch('app.services.terminal_service.TerminalService.create_session',
                return_value={'success': True}) as create:
         resp = getattr(client, method)(url.format(sid=setup['server']), json=body,
                                        headers=headers_for(setup['outsider']))
@@ -48,7 +48,7 @@ def test_outsider_is_refused(client, setup, method, url, body):
 
 @pytest.mark.parametrize('who', ['member', 'admin'])
 def test_member_and_admin_can_open_terminal(client, setup, who):
-    with patch('app.api.servers.TerminalService.create_session',
+    with patch('app.services.terminal_service.TerminalService.create_session',
                return_value={'success': True, 'session_id': 's1'}) as create:
         resp = client.post(f"/api/v1/servers/{setup['server']}/terminal", json={},
                            headers=headers_for(setup[who]))
@@ -70,7 +70,7 @@ def test_default_workspace_servers_stay_shared(client, setup):
     from app.services.workspace_service import WorkspaceService
     server = make_server(db, name='swa-default',
                          workspace_id=WorkspaceService.ensure_default_workspace().id)
-    with patch('app.api.servers.TerminalService.create_session',
+    with patch('app.services.terminal_service.TerminalService.create_session',
                return_value={'success': True, 'session_id': 's2'}):
         resp = client.post(f'/api/v1/servers/{server.id}/terminal', json={},
                            headers=headers_for(setup['outsider']))

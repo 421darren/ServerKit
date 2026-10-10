@@ -27,7 +27,7 @@ def ctx(app):
 def test_failure_status_follows_the_agent_code(client, ctx, code, status, method, path, service_fn):
     headers, server_id = ctx
     failure = {'success': False, 'code': code, 'error': 'nope'}
-    with patch(f'app.api.servers.RemoteDockerService.{service_fn}', return_value=failure):
+    with patch(f'app.services.remote_docker_service.RemoteDockerService.{service_fn}', return_value=failure):
         resp = getattr(client, method)(f'/api/v1/servers/{server_id}{path}', headers=headers,
                                        json={'project_path': '/srv/app'})
     assert resp.status_code == status
