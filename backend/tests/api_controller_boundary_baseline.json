@@ -3,7 +3,7 @@
   "policy": "Exact reviewed inventory of direct persistence, subprocess, and filesystem mutation calls in Flask API controllers. New calls are forbidden; remove entries as controllers delegate to services.",
   "counts": {
     "filesystem": 8,
-    "persistence": 471
+    "persistence": 469
   },
   "owners": {
     "api/admin.py": {
@@ -113,10 +113,6 @@
     "api/private_urls.py": {
       "owner": "ServerKit backend / private urls domain",
       "rationale": "Legacy private urls controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
-    },
-    "api/projects.py": {
-      "owner": "ServerKit backend / projects domain",
-      "rationale": "Legacy projects controllers still cross a persistence or host-operation boundary; move each call into an app.services use case before removing it."
     },
     "api/proxy.py": {
       "owner": "ServerKit backend / proxy domain",
@@ -489,7 +485,6 @@
     "api/domains.py::update_domain::persistence::User.query.get(current_user_id)::1",
     "api/domains.py::update_domain::persistence::db.session.commit()::1",
     "api/domains.py::verify_domain::persistence::Domain.query_active().filter_by(id=domain_id).first()::1",
-    "api/environments.py::_accessible_workspace_ids::persistence::Workspace.query.all()::1",
     "api/environments.py::create_environment::persistence::db.session.commit()::1",
     "api/files.py::upload_file::filesystem::os.makedirs(parent)::1",
     "api/fleet.py::list_targets::persistence::Server.query.get(server_id)::1",
@@ -538,7 +533,6 @@
     "api/private_urls.py::update_private_url::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/private_urls.py::update_private_url::persistence::User.query.get(current_user_id)::1",
     "api/private_urls.py::update_private_url::persistence::db.session.commit()::1",
-    "api/projects.py::_accessible_workspace_ids::persistence::Workspace.query.all()::1",
     "api/proxy.py::_require_server::persistence::Server.query.get(server_id)::1",
     "api/python.py::create_django_app::persistence::db.session.add(app)::1",
     "api/python.py::create_django_app::persistence::db.session.commit()::1",

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import func
 
+from app.exceptions import ApplicationError
 from app import db
 from app.queue_bus.broker import AbstractBroker
 from app.queue_bus.models import QueueGroup, Queue, QueueMessage
@@ -11,12 +12,13 @@ from app.queue_bus.models import QueueGroup, Queue, QueueMessage
 logger = logging.getLogger(__name__)
 
 
-class QueueBusError(Exception):
-    """Domain error for queue operations."""
+class QueueBusError(ApplicationError):
+    """Domain error for queue operations; the global handler renders it."""
+
+    code = 'queue_bus'
 
     def __init__(self, message, status_code=400):
         super().__init__(message)
-        self.message = message
         self.status_code = status_code
 
 
