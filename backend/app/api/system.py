@@ -277,19 +277,14 @@ def health_check():
     The domain and encryption details are for signed-in callers only: they
     describe the deployment to anyone who asks.
     """
-    from sqlalchemy import text
     from flask_jwt_extended import verify_jwt_in_request
-    from app import db
 
     # Staging instances run with SERVERKIT_STAGING set. Echo it here so the
     # verify step can prove WHICH instance answered and the UI can show its
     # STAGING banner.
     body = {'service': 'serverkit-api', 'staging': env_bool('SERVERKIT_STAGING')}
-    try:
-        db.session.execute(text('SELECT 1'))
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception('Health check: database unreachable')
+    if not SystemService.database_reachable():
+        current_app.logger.error('Health check: database unreachable')
         return jsonify({**body, 'status': 'unhealthy', 'database': 'unreachable'}), 503
 
     try:
