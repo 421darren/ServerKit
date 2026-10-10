@@ -37,8 +37,6 @@ psutil==5.9.7
 # against async_mode='threading' (browser: "Invalid frame header").
 gunicorn==23.0.0
 simple-websocket==1.1.0
-gevent==25.4.2
-gevent-websocket==0.10.1
 
 # Environment variables
 python-dotenv==1.2.2

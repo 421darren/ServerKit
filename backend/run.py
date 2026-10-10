@@ -19,7 +19,7 @@ if __name__ == '__main__':
     if env == 'production':
         print("ERROR: Do not run the development server in production!", file=sys.stderr)
         print("Use a production WSGI server like gunicorn instead:", file=sys.stderr)
-        print("  gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 run:app", file=sys.stderr)
+        print("  gunicorn -w 1 --threads 100 run:app", file=sys.stderr)
         sys.exit(1)
 
     # Use SocketIO to run the app (supports WebSocket) - only in development

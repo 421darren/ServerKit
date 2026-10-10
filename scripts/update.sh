@@ -696,7 +696,7 @@ rebuild_virtualenv() {
     source "$target_dir/bin/activate"
     pip install --upgrade pip --quiet
     pip install -r "$target_dir/../backend/requirements.txt" --quiet
-    pip install gunicorn gevent gevent-websocket --quiet
+    pip install gunicorn --quiet
     good "Virtual environment rebuilt at $target_dir"
 }
 

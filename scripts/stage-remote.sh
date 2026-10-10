@@ -368,7 +368,7 @@ sr_deploy() {
         ( # shellcheck source=/dev/null
           source "$SR_VENV/bin/activate"
           pip install -q -r "$STAGE_DIR/backend/requirements.txt" \
-            && pip install -q gunicorn gevent gevent-websocket ) \
+            && pip install -q gunicorn ) \
             || sr_die "pip install failed — previous staging deploy still running."
     else
         sr_step "Building the Python virtualenv"

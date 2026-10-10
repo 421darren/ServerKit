@@ -167,12 +167,14 @@ else
         bad "it cannot create a virtualenv"
     fi
     # Force a source build: a cached/platform wheel would hide missing Python.h
-    # and compilers, the exact gap behind issue #148. Use the production pin.
-    native_requirement=$(grep '^gevent==' "$REPO_DIR/backend/requirements.txt")
+    # and compilers, the exact gap behind issue #148. gevent is no longer a
+    # panel dependency; it stays here as a heavy C build that proves the
+    # toolchain works for whatever native dependency comes next.
+    native_requirement='gevent==25.4.2'
     if /tmp/pp-venv/bin/python -m pip install --no-cache-dir --no-binary=gevent \
         "$native_requirement" >/tmp/pp-native.log 2>&1 \
         && /tmp/pp-venv/bin/python -c 'import gevent' >/dev/null 2>&1; then
-        ok "the pinned gevent dependency builds from source and imports"
+        ok "a native C dependency (gevent) builds from source and imports"
     else
         bad "native dependency build failed"
         tail -40 /tmp/pp-native.log

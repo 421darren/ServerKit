@@ -1460,7 +1460,7 @@ build_virtualenv() {
     else
         pip install -r "$INSTALL_DIR/backend/requirements.txt" --quiet
     fi
-    pip install gunicorn gevent gevent-websocket --quiet
+    pip install gunicorn --quiet
 
     good "Python environment ready."
 }
