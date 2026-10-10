@@ -146,3 +146,42 @@ def test_uptime_history_reports_a_failed_save(tmp_path, monkeypatch):
 
     monkeypatch.setattr(json, 'dump', lambda *a, **k: (_ for _ in ()).throw(OSError('disk full')))
     assert UptimeService._save_history({'checks': [1]}) is False
+
+
+def test_corrupt_file_is_kept_aside_so_the_next_save_cannot_destroy_it(tmp_path):
+    """Callers save what they loaded: with the corrupt file left in place,
+    the next save replaced the operator's only copy with the defaults."""
+    path = tmp_path / 'cfg.json'
+    path.write_text('{"smtp_host": "mail.example.com", "trunc')
+    loaded = load_json_config(str(path), {'smtp_host': ''})
+    save_json_config(str(path), loaded)
+
+    aside = list(tmp_path.glob('cfg.json.corrupt-*'))
+    assert len(aside) == 1
+    assert 'mail.example.com' in aside[0].read_text()
+
+
+def test_concurrent_saves_never_leave_a_torn_file(tmp_path):
+    """One fixed temp name let two writers share it and rename a
+    half-written config into place."""
+    import threading
+    path = str(tmp_path / 'cfg.json')
+    big = {'rows': [{'n': i, 'pad': 'x' * 200} for i in range(300)]}
+    errors = []
+
+    def writer(tag):
+        for _ in range(20):
+            result = save_json_config(path, {**big, 'tag': tag})
+            if not result['success']:
+                errors.append(result['error'])
+
+    threads = [threading.Thread(target=writer, args=(t,)) for t in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == []
+    with open(path) as f:
+        assert json.load(f)['rows'] == big['rows']
+    assert list(tmp_path.glob('*.tmp')) == []
