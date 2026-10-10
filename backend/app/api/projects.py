@@ -14,6 +14,7 @@ from app.services.project_service import ProjectService
 from app.services.workspace_service import WorkspaceService
 from app.middleware.rbac import get_current_user
 from app.exceptions import permission_denied
+from app.api._access import visible_workspace_ids
 
 projects_bp = Blueprint('projects', __name__)
 
@@ -28,24 +29,10 @@ def _active_workspace_id(user):
     return ws_id
 
 
-def _accessible_workspace_ids(user):
-    """Workspace ids the caller may see projects for. With an explicit, valid
-    workspace context, just that one; otherwise all the user's workspaces (admins
-    see all)."""
-    ws_id = WorkspaceService.resolve_workspace_id(
-        user, request.headers.get('X-Workspace-Id') or request.args.get('workspace_id'))
-    if ws_id is not None:
-        return [ws_id]
-    if user.is_admin:
-        from app.models.workspace import Workspace
-        return [w.id for w in Workspace.query.all()]
-    return [w.id for w in WorkspaceService.list_workspaces(user_id=user.id)]
-
-
 def _can_view_project(user, project):
     if user.is_admin:
         return True
-    return project.workspace_id in set(_accessible_workspace_ids(user))
+    return project.workspace_id in set(visible_workspace_ids(user))
 
 
 @projects_bp.route('', methods=['GET'])
@@ -54,7 +41,7 @@ def _can_view_project(user, project):
 def list_projects():
     """List projects in the accessible workspace(s), each with resource counts."""
     user = get_current_user()
-    ws_ids = _accessible_workspace_ids(user)
+    ws_ids = visible_workspace_ids(user)
     projects = []
     for ws_id in ws_ids:
         projects.extend(ProjectService.list_projects(ws_id))

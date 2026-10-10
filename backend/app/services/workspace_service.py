@@ -41,6 +41,18 @@ class WorkspaceService:
         return ws
 
     @staticmethod
+    def visible_workspace_ids(user, workspace_id=None):
+        """Workspace ids whose resources ``user`` may see: just ``workspace_id``
+        when a context is active, otherwise every workspace the user belongs
+        to (all of them for an admin)."""
+        if workspace_id is not None:
+            return [workspace_id]
+        if user.is_admin:
+            from app.models.workspace import Workspace
+            return [w.id for w in Workspace.query.all()]
+        return [w.id for w in WorkspaceService.list_workspaces(user_id=user.id)]
+
+    @staticmethod
     def resolve_workspace_id(user, requested):
         """Resolve an optionally-requested workspace context to a usable workspace
         id, or None for "no active context".
