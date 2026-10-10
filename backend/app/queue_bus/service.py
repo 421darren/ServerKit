@@ -119,6 +119,10 @@ class QueueBusService:
         )
 
     @classmethod
+    def recover_in_flight(cls):
+        return cls.broker().recover_in_flight()
+
+    @classmethod
     def complete(cls, group_slug, queue_slug, message_id):
         return cls.broker().complete(group_slug, queue_slug, message_id)
 

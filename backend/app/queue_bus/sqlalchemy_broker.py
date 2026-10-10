@@ -216,6 +216,24 @@ class SQLAlchemyBroker(AbstractBroker):
         db.session.commit()
         return message.to_dict()
 
+    def recover_in_flight(self):
+        # Only safe at boot: the panel is one process, so anything still
+        # in flight belonged to a process that is gone and will never
+        # complete it. Redeliver it, or dead-letter it if out of attempts.
+        stranded = QueueMessage.query.filter(
+            QueueMessage.status == QueueMessage.STATUS_IN_FLIGHT).all()
+        for message in stranded:
+            message.invisible_until = None
+            if message.attempts >= message.max_attempts:
+                message.status = QueueMessage.STATUS_DEAD_LETTER
+                message.error_message = (message.error_message or '') + (
+                    f'[{datetime.utcnow().isoformat()}] interrupted by a restart\n')
+            else:
+                message.status = QueueMessage.STATUS_PENDING
+                message.visible_after = datetime.utcnow()
+        db.session.commit()
+        return len(stranded)
+
     def requeue(self, group_slug, queue_slug, message_id):
         message = self._get_message_or_raise(group_slug, queue_slug, message_id)
         if message.status not in (QueueMessage.STATUS_FAILED, QueueMessage.STATUS_DEAD_LETTER):

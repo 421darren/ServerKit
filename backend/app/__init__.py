@@ -407,6 +407,16 @@ def create_app(config_name=None):
         from app.utils.env import env_bool
         _skip_background = env_bool('SERVERKIT_SKIP_BACKGROUND') or _cli_one_shot
         if not _skip_background:
+            # Before any consumer polls: release what the previous process
+            # left in flight, or it stays stranded forever.
+            if not app.config.get('TESTING'):
+                from app.jobs.service import JobService
+                try:
+                    JobService.recover_interrupted()
+                except Exception:
+                    import logging
+                    logging.getLogger(__name__).exception('Interrupted-job recovery failed')
+
             # Start metrics history collection in background
             from app.services.metrics_history_service import MetricsHistoryService
             if not MetricsHistoryService.is_running():
