@@ -460,17 +460,19 @@ def handle_subscribe_logs(data):
     # Start log stream
     log_queue = log_streamer.start_stream(sid, filepath)
 
-    # Create thread to emit log updates
+    # Emit until this stream is stopped or replaced. A quiet log is not the
+    # end of the stream: giving up after 30s without a line left the client
+    # silently subscribed to nothing.
     def emit_logs():
-        while True:
+        while log_streamer.queues.get(sid) is log_queue:
             try:
-                log_data = log_queue.get(timeout=30)
-                if 'error' in log_data:
-                    socketio.emit('log_error', log_data, room=sid)
-                    break
-                socketio.emit('log_line', log_data, room=sid)
-            except:
+                log_data = log_queue.get(timeout=5)
+            except queue.Empty:
+                continue
+            if 'error' in log_data:
+                socketio.emit('log_error', log_data, room=sid)
                 break
+            socketio.emit('log_line', log_data, room=sid)
 
     thread = threading.Thread(target=emit_logs, daemon=True)
     thread.start()

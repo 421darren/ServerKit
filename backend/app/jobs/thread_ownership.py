@@ -119,6 +119,11 @@ THREAD_OWNERSHIP = {
         'lifecycle': LIFECYCLE_REQUEST_STREAM,
         'rationale': 'Tail lifetime is coupled to a caller-provided stop event.',
     },
+    'app/services/log_service.py:tail_log:_stop_when_asked': {
+        'owner': 'log stream session',
+        'lifecycle': LIFECYCLE_REQUEST_STREAM,
+        'rationale': 'Waits on the stream stop event and kills tail, which a blocked read cannot notice.',
+    },
     'app/services/metrics_history_service.py:start_collection:collection_loop': {
         'owner': 'metrics history collector',
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
