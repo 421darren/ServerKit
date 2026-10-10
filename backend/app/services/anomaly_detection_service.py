@@ -390,29 +390,5 @@ class AnomalyDetectionService:
                 if not self._command_counts[server_id]:
                     del self._command_counts[server_id]
 
-    def load_known_ips(self):
-        """
-        Load known IPs from database.
-
-        Should be called on startup to populate the known IPs cache.
-        """
-        try:
-            from app.models.server import AgentSession
-
-            sessions = AgentSession.query.filter(
-                AgentSession.ip_address.isnot(None)
-            ).all()
-
-            with self._lock:
-                for session in sessions:
-                    if session.server_id and session.ip_address:
-                        self._known_ips[session.server_id].add(session.ip_address)
-
-            print(f"[AnomalyDetection] Loaded known IPs for {len(self._known_ips)} servers")
-
-        except Exception as e:
-            print(f"[AnomalyDetection] Error loading known IPs: {e}")
-
-
 # Global instance
 anomaly_detection_service = AnomalyDetectionService()

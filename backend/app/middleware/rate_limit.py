@@ -24,34 +24,6 @@ def get_rate_limit_key():
     return f'ip:{get_client_ip()}'
 
 
-def get_dynamic_limit():
-    """Return rate limit string based on auth context tier."""
-    from app.services.settings_service import SettingsService
-
-    # API key tier
-    api_key = getattr(g, 'api_key', None)
-    if api_key:
-        tier = api_key.tier or 'standard'
-        setting_key = f'rate_limit_{tier}'
-        return SettingsService.get(setting_key, _default_for_tier(tier))
-
-    # Authenticated user
-    api_key_user = getattr(g, 'api_key_user', None)
-    if api_key_user:
-        return SettingsService.get('rate_limit_standard', '100 per minute')
-
-    try:
-        from flask_jwt_extended import get_jwt_identity
-        user_id = get_jwt_identity()
-        if user_id:
-            return SettingsService.get('rate_limit_standard', '100 per minute')
-    except Exception:
-        pass
-
-    # Unauthenticated
-    return SettingsService.get('rate_limit_unauthenticated', '30 per minute')
-
-
 def _default_for_tier(tier):
     """Return default rate limit for a tier."""
     defaults = {
