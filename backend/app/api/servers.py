@@ -83,6 +83,12 @@ def _resolve_token_expiry(expires_in):
 servers_bp = Blueprint('servers', __name__)
 
 
+def _agent_failure_status(result):
+    """HTTP status for a failed agent command: an offline agent is a 503 and
+    a refused command a 403, so the UI can say which; anything else is 500."""
+    return {'AGENT_OFFLINE': 503, 'PERMISSION_DENIED': 403}.get(result.get('code'), 500)
+
+
 def _get_operable_server(server_id):
     """The server, if the current user may operate it; 404 otherwise, so a
     non-member can't tell a foreign workspace's server from a missing one."""
@@ -1278,7 +1284,7 @@ def list_remote_containers(server_id):
     result = RemoteDockerService.list_containers(server_id, all=all_containers, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500 if result.get('code') != 'AGENT_OFFLINE' else 503
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1292,7 +1298,7 @@ def inspect_remote_container(server_id, container_id):
     result = RemoteDockerService.inspect_container(server_id, container_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1306,7 +1312,7 @@ def start_remote_container(server_id, container_id):
     result = RemoteDockerService.start_container(server_id, container_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Container started'})
 
@@ -1322,7 +1328,7 @@ def stop_remote_container(server_id, container_id):
     result = RemoteDockerService.stop_container(server_id, container_id, timeout=timeout, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Container stopped'})
 
@@ -1338,7 +1344,7 @@ def restart_remote_container(server_id, container_id):
     result = RemoteDockerService.restart_container(server_id, container_id, timeout=timeout, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Container restarted'})
 
@@ -1358,7 +1364,7 @@ def remove_remote_container(server_id, container_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Container removed'})
 
@@ -1372,7 +1378,7 @@ def get_remote_container_stats(server_id, container_id):
     result = RemoteDockerService.get_container_stats(server_id, container_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1400,7 +1406,7 @@ def get_remote_container_logs(server_id, container_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1414,7 +1420,7 @@ def list_remote_images(server_id):
     result = RemoteDockerService.list_images(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1432,7 +1438,7 @@ def pull_remote_image(server_id):
     result = RemoteDockerService.pull_image(server_id, data['image'], user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -1447,7 +1453,7 @@ def remove_remote_image(server_id, image_id):
     result = RemoteDockerService.remove_image(server_id, image_id, force=force, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Image removed'})
 
@@ -1461,7 +1467,7 @@ def list_remote_volumes(server_id):
     result = RemoteDockerService.list_volumes(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1476,7 +1482,7 @@ def remove_remote_volume(server_id, volume_name):
     result = RemoteDockerService.remove_volume(server_id, volume_name, force=force, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Volume removed'})
 
@@ -1490,7 +1496,7 @@ def list_remote_networks(server_id):
     result = RemoteDockerService.list_networks(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1504,7 +1510,7 @@ def remove_remote_network(server_id, network_id):
     result = RemoteDockerService.remove_network(server_id, network_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify({'message': 'Network removed'})
 
@@ -1518,7 +1524,7 @@ def get_remote_system_metrics(server_id):
     result = RemoteDockerService.get_system_metrics(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1532,7 +1538,7 @@ def get_remote_system_info(server_id):
     result = RemoteDockerService.get_system_info(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1548,7 +1554,7 @@ def list_remote_compose_projects(server_id):
     result = RemoteDockerService.compose_list(server_id, user_id=user_id)
 
     if not result.get('success'):
-        return jsonify(result), 500 if result.get('code') != 'AGENT_OFFLINE' else 503
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1570,7 +1576,7 @@ def remote_compose_ps(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data', []))
 
@@ -1594,7 +1600,7 @@ def remote_compose_up(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -1618,7 +1624,7 @@ def remote_compose_down(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -1642,7 +1648,7 @@ def remote_compose_logs(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result.get('data'))
 
@@ -1665,7 +1671,7 @@ def remote_compose_restart(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -1688,7 +1694,7 @@ def remote_compose_pull(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -1770,7 +1776,7 @@ def create_terminal_session(server_id):
     )
 
     if not result.get('success'):
-        return jsonify(result), 500 if result.get('code') != 'AGENT_OFFLINE' else 503
+        return jsonify(result), _agent_failure_status(result)
 
     return jsonify(result)
 
@@ -2556,16 +2562,11 @@ def get_server_diagnostics(server_id):
 from app.services.remote_cron_service import RemoteCronService
 
 
-def _agent_result(result, ok_status=200, missing_status=503):
+def _agent_result(result, ok_status=200):
     """Translate an agent_registry.send_command result into an HTTP
-    response. AGENT_OFFLINE → 503; other failures → 500; success → ok."""
+    response: a failure with its status, success unwrapped."""
     if not result.get('success'):
-        code = 500
-        if result.get('code') == 'AGENT_OFFLINE':
-            code = missing_status
-        elif result.get('code') == 'PERMISSION_DENIED':
-            code = 403
-        return jsonify(result), code
+        return jsonify(result), _agent_failure_status(result)
     # Unwrap the agent's data payload so callers see the same shape as
     # the local CronService responses.
     data = result.get('data')
