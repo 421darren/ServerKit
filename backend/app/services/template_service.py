@@ -30,6 +30,14 @@ import requests
 from app import paths
 from app.utils.system import app_process_env, run_checked
 from app.services.deploy_lock import with_deploy_lock
+from app.exceptions import ConflictError
+
+# Ports handed to an install that has not written its app row (or started its
+# container) yet. Without this, two installs resolving a port variable at the
+# same time both saw the same port free. Single-process panel, so in-memory.
+_PORT_CLAIM_TTL = 15 * 60
+_claimed_ports = {}
+_claimed_ports_lock = threading.Lock()
 
 
 class TemplateService:
@@ -624,7 +632,7 @@ class TemplateService:
             base = cls._managed_app_base_port()
             if base:
                 start_port = base
-            return str(cls._find_available_port(start_port))
+            return str(cls._claim_port(start_port))
 
         elif var_type == 'uuid':
             import uuid
@@ -1047,7 +1055,7 @@ class TemplateService:
         docker_ports = cls._get_docker_used_ports()
 
         # Combine all used ports
-        used_ports = db_ports | docker_ports
+        used_ports = db_ports | docker_ports | cls._live_claims()
 
         for port in range(start_port, start_port + max_attempts):
             # Skip reserved/common ports
@@ -1071,9 +1079,29 @@ class TemplateService:
             except Exception:
                 continue
 
-        # Fallback: return a random high port
-        import random
-        return random.randint(10000, 60000)
+        # A random port here could collide with anything; say so instead.
+        raise ConflictError(
+            f'No free port between {start_port} and {start_port + max_attempts - 1}')
+
+    @staticmethod
+    def _live_claims() -> set:
+        now = time.monotonic()
+        with _claimed_ports_lock:
+            for port, at in list(_claimed_ports.items()):
+                if now - at > _PORT_CLAIM_TTL:
+                    del _claimed_ports[port]
+            return set(_claimed_ports)
+
+    @classmethod
+    def _claim_port(cls, start_port: int = 8000) -> int:
+        """Find a free port and hold it for the install about to use it."""
+        while True:
+            port = cls._find_available_port(start_port)
+            with _claimed_ports_lock:
+                if port not in _claimed_ports:
+                    _claimed_ports[port] = time.monotonic()
+                    return port
+            start_port = port + 1
 
     @classmethod
     def _port_is_free(cls, port) -> bool:
@@ -1087,7 +1115,8 @@ class TemplateService:
             return False
         if not 1 <= port <= 65535:
             return False
-        if port in (cls._get_database_used_ports() | cls._get_docker_used_ports()):
+        if port in (cls._get_database_used_ports() | cls._get_docker_used_ports()
+                    | cls._live_claims()):
             return False
         try:
             test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
