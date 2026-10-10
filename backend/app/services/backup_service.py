@@ -1107,7 +1107,9 @@ class BackupService:
                 'message': f'Backup {status}: {backup_name}' + (f' — {message}' if message else ''),
             }])
         except Exception:
-            pass
+            # Never break the backup flow over an alert, but a lost "backup
+            # failed" alert must at least reach the log.
+            logger.exception('Could not send the backup notification for %s', backup_name)
 
     @staticmethod
     def _format_size(size: int) -> str:

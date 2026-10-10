@@ -9,6 +9,7 @@ Phase 5 adds fleet targeting.
 idempotent — a second plan against a just-applied manifest is empty.
 """
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -22,6 +23,8 @@ from app.models.domain import Domain
 from app.models.environment import Environment
 from app.models.managed_database import ManagedDatabase
 from app.models.project import Project
+
+logger = logging.getLogger(__name__)
 
 
 # manifest backup schedule -> cron
@@ -1217,7 +1220,9 @@ class ManifestApplyService:
                     job_id=job.id, step_index=idx, level=level, message=message,
                     data=json.dumps(data) if data else None))
         except Exception:
-            pass
+            # The step still ran; record that its log line is missing.
+            logger.warning('Could not write deploy log line for job %s step %s',
+                           job.id, idx, exc_info=True)
 
     # -- helpers ------------------------------------------------------------
 

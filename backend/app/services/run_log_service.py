@@ -27,6 +27,7 @@ never breaks logging.
 """
 
 import json
+import logging
 import re
 import time
 from collections import deque
@@ -35,6 +36,17 @@ from typing import Any, Callable, List, Optional
 
 from app import db
 from app.models.deployment_job import DeploymentJob, DeploymentJobLog
+
+logger = logging.getLogger(__name__)
+_reported = set()
+
+
+def _report_once(key: str, message: str) -> None:
+    # Live emits run per flush; a broken socket path would flood the log.
+    # Once per kind is enough to make "live logs stopped" findable.
+    if key not in _reported:
+        _reported.add(key)
+        logger.warning(message, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +128,7 @@ def _make_default_emit_log(run_kind: str) -> Callable:
             from app.sockets import emit_run_log
             emit_run_log(run_kind, run_id, lines)
         except Exception:
-            pass
+            _report_once(f'log:{run_kind}', f'Live {run_kind} log emit failed')
     return _emit
 
 
@@ -126,7 +138,7 @@ def _make_default_emit_status(run_kind: str) -> Callable:
             from app.sockets import emit_run_status
             emit_run_status(run_kind, run_id, status)
         except Exception:
-            pass
+            _report_once(f'status:{run_kind}', f'Live {run_kind} status emit failed')
     return _emit
 
 
@@ -339,7 +351,7 @@ class RunLogStream:
             try:
                 self._emit_log(self.job.id, lines)
             except Exception:
-                pass
+                _report_once(f'emit:{type(self).__name__}', 'Run log emitter raised')
         except Exception:
             # Buffered-drop on flush failure (D10): one telemetry event, then
             # continue. A stuck deployment is worse than a missing log line.

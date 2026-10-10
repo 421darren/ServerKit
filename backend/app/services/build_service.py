@@ -10,6 +10,7 @@ Supports:
 - Build timeout handling
 """
 
+import logging
 import os
 import subprocess
 
@@ -25,6 +26,8 @@ from pathlib import Path
 
 from app import paths
 from app.utils.config_store import load_json_config
+
+logger = logging.getLogger(__name__)
 
 
 class BuildService:
@@ -700,7 +703,9 @@ class BuildService:
             with open(filepath, 'w') as f:
                 json.dump(build_log, f, indent=2)
         except Exception:
-            pass
+            # The build itself is done; losing its log should not fail it,
+            # but it should not vanish without a trace either.
+            logger.exception('Could not save the build log for app %s', app_id)
 
     @classmethod
     def _update_build_stats(cls, app_id: int) -> None:
