@@ -342,8 +342,11 @@ class GitService:
         if not app_config:
             return False
 
-        # Simple token verification
-        if token != app_config.get('webhook_token'):
+        # Constant-time, and never a match when either side is missing —
+        # `None != None` let a tokenless request through for a tokenless app.
+        expected = app_config.get('webhook_token')
+        if not (isinstance(token, str) and isinstance(expected, str) and token and expected
+                and hmac.compare_digest(token.encode(), expected.encode())):
             return False
 
         # If signature provided, verify based on provider
