@@ -61,19 +61,6 @@ def check_auto_sync_schedules():
             logger.error(f'Auto-sync check failed for site {site.id}: {e}')
 
 
-def check_workflow_schedules():
-    """Retired no-op (plan 45 Phase 4).
-
-    The React-Flow Workflow Builder and its execution engine were removed in
-    favour of the Automations extension (tramo), whose own in-process scheduler
-    drives ``cron-trigger`` nodes inside the managed engine. The legacy
-    ``workflows`` tables are kept for read-only export, so this scheduled handler
-    is retained as a no-op (avoids an orphaned-handler error for any persisted
-    ``workflow-schedules`` schedule row) but no longer executes anything.
-    """
-    return
-
-
 # How often the per-site WordPress health poller runs (seconds).
 HEALTH_CHECK_INTERVAL = 300
 # Retention for recorded health-check samples (days) — bounds unbounded growth
@@ -586,7 +573,6 @@ _BUILTINS = [
     ('builtin.auto_sync',           check_auto_sync_schedules, 'auto-sync',          60,    60),
     ('builtin.snapshot_retention',  run_snapshot_retention,    'snapshot-retention', 3600,  120),
     ('builtin.restore_point_retention', run_restore_point_retention, 'restore-point-retention', 3600, 180),
-    ('builtin.workflow_schedules',  check_workflow_schedules,  'workflow-schedules', 60,    60),
     ('builtin.health_check',        run_health_checks,         'health-check',       300,   30),
     # 30s tick, not the monitor interval: the sweep only polls monitors whose own
     # interval has elapsed, so this bounds how late a 30s check can fire.
