@@ -481,6 +481,15 @@ def create_app(config_name=None):
             BandwidthService.register_jobs()
             start_job_system(app, seed=seed_builtin_schedules)
 
+            # Threshold alerting and the uptime sampler are switched on from
+            # the UI; without this they silently stop at the next restart
+            # while their status still reads "enabled".
+            if not app.config.get('TESTING'):
+                from app.services.monitoring_service import MonitoringService
+                from app.services.uptime_service import UptimeService
+                MonitoringService.resume_if_enabled(app)
+                UptimeService.resume_if_enabled()
+
             # Resume the embedded agent when this panel is linked to a master
             # ServerKit panel (ServerKit-to-ServerKit peering).
             from app.services.linked_panel_service import LinkedPanelService
