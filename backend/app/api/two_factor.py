@@ -15,7 +15,7 @@ from app.models import User
 from app.services.totp_service import TOTPService, TwoFactorSetup
 from app.services import auth_throttle_service
 from app.utils.client_ip import get_client_ip
-from app.exceptions import not_found
+from app.exceptions import AuthenticationError, RateLimitedError, not_found
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +241,7 @@ def verify_2fa_code():
     # The lockout login enforces applies here too: failed codes count
     # toward it, so it must also stop the guessing.
     if user.is_locked:
-        return jsonify({'error': 'Account is locked. Try again later.'}), 429
+        raise RateLimitedError('Account is locked. Try again later.')
 
     jti = token_data.get('jti') or temp_token
     normalized = str(code).replace(' ', '').replace('-', '')
@@ -250,7 +250,7 @@ def verify_2fa_code():
     if (TOTPService.verify_code(user.totp_secret, code)
             and _spend_once(('totp', user.id, normalized), _TOTP_REPLAY_SECONDS)):
         if not _spend_once(('temp', jti), _TEMP_TOKEN_SECONDS):
-            return jsonify({'error': 'Invalid or expired token'}), 401
+            raise AuthenticationError('Invalid or expired token')
         # Success - issue real tokens
         auth_throttle_service.reset(client_ip)
         user.reset_failed_login()
@@ -270,7 +270,7 @@ def verify_2fa_code():
 
     if matched_hash:
         if not _spend_once(('temp', jti), _TEMP_TOKEN_SECONDS):
-            return jsonify({'error': 'Invalid or expired token'}), 401
+            raise AuthenticationError('Invalid or expired token')
         # Valid backup code - remove it (one-time use)
         auth_throttle_service.reset(client_ip)
         user.use_backup_code(matched_hash)

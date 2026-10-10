@@ -69,6 +69,12 @@ class ConflictError(ApplicationError):
     default_message = 'Resource conflict'
 
 
+class RateLimitedError(ApplicationError):
+    status_code = 429
+    code = 'rate_limited'
+    default_message = 'Too many requests'
+
+
 class DependencyUnavailableError(ApplicationError):
     status_code = 503
     code = 'dependency_unavailable'

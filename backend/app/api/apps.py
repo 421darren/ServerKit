@@ -45,7 +45,9 @@ from app.services.upload_service import (
 from app import paths
 from app.middleware.rbac import get_current_user, require_admin_user
 from app.error_reporting import unexpected_response
-from app.exceptions import field_required, not_found, permission_denied
+from app.exceptions import (
+    PermissionDeniedError, ValidationError, field_required, not_found, permission_denied,
+)
 
 apps_bp = Blueprint('apps', __name__)
 
@@ -918,15 +920,16 @@ _HOST_BINDING_FIELDS = ('root_path', 'compose_file', 'systemd_unit', 'managed_by
 @apps_bp.route('', methods=['POST'])
 @jwt_required()
 def create_app():
-    current_user_id = get_jwt_identity()
+    user = get_current_user()
+    current_user_id = user.id
     data = request.get_json()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
     host_fields = [f for f in _HOST_BINDING_FIELDS if data.get(f)]
-    if host_fields and not User.query.get(current_user_id).is_admin:
-        return jsonify({'error': f"Only an admin can set {', '.join(host_fields)}"}), 403
+    if host_fields and not user.is_admin:
+        raise PermissionDeniedError(f"Only an admin can set {', '.join(host_fields)}")
 
     # The name becomes the nginx vhost name and its file path.
     name = _service_slug(data.get('name'))
@@ -941,11 +944,10 @@ def create_app():
 
     clash = app_name_clash_error(Application.query.filter_by(name=name).first(), name)
     if clash:
-        return jsonify({'error': clash}), 400
+        raise ValidationError(clash)
 
     # Stamp the workspace (#33): the requested one (membership-checked) or the default.
     from app.services.workspace_service import WorkspaceService
-    user = User.query.get(current_user_id)
     ws_id = WorkspaceService.resolve_workspace_id(
         user, request.headers.get('X-Workspace-Id') or request.args.get('workspace_id'))
     # Role reconciliation (#33): a workspace 'viewer' member has read-only access to
@@ -1327,16 +1329,15 @@ def update_app(app_id):
     # untouched rather than half-updated in the session.
     host_fields = [f for f in _HOST_BINDING_FIELDS if f in data]
     if host_fields and not user.is_admin:
-        return jsonify({'error': f"Only an admin can change {', '.join(host_fields)}"}), 403
+        raise PermissionDeniedError(f"Only an admin can change {', '.join(host_fields)}")
     if 'name' in data and data['name'] != app.name:
         if not data['name'] or _service_slug(data['name']) != data['name']:
-            return jsonify({'error': 'Service name must be lowercase letters, digits and hyphens'}), 400
+            raise ValidationError('Service name must be lowercase letters, digits and hyphens')
         clash = app_name_clash_error(
             Application.query.filter_by(name=data['name']).first(), data['name'])
         if clash:
-            return jsonify({'error': clash}), 400
+            raise ValidationError(clash)
     if 'deploy_settings' in data:
-        from app.exceptions import ValidationError
         from app.services import deploy_settings
         _, error = deploy_settings.validate(data['deploy_settings'])
         if error:

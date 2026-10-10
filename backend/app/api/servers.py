@@ -26,7 +26,9 @@ from app.services.discovery_service import discovery_service
 from app.services import connection_string as connection_string_codec
 from app.middleware.rbac import admin_required, auth_required, developer_required, get_current_user
 from app.middleware.api_scope_middleware import require_scope
-from app.exceptions import ValidationError, agent_offline, field_required, not_found
+from app.exceptions import (
+    PermissionDeniedError, ValidationError, agent_offline, field_required, not_found,
+)
 
 
 # Default token lifetime when the caller doesn't specify one. 7 days is
@@ -447,7 +449,7 @@ def set_server_workspace(server_id):
     user = get_current_user()
     server = _get_operable_server(server_id)
     if server.workspace_id and not WorkspaceService.can_write_in_workspace(user, server.workspace_id):
-        return jsonify({'error': "You have read-only access to this server's workspace"}), 403
+        raise PermissionDeniedError("You have read-only access to this server's workspace")
 
     target = (request.get_json() or {}).get('workspace_id')
     if target in (None, '', 'default'):
