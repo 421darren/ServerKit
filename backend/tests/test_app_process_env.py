@@ -75,15 +75,16 @@ def test_python_app_commands(panel_env, monkeypatch, tmp_path):
     _assert_clean(seen['env'])
 
 
-def test_custom_build_commands(panel_env, monkeypatch, tmp_path):
-    from app.services import build_service
+def test_custom_build_commands(panel_env, fake_subprocess, tmp_path):
+    from subprocess_stub import FakeProc
+    from app.services.build_service import BuildService
     seen = {}
 
-    def popen(cmd, **kwargs):
+    def bash(argv, kwargs):
         seen['env'] = kwargs['env']
-        raise OSError('stop here')
-    monkeypatch.setattr(build_service.subprocess, 'Popen', popen)
-    build_service.BuildService.build_with_custom_command(
+        return FakeProc(returncode=0, args=argv)
+    fake_subprocess.when(['bash'], bash)
+    BuildService.build_with_custom_command(
         1, str(tmp_path), 'npm run build', env_vars={'NODE_ENV': 'production'})
     _assert_clean(seen['env'])
     assert seen['env']['NODE_ENV'] == 'production'

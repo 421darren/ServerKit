@@ -6,12 +6,10 @@ piped compressed bytes into mysql/psql. These run real child processes —
 small Python stand-ins for mysqldump/mysql — so the bytes really cross a pipe.
 """
 import gzip
-import subprocess
 import sys
 
 import pytest
 
-from app.utils import system
 from app.utils.system import run_from_gzip, run_to_gzip
 
 _ROW = "INSERT INTO t VALUES (1), (2);\n"
@@ -73,14 +71,14 @@ def fake_clients(tmp_path, monkeypatch):
         'mysqldump': WRITE_SQL,
         'mysql': f'import sys; open({str(received)!r}, "wb").write(sys.stdin.buffer.read())',
     }
-    real_popen = subprocess.Popen
 
-    def popen(cmd, *args, **kwargs):
-        if cmd[0] in stand_ins:
-            cmd = [sys.executable, '-c', stand_ins[cmd[0]]]
-        return real_popen(cmd, *args, **kwargs)
+    def stand_in(runner):
+        # Swap the binary, keep the real runner: the bytes still cross a pipe.
+        return lambda cmd, *args, **kwargs: runner(
+            [sys.executable, '-c', stand_ins[cmd[0]]], *args, **kwargs)
 
-    monkeypatch.setattr(system.subprocess, 'Popen', popen)
+    monkeypatch.setattr('app.services.backup_service.run_to_gzip', stand_in(run_to_gzip))
+    monkeypatch.setattr('app.services.backup_service.run_from_gzip', stand_in(run_from_gzip))
     monkeypatch.setattr('app.services.backup_service.is_command_available', lambda c: True)
     return received
 
