@@ -48,8 +48,9 @@ def get_env_vars(app_id):
     if error:
         return error, status
 
-    # Check if secrets should be masked
-    mask_secrets = request.args.get('mask', 'false').lower() == 'true'
+    # A read-only grant never sees secret values, whatever ?mask says.
+    mask_secrets = (request.args.get('mask', 'false').lower() == 'true'
+                    or not ResourceGrantService.can_edit_app(user, app))
 
     env_vars = EnvService.get_env_vars(app_id, mask_secrets=mask_secrets)
 
@@ -111,7 +112,8 @@ def get_env_var(app_id, key):
         return jsonify({'error': 'Environment variable not found'}), 404
 
     return jsonify({
-        'env_var': env_var.to_dict()
+        'env_var': env_var.to_dict(
+            mask_secrets=not ResourceGrantService.can_edit_app(user, app))
     }), 200
 
 
@@ -246,7 +248,8 @@ def export_env_file(app_id):
     if error:
         return error, status
 
-    include_secrets = request.args.get('include_secrets', 'true').lower() == 'true'
+    include_secrets = (request.args.get('include_secrets', 'true').lower() == 'true'
+                       and ResourceGrantService.can_edit_app(user, app))
 
     content = EnvService.export_to_env_format(app_id, include_secrets=include_secrets)
 
