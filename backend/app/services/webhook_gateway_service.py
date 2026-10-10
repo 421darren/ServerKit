@@ -145,14 +145,22 @@ class WebhookGatewayService:
         if not endpoint:
             return {'success': False, 'error': 'Endpoint not found'}, 404
 
-        event_id = headers.get('X-Webhook-Event-ID') or headers.get('x-webhook-event-id') or str(uuid.uuid4())
-
-        # Avoid duplicate deliveries
-        if WebhookDelivery.query.filter_by(event_id=event_id).first():
-            return {'success': True, 'message': 'Duplicate delivery ignored', 'event_id': event_id}, 200
+        # Case-insensitive: Werkzeug hands headers over as X-Webhook-Event-Id,
+        # which neither of the exact spellings once checked here matched.
+        event_id = next((v for k, v in headers.items()
+                         if k.lower() == 'x-webhook-event-id' and v), None) or str(uuid.uuid4())
 
         signature_header, algorithm = cls._extract_signature(headers)
         signature_valid = endpoint.verify_signature(payload, signature_header, algorithm)
+
+        if not signature_valid:
+            # Logged under a fresh id: event_id is unique, so storing an
+            # unauthenticated request under the id it claims would let anyone
+            # pre-empt that event and get the real delivery dropped as a
+            # duplicate. The claimed id stays visible in the saved headers.
+            event_id = str(uuid.uuid4())
+        elif WebhookDelivery.query.filter_by(event_id=event_id).first():
+            return {'success': True, 'message': 'Duplicate delivery ignored', 'event_id': event_id}, 200
 
         delivery = WebhookDelivery(
             endpoint_id=endpoint.id,
