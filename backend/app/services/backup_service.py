@@ -406,15 +406,35 @@ class BackupService:
             if not restore_path:
                 restore_path = f"/var/www/{backup_info['app_name']}"
 
-            # Backup existing if present
-            if os.path.exists(restore_path):
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                backup_existing = f"{restore_path}.backup_{timestamp}"
-                shutil.move(restore_path, backup_existing)
+            # The archive holds one top-level dir named after the app's
+            # ORIGINAL directory, so extract beside the target and move that
+            # dir into place — extracting straight into the parent restored
+            # into the old name whenever restore_path was a different one.
+            parent = os.path.dirname(os.path.abspath(restore_path))
+            os.makedirs(parent, exist_ok=True)
+            staging = tempfile.mkdtemp(prefix='.restore-', dir=parent)
+            backup_existing = None
+            try:
+                # filter='data' blocks path traversal in archives
+                with tarfile.open(files_backup, 'r:gz') as tar:
+                    tar.extractall(staging, filter='data')
+                entries = os.listdir(staging)
+                if len(entries) != 1 or not os.path.isdir(os.path.join(staging, entries[0])):
+                    return {'success': False,
+                            'error': 'Invalid backup: expected one top-level directory'}
 
-            # Extract backup (filter='data' blocks path traversal in archives)
-            with tarfile.open(files_backup, 'r:gz') as tar:
-                tar.extractall(os.path.dirname(restore_path), filter='data')
+                if os.path.exists(restore_path):
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    backup_existing = f"{restore_path}.backup_{timestamp}"
+                    shutil.move(restore_path, backup_existing)
+                try:
+                    shutil.move(os.path.join(staging, entries[0]), restore_path)
+                except Exception:
+                    if backup_existing:
+                        shutil.move(backup_existing, restore_path)
+                    raise
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
 
             return {
                 'success': True,
