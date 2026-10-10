@@ -286,6 +286,9 @@ function FileManager() {
     const [historyIdx, setHistoryIdx] = useState(0);
     const navByHistory = useRef(false);
     const lastValidPathRef = useRef('/home');
+    // Only the newest browse may write: a slow answer for the folder the
+    // user just left used to land last and navigate them back to it.
+    const loadSeqRef = useRef(0);
 
     // ─── context menu ────────────────────────────────────
     const [contextMenu, setContextMenu] = useState(null);
@@ -387,12 +390,14 @@ function FileManager() {
 
     // ─── load directory ──────────────────────────────────
     const loadDirectory = useCallback(async (path) => {
+        const seq = ++loadSeqRef.current;
         setLoading(true);
         setSearchResults(null);
         setSelectedPaths(new Set());
         setSelectMode(false);
         try {
             const data = await fileApi.browse(path, showHidden);
+            if (seq !== loadSeqRef.current) return;
             // Agent file:list returns {path, files: [...]} with a flat
             // entry shape; panel browseFiles returns {path, parent,
             // entries: [...]}. Normalize so the UI can keep using
@@ -404,6 +409,7 @@ function FileManager() {
             lastValidPathRef.current = data.path || path;
             setDirError(null);
         } catch (error) {
+            if (seq !== loadSeqRef.current) return;
             if (path !== lastValidPathRef.current) {
                 toast.error(t('app.fileManager.failedToLoadDirectory', "Couldn't load the folder. {{message}}", { message: errorReason(error) }));
                 setCurrentPath(lastValidPathRef.current);
@@ -412,7 +418,7 @@ function FileManager() {
                 setDirError(error);
             }
         } finally {
-            setLoading(false);
+            if (seq === loadSeqRef.current) setLoading(false);
         }
     }, [fileApi, showHidden, toast, t]);
 

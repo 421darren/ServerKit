@@ -77,6 +77,9 @@ jobs:
       - name: Docker tabs browser regressions
         working-directory: frontend
         run: npm run test:docker-tabs
+      - name: File Manager browser regressions
+        working-directory: frontend
+        run: npm run test:file-manager
       - name: Upload Settings screenshots
         if: always()
         uses: actions/upload-artifact@v4

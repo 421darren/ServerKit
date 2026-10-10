@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createServer } from 'vite';
+import react from '@vitejs/plugin-react';
+import { chromium } from 'playwright';
+
+// The real File Manager. Opening a folder while the previous one was still
+// loading let the slow answer land last and navigate the user back to the
+// folder they had just left. Only HTTP, toasts and translation are stubbed.
+const root = fileURLToPath(new URL('../', import.meta.url));
+const fixture = `
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {MemoryRouter} from 'react-router-dom';
+import FileManager from '/src/pages/FileManager.jsx';
+window.pending=[];
+const listing=(p)=>({path:p,parent:p==='/'?null:p.replace(/\\/[^/]+$/,'')||'/',entries:p==='/home'?[{name:'projects',path:'/home/projects',is_dir:true,type:'directory',size:0}]:[{name:'inside-'+p.split('/').pop()+'.txt',path:p+'/x.txt',is_dir:false,type:'file',size:1}]});
+window.release=(p)=>{const i=window.pending.findIndex(x=>x.path===p);const x=window.pending.splice(i,1)[0];x.resolve(listing(p));};
+window.testApi={
+ browseFiles:(p)=>(window.calls=window.calls||[]).push(p)&&window.holdAll||p!=='/home'?new Promise(resolve=>window.pending.push({path:p,resolve})):Promise.resolve(listing(p)),
+ getDiskMounts:()=>Promise.resolve({mounts:[]}),
+};
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/files']}><FileManager/></MemoryRouter>);
+`;
+const server = await createServer({
+    root, configFile: false, logLevel: 'error', resolve: { alias: { '@': path.join(root, 'src') } },
+    cacheDir: path.join(root, 'node_modules/.vite-file-manager-regression'),
+    optimizeDeps: { entries: [] }, server: { host: '127.0.0.1', port: 0 },
+    plugins: [{
+        name: 'file-manager-fixtures', enforce: 'pre',
+        resolveId(id) {
+            if (id === 'react-i18next') return '\0test-i18n';
+            if (id.endsWith('/fm-fixture.jsx')) return path.join(root, 'fm-fixture.jsx');
+        },
+        load(id) {
+            const normalized = id.replaceAll('\\', '/');
+            if (id === '\0test-i18n') return `const t=(key,f)=>typeof f==='string'?f:(f&&(f.defaultValue_other||f.defaultValue))||key;export const useTranslation=()=>({t,i18n:{language:'en'}});export const Trans=({children})=>children;export const initReactI18next={type:'3rdParty',init(){}};`;
+            if (normalized.endsWith('/src/contexts/useAuth.js')) return `import {createContext} from 'react';export const AuthContext=createContext(null);const auth={user:{id:1,role:'admin'},isAdmin:true,isAuthenticated:true,hasPermission:()=>true};export const useAuth=()=>auth;`;
+            if (normalized.endsWith('/src/contexts/useWorkspace.js')) return `const ws={activeWorkspaceId:null,workspaces:[],setActiveWorkspace(){}};export const useWorkspace=()=>ws;`;
+            if (normalized.endsWith('/src/contexts/useToast.js')) return `const toast={error(m){(window.toasts=window.toasts||[]).push(m)},success(){},info(){},warning(){}};export const useToast=()=>toast;`;
+            if (normalized.endsWith('/src/services/api.js') || normalized.endsWith('/src/services/api/index.js')) return `const api=new Proxy({}, {get:(_,key)=>(...args)=>(window.testApi[key]?window.testApi[key](...args):Promise.resolve({}))});export {api};export default api;`;
+            if (normalized.endsWith('/fm-fixture.jsx')) return fixture;
+        },
+        configureServer(vite) {
+            vite.middlewares.use('/fm-check', async (_req, res) => {
+                res.setHeader('Content-Type', 'text/html');
+                res.end(await vite.transformIndexHtml('/fm-check', '<div id="root"></div><script type="module" src="/fm-fixture.jsx"></script>'));
+            });
+        },
+    }, react()],
+});
+const executablePath = [process.env.CHROME_PATH, chromium.executablePath(), 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(candidate => candidate && existsSync(candidate));
+let browser;
+try {
+    await server.listen();
+    browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}), headless: true });
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+
+    // Open /home/projects (held), then go back Home before it answers.
+    await page.getByText('projects', { exact: true }).first().dblclick();
+    await page.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await page.evaluate(() => { window.holdAll = true; });
+    await page.getByTitle('Home', { exact: true }).first().click();
+    await page.waitForFunction(() => window.pending.some(x => x.path === '/home'));
+    await page.evaluate(() => window.release('/home'));
+    await page.getByText('projects', { exact: true }).first().waitFor();
+
+    // The answer for the folder the user left arrives last.
+    await page.evaluate(() => window.release('/home/projects'));
+    await page.waitForTimeout(400);
+    assert.deepEqual(await page.evaluate(() => window.calls.filter(c => c === '/home/projects').length), 1,
+        'a late answer for the previous folder navigated the user back into it');
+    assert.equal(await page.getByText('inside-projects.txt').count(), 0);
+    assert.equal(await page.getByText('projects', { exact: true }).count() > 0, true);
+    assert.deepEqual(errors, []);
+    console.log('PASS a slow listing for a folder the user left does not pull them back');
+} finally {
+    await browser?.close();
+    await server.close();
+}
