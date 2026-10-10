@@ -10,6 +10,7 @@ from flask import Blueprint, request, jsonify
 
 from app.middleware.rbac import admin_required, viewer_required, require_app_member
 from app.services.cron_service import CronService
+from app.api._request import json_object
 
 cron_bp = Blueprint('cron', __name__)
 
@@ -97,7 +98,7 @@ def list_jobs():
 @admin_required
 def create_job():
     """Create a new cron job."""
-    data = request.get_json()
+    data = json_object()
 
     schedule = data.get('schedule')
     command = data.get('command')
@@ -131,7 +132,7 @@ def create_job():
 @admin_required
 def update_job(job_id):
     """Update a cron job."""
-    data = request.get_json()
+    data = json_object()
 
     set_application = 'application_id' in data
     application_id = None
@@ -170,7 +171,7 @@ def delete_job(job_id):
 @admin_required
 def toggle_job(job_id):
     """Enable or disable a cron job."""
-    data = request.get_json()
+    data = json_object()
     enabled = data.get('enabled', True)
 
     result = CronService.toggle_job(job_id, enabled)

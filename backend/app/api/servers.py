@@ -17,6 +17,7 @@ from sqlalchemy.orm import joinedload
 from app import db, limiter
 from app.services.server_metrics_service import latest_metrics_by_server
 from app.api._query import apply_query, QueryParseError
+from app.api._request import json_object
 from app.models import User
 from app.models.server import Server, ServerGroup, ServerMetrics, ServerCommand, AgentSession, AgentVersion, AgentRollout
 from app.services.agent_registry import agent_registry
@@ -233,7 +234,7 @@ def update_group(group_id):
     if not group:
         return jsonify({'error': 'Group not found'}), 404
 
-    data = request.get_json()
+    data = json_object()
 
     if 'name' in data:
         group.name = data['name']
@@ -579,7 +580,7 @@ def update_server(server_id):
     if not server:
         raise not_found('server')
 
-    data = request.get_json()
+    data = json_object()
 
     if 'name' in data:
         server.name = data['name']
@@ -733,7 +734,7 @@ def register_agent():
         "agent_version": "1.0.0"
     }
     """
-    data = request.get_json()
+    data = json_object()
 
     token = data.get('token')
     if not token:
@@ -1050,7 +1051,7 @@ def update_allowed_ips(server_id):
     if not server:
         raise not_found('server')
 
-    data = request.get_json()
+    data = json_object()
     allowed_ips = data.get('allowed_ips', [])
 
     # Validate each IP pattern
@@ -2406,7 +2407,7 @@ def add_agent_version():
 @admin_required
 def upgrade_fleet():
     """Trigger upgrade for selected servers or entire fleet"""
-    data = request.get_json()
+    data = json_object()
     server_ids = data.get('server_ids', [])
     version_id = data.get('version_id')
     user_id = get_jwt_identity()
@@ -2427,7 +2428,7 @@ def upgrade_fleet():
 @admin_required
 def start_staged_rollout():
     """Start a staged rollout"""
-    data = request.get_json()
+    data = json_object()
     group_id = data.get('group_id')
     version_id = data.get('version_id')
     batch_size = data.get('batch_size', 5)

@@ -11,6 +11,7 @@ from app.services.nginx_service import NginxService
 from app.services.ssl_service import SSLService, get_acme_contact, remember_acme_contact
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import already_exists, not_found, permission_denied
+from app.api._request import json_object
 
 domains_bp = Blueprint('domains', __name__)
 
@@ -307,7 +308,7 @@ def update_domain(domain_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
 
     if 'is_primary' in data and data['is_primary']:
         # Unset any existing primary domain for this app

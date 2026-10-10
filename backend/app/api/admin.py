@@ -14,6 +14,7 @@ from app.services.settings_service import SettingsService
 from app.services.permission_service import PermissionService
 from app.utils.domain import detect_request_domain, canonical_origin, is_valid_canonical_domain
 from app.exceptions import not_found
+from app.api._request import json_object
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -346,7 +347,7 @@ def get_setting(key):
 @admin_required
 def update_setting(key):
     """Update a specific setting."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if 'value' not in data:
