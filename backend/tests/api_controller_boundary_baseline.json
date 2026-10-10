@@ -3,7 +3,7 @@
   "policy": "Exact reviewed inventory of direct persistence, subprocess, and filesystem mutation calls in Flask API controllers. New calls are forbidden; remove entries as controllers delegate to services.",
   "counts": {
     "filesystem": 8,
-    "persistence": 483
+    "persistence": 480
   },
   "owners": {
     "api/admin.py": {
@@ -259,7 +259,6 @@
     "api/apps.py::apply_image_update::persistence::Application.query_active().filter_by(id=app_id).first()::1",
     "api/apps.py::apply_image_update::persistence::User.query.get(current_user_id)::1",
     "api/apps.py::apply_image_update::persistence::db.session.commit()::1",
-    "api/apps.py::create_app::persistence::User.query.get(current_user_id)::1",
     "api/apps.py::create_app::persistence::db.session.add(app)::1",
     "api/apps.py::create_app::persistence::db.session.commit()::1",
     "api/apps.py::create_app_db_snapshot::persistence::db.session.add(snapshot)::1",
@@ -618,7 +617,6 @@
     "api/servers.py::list_agent_versions::persistence::AgentVersion.query.order_by(AgentVersion.version.desc()).all()::1",
     "api/servers.py::list_groups::persistence::ServerGroup.query.all()::1",
     "api/servers.py::ping_server::persistence::Server.query.get(server_id)::1",
-    "api/servers.py::regenerate_token::persistence::Server.query.get(server_id)::1",
     "api/servers.py::regenerate_token::persistence::db.session.commit()::1",
     "api/servers.py::register_agent::persistence::Server.query.filter(Server.registration_token_hash.isnot(None)).all()::1",
     "api/servers.py::register_agent::persistence::db.session.commit()::1",
@@ -627,7 +625,6 @@
     "api/servers.py::rotate_api_key::persistence::Server.query.get(server_id)::1",
     "api/servers.py::rotate_api_key::persistence::db.session.commit()::1",
     "api/servers.py::set_server_workspace::persistence::Server.query.filter_by(workspace_id=ws.id).count()::1",
-    "api/servers.py::set_server_workspace::persistence::Server.query.get(server_id)::1",
     "api/servers.py::set_server_workspace::persistence::Workspace.query.get(target)::1",
     "api/servers.py::set_server_workspace::persistence::db.session.commit()::1",
     "api/servers.py::start_server_onboarding::persistence::Server.query.get(server_id)::1",

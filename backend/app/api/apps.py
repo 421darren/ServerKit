@@ -942,7 +942,7 @@ def create_app():
     if app_type not in valid_types:
         return jsonify({'error': f'Invalid app_type. Must be one of: {", ".join(valid_types)}'}), 400
 
-    clash = app_name_clash_error(Application.query.filter_by(name=name).first(), name)
+    clash = Application.name_clash_error(name)
     if clash:
         raise ValidationError(clash)
 
@@ -1333,8 +1333,7 @@ def update_app(app_id):
     if 'name' in data and data['name'] != app.name:
         if not data['name'] or _service_slug(data['name']) != data['name']:
             raise ValidationError('Service name must be lowercase letters, digits and hyphens')
-        clash = app_name_clash_error(
-            Application.query.filter_by(name=data['name']).first(), data['name'])
+        clash = Application.name_clash_error(data['name'])
         if clash:
             raise ValidationError(clash)
     if 'deploy_settings' in data:

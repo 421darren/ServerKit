@@ -148,6 +148,15 @@ class WorkspaceService:
         return WorkspaceService.get_user_role(server.workspace_id, user.id) is not None
 
     @staticmethod
+    def get_accessible_server(user, server_id):
+        """The server if *user* may operate it (see can_access_server), else None."""
+        from app.models.server import Server
+        server = Server.query.get(server_id)
+        if server is None or not WorkspaceService.can_access_server(user, server):
+            return None
+        return server
+
+    @staticmethod
     def check_quota(workspace_id, current_count, quota_field):
         """Return an error string if a workspace quota would be exceeded,
         otherwise None. `quota_field` is the Workspace column name."""

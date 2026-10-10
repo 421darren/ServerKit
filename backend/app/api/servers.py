@@ -86,8 +86,8 @@ def _get_operable_server(server_id):
     """The server, if the current user may operate it; 404 otherwise, so a
     non-member can't tell a foreign workspace's server from a missing one."""
     from app.services.workspace_service import WorkspaceService
-    server = Server.query.get(server_id)
-    if not server or not WorkspaceService.can_access_server(get_current_user(), server):
+    server = WorkspaceService.get_accessible_server(get_current_user(), server_id)
+    if server is None:
         raise not_found('server')
     return server
 

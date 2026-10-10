@@ -179,6 +179,13 @@ class Application(JsonColumnMixin, TimestampMixin, SoftDeleteMixin, db.Model):
         """
         return {row.id for row in cls.query_deleted().with_entities(cls.id).all()}
 
+    @classmethod
+    def name_clash_error(cls, name, suffix=''):
+        """Message when *name* is taken — tombstones included, so a restore can
+        never collide — or ``None`` when it is free."""
+        from app.utils.slug import app_name_clash_error
+        return app_name_clash_error(cls.query.filter_by(name=name).first(), name, suffix)
+
     @property
     def live_domains(self):
         """The domains this app actually serves — tombstones excluded.
