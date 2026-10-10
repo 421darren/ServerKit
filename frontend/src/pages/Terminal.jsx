@@ -36,9 +36,17 @@ import {
     Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from '@/components/ui/select';
 import { errorReason } from '@/utils/errorMessage';
+import usePersistentState from '@/hooks/usePersistentState';
 
 // 'logs' stays first so the default landing keeps working on installs with no
 // paired agents (the interactive shell needs a connected agent).
+// Stored line count, or the 200-line default for a missing or junk value.
+const parseLineCount = (stored) => {
+    const v = parseInt(stored, 10);
+    return Number.isFinite(v) ? v : 200;
+};
+const notFalse = (stored) => stored !== 'false';
+
 const VALID_TABS = ['logs', 'journal', 'processes', 'services', 'shell'];
 
 // Section tabs rendered inline in the PageTopbar (Servers-style), routed via
@@ -181,15 +189,12 @@ const LogFilesTab = () => {
     const [listError, setListError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(LOG_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(LOG_PREFS.lineCount, parseLineCount);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(LOG_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(LOG_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(LOG_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(LOG_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const contentRef = useRef(null);
@@ -198,9 +203,6 @@ const LogFilesTab = () => {
         [logFiles, selectedLog]
     );
 
-    useEffect(() => { localStorage.setItem(LOG_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.lineCount, lineCount); }, [lineCount]);
 
     // Reset when the target changes (clears previous server's selection)
     useEffect(() => {
@@ -505,18 +507,15 @@ const JournalTab = () => {
     const [unavailable, setUnavailable] = useState(false);
     const [unit, setUnit] = useState('');
     const [unitInput, setUnitInput] = useState('');
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(JOURNAL_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(JOURNAL_PREFS.lineCount, parseLineCount);
     const [priority, setPriority] = useState('');
     const [source, setSource] = useState('');
     const [sourceLabel, setSourceLabel] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(JOURNAL_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(JOURNAL_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(JOURNAL_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(JOURNAL_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [unitFilter] = useState('');
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -524,9 +523,6 @@ const JournalTab = () => {
     const contentRef = useRef(null);
     const isJournalctl = source === 'journalctl' || source === '';
 
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.lineCount, lineCount); }, [lineCount]);
 
     useEffect(() => {
         loadJournalLogs();
