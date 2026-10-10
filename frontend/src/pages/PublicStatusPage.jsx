@@ -5,6 +5,7 @@ import EmptyState from '../components/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Activity, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { averageUptime, formatUptimePercent } from '@/utils/uptime';
 
 const STATUS_META = {
     operational: { labelKey: 'app.publicStatusPage.operational', label: 'Operational', badge: 'success', icon: CheckCircle2 },
@@ -24,11 +25,6 @@ const IMPACT_META = {
 function formatDate(value) {
     if (!value) return 'Never';
     return new Date(value).toLocaleString();
-}
-
-function formatUptime(value) {
-    if (typeof value !== 'number') return '100.00%';
-    return `${value.toFixed(2)}%`;
 }
 
 function PublicStatusPage() {
@@ -108,11 +104,7 @@ function PublicStatusPage() {
                 </div>
                 <div>
                     <span>{t('app.publicStatusPage.30DayUptime', '30 day uptime')}</span>
-                    <strong>{formatUptime(
-                        components.length
-                            ? components.reduce((total, component) => total + (component.uptime_30d || 100), 0) / components.length
-                            : 100
-                    )}</strong>
+                    <strong>{formatUptimePercent(averageUptime(components))}</strong>
                 </div>
             </section>
 
@@ -155,7 +147,7 @@ function PublicStatusPage() {
                                                 <span>{component.name}</span>
                                             </div>
                                             <div className="public-component-row__meta">
-                                                <span>{formatUptime(component.uptime_30d)}</span>
+                                                <span>{formatUptimePercent(component.uptime_30d)}</span>
                                                 {component.last_response_time && <span>{component.last_response_time}ms</span>}
                                                 <Badge variant={statusMeta.badge}>{statusMeta.label}</Badge>
                                             </div>

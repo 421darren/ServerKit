@@ -30,6 +30,7 @@ import {
     Unlink,
 } from 'lucide-react';
 import { toastError } from '@/utils/errorMessage';
+import { averageUptime, formatUptimePercent } from '@/utils/uptime';
 
 // pill → ds Pill kind · tone → .status-dot modifier · dot → .comp-dots square
 const STATUS_META = {
@@ -85,11 +86,6 @@ function normalizeSlug(value) {
 function formatDate(value) {
     if (!value) return 'Never';
     return new Date(value).toLocaleString();
-}
-
-function formatUptime(value) {
-    if (typeof value !== 'number') return '100.00%';
-    return `${value.toFixed(2)}%`;
 }
 
 function getPublicStatusUrl(page) {
@@ -421,11 +417,7 @@ const StatusPages = () => {
                             </div>
                             <div className="sk-spec-card">
                                 <div className="sk-spec-card__label">{t('app.statusPages.30DayUptime', '30 day uptime')}</div>
-                                <div className="sk-spec-card__value">{formatUptime(
-                                    components.length
-                                        ? components.reduce((total, component) => total + (component.uptime_30d || 100), 0) / components.length
-                                        : 100
-                                )}</div>
+                                <div className="sk-spec-card__value">{formatUptimePercent(averageUptime(components))}</div>
                             </div>
                         </div>
 
@@ -477,7 +469,7 @@ const StatusPages = () => {
                                                         </div>
                                                         <div className="component-row__stats">
                                                             <Pill kind={meta.pill}>{meta.label}</Pill>
-                                                            <span>{formatUptime(component.uptime_30d)} uptime</span>
+                                                            <span>{formatUptimePercent(component.uptime_30d)} uptime</span>
                                                             <span>{component.last_response_time ? `${component.last_response_time}ms` : t('app.statusPages.noResponse', 'No response')}</span>
                                                             <span>{formatDate(component.last_check_at)}</span>
                                                         </div>
