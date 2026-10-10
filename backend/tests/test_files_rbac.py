@@ -161,6 +161,7 @@ def test_revoked_files_read_blocks_read_endpoints(client, no_read_headers, url):
 # --------------------------------------------------------------------------- #
 
 import os as _os
+from pathlib import Path
 
 import app as _app_pkg
 from app import paths as _paths
@@ -209,6 +210,31 @@ def test_install_root_blocked_even_when_under_an_allowed_root(monkeypatch):
         _os.path.join(install_dir, 'frontend', 'dist', 'index.html'))
     assert not _FileService.is_path_allowed(
         _os.path.join(install_dir, 'backend', 'run.py'))
+
+
+@pytest.mark.parametrize('running', ['a', 'b'])
+def test_idle_update_slot_is_protected(tmp_path, running):
+    """Running from /opt/serverkit-<x>, the previous version in the other
+    slot keeps its own .env (JWT key). It must be as unreachable as ours."""
+    from app.services.file_service import _install_roots
+    idle = 'b' if running == 'a' else 'a'
+    tmp_path = Path(_os.path.realpath(tmp_path))
+    slot = str(tmp_path / f'serverkit-{running}')
+    roots = _install_roots(slot)
+    assert str(tmp_path / f'serverkit-{idle}') in roots
+
+    class _Slotted(_FileService):
+        ALLOWED_ROOTS = [str(tmp_path)]
+        PROTECTED_ROOTS = roots
+
+    assert not _Slotted.is_path_allowed(str(tmp_path / f'serverkit-{idle}' / '.env'))
+    assert not _Slotted.is_path_allowed(str(tmp_path / f'serverkit-{running}' / '.env'))
+    assert _Slotted.is_path_allowed(str(tmp_path / 'serverkit-apps' / '.env'))
+
+
+def test_non_slot_install_has_no_siblings():
+    from app.services.file_service import _install_roots
+    assert _install_roots('/opt/serverkit') == ['/opt/serverkit']
 
 
 @pytest.mark.parametrize('url', [
