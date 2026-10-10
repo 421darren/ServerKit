@@ -97,10 +97,6 @@ def test_add_job_stores_application_id(tmp_path, monkeypatch):
     assert jobs[0]['application_id'] == 42
 
 
-@pytest.mark.skip(reason="plan 42: recovery regression - add_job generates a "
-                         "second-precision job_id (job_%Y%m%d%H%M%S), so two adds in "
-                         "the same second collide and only one job persists; the "
-                         "finer-grained id from plan 34 was lost")
 def test_clear_application(tmp_path, monkeypatch):
     import app.services.cron_service as mod
     monkeypatch.setattr(mod.CronService, 'is_linux', classmethod(lambda cls: False))

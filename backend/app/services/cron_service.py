@@ -8,6 +8,7 @@ for cross-platform compatibility.
 import os
 import re
 import sys
+import secrets
 import shlex
 import subprocess
 import platform
@@ -423,8 +424,8 @@ class CronService:
 
         _auto_capture_cron('add_job')
 
-        # Generate job ID
-        job_id = f"job_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        # The random tail keeps two jobs added in the same second apart.
+        job_id = f"job_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}"
 
         metadata = cls._load_jobs_metadata()
 
