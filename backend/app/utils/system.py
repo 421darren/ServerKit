@@ -271,6 +271,29 @@ def _never_ran(error: str) -> dict:
             'returncode': None, 'error': error}
 
 
+_PANEL_SECRET_ENV = frozenset({
+    'SECRET_KEY', 'JWT_SECRET_KEY', 'DATABASE_URL', 'TEST_DATABASE_URL',
+    'PROMETHEUS_TOKEN',
+})
+
+
+def app_process_env(extra: Optional[dict] = None) -> dict:
+    """The environment for code the panel runs on an app's behalf — build
+    commands, deploy and template scripts — without the panel's own secrets.
+
+    Those scripts come from repositories and registries, not from the panel,
+    and ``os.environ.copy()`` handed them the JWT signing key, the session
+    key, the database URL and every SERVERKIT_* credential.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if k not in _PANEL_SECRET_ENV
+           and not k.startswith('SERVERKIT_')
+           and not k.endswith('_CLIENT_SECRET')}
+    if extra:
+        env.update(extra)
+    return env
+
+
 _CHUNK = 1024 * 1024
 
 

@@ -4,7 +4,7 @@ import json
 import secrets
 from pathlib import Path
 
-from app.utils.system import ServiceControl, run_checked
+from app.utils.system import ServiceControl, app_process_env, run_checked
 
 
 class PythonService:
@@ -524,7 +524,7 @@ application = get_wsgi_application()
 
         try:
             # Prepare environment
-            env = os.environ.copy()
+            env = app_process_env()
             env['PATH'] = f"{os.path.join(venv_path, 'bin')}:{env.get('PATH', '')}"
             env['VIRTUAL_ENV'] = venv_path
 

@@ -28,7 +28,7 @@ from pathlib import Path
 import requests
 
 from app import paths
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 from app.services.deploy_lock import with_deploy_lock
 
 
@@ -2208,8 +2208,7 @@ class TemplateService:
         try:
             script = cls.substitute_variables(script, variables)
 
-            env = os.environ.copy()
-            env.update(variables)
+            env = app_process_env(variables)
 
             result = run_checked(['bash', '-c', script], cwd=cwd, env=env, timeout=300)
 

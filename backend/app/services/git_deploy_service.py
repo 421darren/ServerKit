@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional
 
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 from app.utils.git_security import git_argv, git_env, validate_ref_name
 from app.services.deploy_lock import with_deploy_lock
 
@@ -450,7 +450,7 @@ class GitDeployService:
         """Run a deployment script."""
         try:
             result = run_checked(['bash', '-c', script], cwd=cwd, timeout=300,
-                                 env={**os.environ, 'DEPLOY_DIR': cwd})
+                                 env=app_process_env({'DEPLOY_DIR': cwd}))
 
             return {
                 'success': result['success'],

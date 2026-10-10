@@ -13,7 +13,7 @@ Supports:
 import os
 import subprocess
 
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 import json
 import shutil
 import hashlib
@@ -546,9 +546,7 @@ class BuildService:
         }
 
         try:
-            env = os.environ.copy()
-            if env_vars:
-                env.update(env_vars)
+            env = app_process_env(env_vars)
 
             process = subprocess.Popen(
                 ['bash', '-c', build_cmd],
