@@ -50,8 +50,17 @@ export function sanitizeSvgInner(svg) {
     return result;
 }
 
+// Walk childNodes, not children: comments, processing instructions and CDATA
+// aren't elements, and they survive XML serialization only to close early
+// when the result is re-parsed as HTML (`<!-->`, `<?x >`), letting whatever
+// followed them out. Only allowed elements and plain text are kept.
 function scrub(node) {
-    for (const child of Array.from(node.children)) {
+    for (const child of Array.from(node.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) continue;
+        if (child.nodeType !== Node.ELEMENT_NODE) {
+            child.remove();
+            continue;
+        }
         const tag = child.tagName.toLowerCase();
         if (!ALLOWED_TAGS.has(tag)) {
             child.remove();

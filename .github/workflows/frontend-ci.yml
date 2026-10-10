@@ -68,6 +68,9 @@ jobs:
       - name: Backup request and form browser regressions
         working-directory: frontend
         run: npm run test:backups
+      - name: SVG sanitizer browser regressions
+        working-directory: frontend
+        run: npm run test:sanitize-svg
       - name: Upload Settings screenshots
         if: always()
         uses: actions/upload-artifact@v4
