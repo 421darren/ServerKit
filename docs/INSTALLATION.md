@@ -60,7 +60,7 @@ On a `minimal` install:
 | `SERVERKIT_CONFIG=/path/install.conf` | Read the options above from a `KEY=VALUE` file instead of the command line. Explicit environment still wins |
 | `SERVERKIT_BIND_HOST=0.0.0.0` | Expose the raw backend port instead of binding it to loopback. ⚠️ Also disables trusted client IPs — with the port directly reachable, `X-Forwarded-For` is client-forgeable. Firewall it yourself |
 | `INSTALL_FROM_RELEASE=1` | Install from the latest GitHub release tarball instead of cloning source |
-| `SERVERKIT_VERSION=v1.7.0` | Pin a specific release version |
+| `SERVERKIT_VERSION=v1.11.19` | Pin a specific release version |
 | `SERVERKIT_OFFLINE_TARBALL=/path/to/...tar.gz` | Use a local tarball instead of downloading |
 | `SERVERKIT_MIRROR_URL=https://mirror.example.com/releases` | Fetch releases/checksums from a private mirror |
 
@@ -80,7 +80,7 @@ Example offline install:
 
 ```bash
 curl -fsSL https://serverkit.ai/install.sh | \
-  sudo SERVERKIT_OFFLINE_TARBALL=/tmp/serverkit-v1.7.0-linux-amd64.tar.gz bash
+  sudo SERVERKIT_OFFLINE_TARBALL=/tmp/serverkit-v1.11.19-linux-amd64.tar.gz bash
 ```
 
 Example behind your own Caddy/Traefik:
@@ -121,13 +121,13 @@ sudo serverkit update --dry-run          # preview changes without applying
 sudo serverkit update --force            # force update even if already current
 sudo serverkit update --branch dev       # update from a git branch
 sudo serverkit update --release          # update to the latest release
-sudo serverkit update --release v1.7.0   # pin a release
+sudo serverkit update --release v1.11.19   # pin a release
 ```
 
 Offline and mirror updates are also supported:
 
 ```bash
-sudo SERVERKIT_OFFLINE_TARBALL=/tmp/serverkit-v1.7.0-linux-amd64.tar.gz \
+sudo SERVERKIT_OFFLINE_TARBALL=/tmp/serverkit-v1.11.19-linux-amd64.tar.gz \
   serverkit update --release
 
 sudo SERVERKIT_MIRROR_URL=https://mirror.example.com/releases serverkit update
