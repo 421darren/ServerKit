@@ -126,7 +126,7 @@ def github_admin_config():
 def update_github_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_github_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200
@@ -291,7 +291,7 @@ def gitlab_admin_config():
 def update_gitlab_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_gitlab_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200
@@ -423,7 +423,7 @@ def bitbucket_admin_config():
 def update_bitbucket_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_bitbucket_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200

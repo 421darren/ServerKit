@@ -513,7 +513,7 @@ def trigger_agent_update(server_id):
         action='agent:update',
         params={
             'version': release['version'],
-            'force': request.get_json().get('force', False) if request.get_json() else False
+            'force': json_object(optional=True).get('force', False)
         },
         timeout=60.0  # Updates may take a while
     )

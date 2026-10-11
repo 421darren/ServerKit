@@ -53,7 +53,7 @@ def get_stats():
 @monitors_bp.route('/', methods=['POST'])
 @permission_required('monitoring', 'write')
 def create_monitor():
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.create(data)
     return jsonify(monitor.to_dict()), 201
 
@@ -70,7 +70,7 @@ def get_monitor(monitor_id):
 @monitors_bp.route('/<int:monitor_id>', methods=['PATCH', 'PUT'])
 @permission_required('monitoring', 'write')
 def update_monitor(monitor_id):
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.update(monitor_id, data)
     if not monitor:
         raise NotFoundError('Monitor not found', code='monitor_not_found')
@@ -162,7 +162,7 @@ def create_incident():
 @monitors_bp.route('/incidents/<int:incident_id>', methods=['PATCH', 'PUT'])
 @permission_required('monitoring', 'write')
 def update_incident(incident_id):
-    incident = MonitorService.update_incident(incident_id, request.get_json() or {})
+    incident = MonitorService.update_incident(incident_id, json_object())
     if not incident:
         return {'error': 'Incident not found'}, 404
     return jsonify(incident.to_dict())

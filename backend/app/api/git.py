@@ -106,7 +106,7 @@ def get_webhook(webhook_id):
 @admin_required
 def update_webhook(webhook_id):
     """Update a webhook."""
-    data = request.get_json() or {}
+    data = json_object()
 
     result = WebhookService.update_webhook(webhook_id, data)
 

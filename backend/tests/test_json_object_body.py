@@ -30,6 +30,17 @@ ROUTES = [
     ('put', '/api/v1/servers/{sid}/allowed-ips'),
     ('post', '/api/v1/servers/fleet/upgrade'),
     ('post', '/api/v1/servers/fleet/rollout'),
+    # Bodies handed straight to a service that reads them as a dict.
+    ('put', '/api/v1/servers/{sid}/workspace'),
+    ('post', '/api/v1/monitors'),
+    ('post', '/api/v1/workspaces/'),
+    ('post', '/api/v1/dns/'),
+    ('post', '/api/v1/ddns/hosts'),
+    ('post', '/api/v1/registrars/connections'),
+    ('post', '/api/v1/agent-plugins/'),
+    ('put', '/api/v1/backups/config'),
+    ('post', '/api/v1/fleet-monitor/thresholds'),
+    ('put', '/api/v1/monitoring/thresholds'),
 ]
 
 

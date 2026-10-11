@@ -110,7 +110,7 @@ def list_provider_schemas():
 @admin_required
 def validate_provider_credentials(kind):
     result = ConnectionProviderRegistry.execute(
-        kind, 'validate', payload=request.get_json() or {},
+        kind, 'validate', payload=json_object(),
         partial=request.args.get('partial', '').lower() == 'true')
     return _provider_response(result)
 
@@ -145,7 +145,7 @@ def provider_test(kind, connection_id):
 def provider_rotate(kind, connection_id):
     result = ConnectionProviderRegistry.execute(
         kind, 'rotate', ref=_connection_ref(kind, connection_id),
-        payload=request.get_json() or {})
+        payload=json_object())
     _audit_provider_operation(kind, connection_id, 'rotate', result)
     return _provider_response(result)
 

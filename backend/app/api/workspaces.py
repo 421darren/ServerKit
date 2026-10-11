@@ -55,7 +55,7 @@ def get_workspace(workspace_id):
 @admin_required
 def create_workspace():
     user = get_current_user()
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Request body required'}), 400
     try:
@@ -78,7 +78,7 @@ def update_workspace(workspace_id):
     if role not in ['owner', 'admin'] and not user.is_admin:
         return jsonify({'error': 'Insufficient permissions'}), 403
 
-    data = request.get_json()
+    data = json_object()
     ws = WorkspaceService.update_workspace(workspace_id, data)
     if not ws:
         return jsonify({'error': 'Workspace not found'}), 404

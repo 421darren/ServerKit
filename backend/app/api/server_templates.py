@@ -76,7 +76,7 @@ def update_template(template_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     template = ServerTemplateService.update_template(template_id, data)
     if not template:
         raise not_found('template')

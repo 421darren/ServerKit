@@ -26,8 +26,9 @@ def list_hosts():
 def create_host():
     if not _admin():
         return jsonify({'error': 'Admin access required'}), 403
+    data = json_object()
     try:
-        host = DdnsService.create_host(request.get_json() or {})
+        host = DdnsService.create_host(data)
         # Return the token once, on creation — it is masked everywhere else.
         return jsonify(host.to_dict(include_token=True)), 201
     except ValueError as e:

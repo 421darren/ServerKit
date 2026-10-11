@@ -33,7 +33,7 @@ def create_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Request body required'}), 400
 
@@ -63,7 +63,7 @@ def update_plugin(plugin_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     plugin = AgentPluginService.update_plugin(plugin_id, data)
     if not plugin:
         return jsonify({'error': 'Plugin not found'}), 404
@@ -97,7 +97,7 @@ def delete_plugin(plugin_id):
 @agent_plugins_bp.route('/validate', methods=['POST'])
 @jwt_required()
 def validate_manifest():
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Manifest data required'}), 400
     errors = AgentPluginService.validate_manifest(data)

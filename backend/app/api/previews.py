@@ -6,12 +6,13 @@
 Mounted by the host at ``/api/v1/apps`` so every route here is nested under an
 application id, e.g. ``GET /api/v1/apps/<app_id>/previews``.
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.models.application_preview import ApplicationPreview
 from app.services.preview_service import PreviewService
 from app.api._access import require_app
+from app.api._request import json_object
 
 previews_bp = Blueprint('previews', __name__)
 
@@ -42,7 +43,7 @@ def get_preview_settings(app_id):
 def update_preview_settings(app_id):
     """Enable/disable previews and set the domain template + TTL for an app."""
     app = require_app(app_id, write=True, conceal=True)
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     result = PreviewService.enable_previews(app_id, data)
     return jsonify(result), 200
 

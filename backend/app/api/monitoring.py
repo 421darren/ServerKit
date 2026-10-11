@@ -108,7 +108,7 @@ def get_thresholds():
 @admin_required
 def update_thresholds():
     """Update alert thresholds."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 

@@ -441,7 +441,7 @@ def set_app_workspace(app_id):
     if not user.is_admin and app.user_id != user.id:
         raise permission_denied()
 
-    target = (request.get_json() or {}).get('workspace_id')
+    target = json_object().get('workspace_id')
     if target in (None, '', 'default'):
         ws_id = WorkspaceService.ensure_default_workspace().id
     else:
@@ -2218,7 +2218,7 @@ def update_app_backup_policy(app_id):
     app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
-        BackupPolicyService.update_policy(policy, request.get_json() or {})
+        BackupPolicyService.update_policy(policy, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify(BackupPolicyService.serialize_policy_view(policy))
@@ -2253,7 +2253,7 @@ def restore_app_backup(app_id, run_id):
     app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
-        job = BackupPolicyService.request_restore(policy, run_id, request.get_json() or {})
+        job = BackupPolicyService.request_restore(policy, run_id, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'success': True, 'job_id': job.id}), 202

@@ -457,7 +457,7 @@ def set_server_workspace(server_id):
     if server.workspace_id and not WorkspaceService.can_write_in_workspace(user, server.workspace_id):
         raise PermissionDeniedError("You have read-only access to this server's workspace")
 
-    target = (request.get_json() or {}).get('workspace_id')
+    target = json_object().get('workspace_id')
     if target in (None, '', 'default'):
         ws_id = WorkspaceService.ensure_default_workspace().id
     else:

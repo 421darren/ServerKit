@@ -34,7 +34,7 @@ def create_view():
 @views_bp.route('/<int:view_id>', methods=['PUT'])
 @jwt_required()
 def update_view(view_id):
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     view = saved_view_service.update_view(get_jwt_identity(), view_id, body)
     return jsonify(view)
 

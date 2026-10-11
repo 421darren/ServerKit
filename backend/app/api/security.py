@@ -250,7 +250,7 @@ def fim_set_app_optins():
     from app.services.file_integrity_service import (
         FileIntegrityService, FileIntegrityScopeError,
     )
-    data = request.get_json(silent=True)
+    data = json_object(optional=True)
     if not data or 'app_ids' not in data:
         return jsonify({'error': 'app_ids required'}), 400
     try:

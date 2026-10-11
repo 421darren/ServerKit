@@ -627,7 +627,7 @@ def export_repo_index():
 @admin_required
 def create_local_template():
     """Create a local template."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400

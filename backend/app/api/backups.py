@@ -217,7 +217,7 @@ def restore_target_run(target_type, target_id, run_id):
     try:
         BackupPolicyService.validate_target_type(target_type)
         policy = BackupPolicyService.get_or_create_policy(target_type, target_id)
-        job = BackupPolicyService.request_restore(policy, run_id, request.get_json() or {})
+        job = BackupPolicyService.request_restore(policy, run_id, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'success': True, 'job_id': job.id}), 202
@@ -259,7 +259,7 @@ def get_config():
 @admin_required
 def update_config():
     """Update backup configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -511,7 +511,7 @@ def add_schedule():
 @admin_required
 def update_schedule(schedule_id):
     """Update a backup schedule."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -548,7 +548,7 @@ def get_storage_config():
 @admin_required
 def update_storage_config():
     """Update storage provider configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 

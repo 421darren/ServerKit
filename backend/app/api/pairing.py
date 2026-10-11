@@ -121,7 +121,7 @@ def poll():
     # given enrollment, so read it once before the long-poll loop.
     signature = request.headers.get('X-Enrollment-Signature')
     if not signature and request.is_json:
-        signature = (request.get_json(silent=True) or {}).get('signature')
+        signature = json_object(optional=True).get('signature')
 
     deadline = time.time() + 25.0  # leave headroom under typical proxy timeouts
     poll_interval = 1.0

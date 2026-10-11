@@ -483,7 +483,7 @@ def list_email_providers():
 @admin_required
 def add_email_provider():
     """Add an email provider, then validate its credentials."""
-    data = request.get_json() or {}
+    data = json_object()
     try:
         provider = EmailProviderService.add_provider(data, user_id=int(get_jwt_identity()))
     except ValueError as exc:
@@ -505,7 +505,7 @@ def test_email_provider(provider_id):
 def update_email_provider(provider_id):
     """Update a provider's usage flags (uses_notifications / uses_relay /
     relay_priority). uses_relay applies only to SMTP."""
-    row = EmailProviderService.update_usage(provider_id, request.get_json() or {})
+    row = EmailProviderService.update_usage(provider_id, json_object())
     if row is None:
         return jsonify({'error': 'Provider not found'}), 404
     return jsonify({'success': True, 'provider': row.to_dict()}), 200

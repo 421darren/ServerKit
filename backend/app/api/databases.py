@@ -993,7 +993,7 @@ def docker_db_insights(container):
 @admin_required
 def enable_pg_stat_statements(container):
     from app.services.db_config_tuner_service import DbConfigTunerService
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     target = _docker_db_target(container, dict(data, type='postgresql'))
     return jsonify(DbConfigTunerService.enable_pg_stat_statements(target)), 200
 

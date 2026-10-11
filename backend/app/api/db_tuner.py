@@ -86,7 +86,7 @@ def apply_target(target):
 @admin_required
 def rollback_target(target):
     """Restore the pre-apply config and restart the engine."""
-    data = request.get_json() or {}
+    data = json_object()
     resolved, err = _build_target(target, data)
     if err:
         return err
