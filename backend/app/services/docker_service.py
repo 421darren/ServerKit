@@ -60,23 +60,12 @@ class DockerService:
     # cannot silently cap a build; see COMPOSE/LONG notes below.
     @staticmethod
     def run(args, timeout=60, **kwargs):
-        """Run ``docker <args>``; one result shape for every caller (§G3).
+        """Run ``docker <args>`` through ``run_checked``.
 
-        Three services kept private ``_docker()`` wrappers around this exact
-        call, and the three had already drifted into three *different* return
-        contracts: one dict that mapped FileNotFoundError to "Docker not
-        found", one dict that collapsed every failure into ``str(e)``, and one
-        that handed back a raw ``CompletedProcess``. A caller reading
-        ``result['success']`` against the third silently got a ``KeyError``
-        rather than an answer.
-
-        Sits on ``run_checked`` (§G1) rather than re-implementing it, so the
-        result shape and the error handling have exactly one definition:
-        ``{'success', 'output', 'stderr', 'error', 'returncode'}``. ``error``
-        distinguishes the three things that are not "the command said no":
-        docker absent, docker too slow, and everything else. A caller that
-        cannot tell those apart is the caller that reports "not installed"
-        because a probe timed out (§A).
+        Returns ``{'success', 'output', 'stderr', 'error', 'returncode'}``;
+        ``error`` tells "docker missing" and "timed out" apart from the
+        command saying no, so a slow probe is never reported as "not
+        installed".
         """
         return run_checked(['docker', *args], timeout=timeout, **kwargs)
 

@@ -168,13 +168,8 @@ def run_checked(cmd: Union[List[str], str], *, privileged: bool = False,
                 merge_stderr: bool = False, **kwargs) -> dict:
     """Run a command and get a result, not a ``CompletedProcess``.
 
-    The result-shaped door. Around ``backend/app``'s raw ``subprocess`` calls
-    sit 220 copies of ``capture_output=True, text=True``, 56 hand-rolled
-    ``except subprocess.TimeoutExpired`` handlers, 19 hand-rolled
-    ``except FileNotFoundError`` handlers, and 1,164 literal
-    ``{'success': False, 'error': ...}`` constructions. Each of those is a
-    place where an exec failure can be — and has been — converted
-    into a false fact about the operator's server.
+    Use this instead of raw ``subprocess``: hand-rolled exec handling is
+    where a failure to run gets reported as a fact about the server.
 
     Returns::
 

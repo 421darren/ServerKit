@@ -275,12 +275,6 @@ def create_app(config_name=None):
             from app.services.storage_provider_service import StorageProviderService
             n_dns = DNSProviderService.encrypt_legacy_secrets()
             n_store = StorageProviderService.encrypt_legacy_secrets()
-            # Cloud-provider legacy-secret encryption moved out with the
-            # serverkit-cloud-provision extension. It was a one-time
-            # migration of pre-encryption rows; any panel reaching this version
-            # already ran it in an earlier boot (idempotent), and the extension
-            # encrypts on write, so there's nothing left for core to do here.
-            n_cloud = 0
             n_settings = SettingsService.migrate_legacy_secrets()
             # Migrate DNS zones with an inline Cloudflare token onto the canonical
             # connection store (idempotent), so every zone resolves creds the same way.
@@ -295,11 +289,11 @@ def create_app(config_name=None):
                 import logging as _logging
                 _logging.getLogger(__name__).warning(
                     f'Email relay legacy migration skipped: {_relay_exc}')
-            if n_dns or n_store or n_cloud or n_settings or n_zones:
+            if n_dns or n_store or n_settings or n_zones:
                 import logging as _logging
                 _logging.getLogger(__name__).info(
                     f'Encrypted legacy secrets at rest: {n_dns} DNS provider(s), '
-                    f'{n_store} storage field(s), {n_cloud} cloud provider(s), '
+                    f'{n_store} storage field(s), '
                     f'{n_settings} system setting(s); linked {n_zones} DNS zone(s) '
                     f'to a connection')
         except Exception as e:
