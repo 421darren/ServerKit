@@ -6,11 +6,12 @@ import { createServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { chromium } from 'playwright';
 
-// Row actions inside memoized table columns. The columns were memoized
-// without the state their delete handlers read, so a delete clicked after
-// opening a vault or a variable group used the value from first render: the
-// vault refresh read a null vault, and the variable delete sent group null.
-// The real pages; only HTTP, toasts, confirm and translation are stubbed.
+// List rows on real pages; only HTTP, toasts, confirm and translation are
+// stubbed.
+//  - Row actions inside memoized columns: the columns were memoized without
+//    the state their delete handlers read, so a delete after opening a vault
+//    or a variable group used first-render values (a null vault, group null).
+//  - Keyboard: a clickable row opens with Enter like it does with a click.
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fixture = `
 import React from 'react';
@@ -35,10 +36,10 @@ createRoot(document.getElementById('root')).render(<MemoryRouter>{which==='vault
 `;
 const server = await createServer({
     root, configFile: false, logLevel: 'error', resolve: { alias: { '@': path.join(root, 'src') } },
-    cacheDir: path.join(root, 'node_modules/.vite-stale-columns-regression'),
+    cacheDir: path.join(root, 'node_modules/.vite-list-rows-regression'),
     optimizeDeps: { entries: [] }, server: { host: '127.0.0.1', port: 0 },
     plugins: [{
-        name: 'stale-columns-fixtures', enforce: 'pre',
+        name: 'list-rows-fixtures', enforce: 'pre',
         resolveId(id) {
             if (id === 'react-i18next') return '\0test-i18n';
             if (id.endsWith('/sc-fixture.jsx')) return path.join(root, 'sc-fixture.jsx');
@@ -92,6 +93,18 @@ try {
     assert.deepEqual(await groups.evaluate(() => window.calls), [['deleteGroupVariable', 21, 31]]);
     assert.deepEqual(groupErrors, []);
     console.log('PASS deleting a group variable names the open group');
+
+    const keys = await browser.newPage();
+    const keyErrors = [];
+    keys.on('pageerror', error => keyErrors.push(error.message));
+    await keys.goto(`${base}?page=vaults`);
+    const row = keys.getByRole('row').filter({ hasText: 'alpha-vault' }).first();
+    await row.focus();
+    await keys.keyboard.press('Enter');
+    await keys.getByText('API_TOKEN').first().waitFor({ timeout: 5000 });
+    assert.deepEqual(await keys.evaluate(() => window.calls), [['getVault', 11]]);
+    assert.deepEqual(keyErrors, []);
+    console.log('PASS Enter on a focused row opens it');
 } finally {
     await browser?.close();
     await server.close();

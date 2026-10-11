@@ -262,6 +262,8 @@ export function DataTable({
     useEffect(() => {
         if (!keyboardNav) return undefined;
         const onKey = (event) => {
+            // A focused row already handled its own Enter.
+            if (event.defaultPrevented) return;
             const target = event.target;
             // A focused Radix Select (trigger = combobox, open list = listbox)
             // owns its arrows and Enter, exactly like the native <select> did.
@@ -345,6 +347,14 @@ export function DataTable({
                     keyboardNav && rowIndex === cursor && 'is-cursor',
                 )}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                tabIndex={onRowClick ? 0 : undefined}
+                onKeyDown={onRowClick ? (e) => {
+                    // Only the row itself: a focused button or input inside keeps its keys.
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onRowClick(row);
+                    }
+                } : undefined}
             >
                 {selectable && (
                     <TableCell className="sk-dtable__check" onClick={(e) => e.stopPropagation()}>

@@ -397,6 +397,7 @@
         &:last-child { border-bottom: none; }
 
         &.is-clickable { cursor: pointer; }
+        &.is-clickable:focus-visible { outline: 2px solid var(--accent-dim); outline-offset: -2px; }
         &:hover { background: var(--surface-2); }
         &.is-picked { background: var(--accent-bg-soft); }
         &.is-picked:hover { background: var(--accent-bg); }

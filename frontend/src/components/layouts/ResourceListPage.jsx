@@ -413,6 +413,13 @@ export default function ResourceListPage({
                                     key={item[keyField]}
                                     className={cn('wp-list__cardtile', rowClassName?.(item))}
                                     onClick={() => onRowClick?.(item)}
+                                    tabIndex={onRowClick ? 0 : undefined}
+                                    onKeyDown={onRowClick ? (e) => {
+                                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                                            e.preventDefault();
+                                            onRowClick(item);
+                                        }
+                                    } : undefined}
                                 >
                                     {renderCard(item)}
                                 </div>
