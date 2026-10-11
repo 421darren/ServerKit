@@ -1,27 +1,23 @@
 """Deploy preflight — prove a deploy can work BEFORE anything live is stopped.
 
-Every redeploy path used to reach its point of no return (a
-``compose down`` / ``docker stop``) *before* anything had validated the new
-configuration. An invalid compose file, an image that no longer pulls, or a
-port somebody else took took the live site down and left it down: nginx 502s
-until a human intervened.
+A redeploy's point of no return is ``compose down`` / ``docker stop``. An
+invalid compose file, an image that no longer pulls, or a port somebody else
+took must be caught before it, or the live site goes down and stays down.
 
-The fix is not blue/green (that is B.2/B.3) — it is ordering. Everything that
-can be checked while the old containers keep serving is checked here, and every
-caller aborts on a blocking finding, at which point the live deployment is
-byte-for-byte untouched. Nothing in this module stops, removes, recreates or
-rewrites anything; the only side effects are image pulls/builds, which are
-additive by construction.
+Everything that can be checked while the old containers keep serving is
+checked here, and every caller aborts on a blocking finding, at which point the
+live deployment is byte-for-byte untouched. Nothing in this module stops,
+removes, recreates or rewrites anything; the only side effects are image
+pulls/builds, which are additive by construction.
 
 The checks, in the order they run (a broken compose makes the rest meaningless):
 
-1. **Compose validity** — wires the long-existing
-   :meth:`DockerService.validate_compose_file` (``docker compose config
-   --quiet``), whose only caller until now was a manual API endpoint.
+1. **Compose validity** — :meth:`DockerService.validate_compose_file`
+   (``docker compose config --quiet``).
 2. **Image resolution** — build (when the project declares ``build:``) or pull,
    to completion. A resolution failure is downgraded to advisory when every
    referenced image is already present locally, so a locally-tagged image that
-   was never pushed to a registry keeps deploying exactly as it did before.
+   was never pushed to a registry still deploys.
 3. **Host port conflicts** — reuses ``ManifestApplyService._port_bound`` (the
    same probe behind the manifest-apply ``kind: 'port_conflict'`` blocker) and
    only for ports the *new* configuration wants that the *currently running*
