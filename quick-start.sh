@@ -44,7 +44,6 @@ fi
 source venv/bin/activate
 echo "Installing Python dependencies..."
 pip install -r backend/requirements.txt --quiet
-pip install gunicorn gevent gevent-websocket --quiet
 
 # 3. Setup Frontend
 echo -e "\n${CYAN}📦 Setting up Frontend...${NC}"
