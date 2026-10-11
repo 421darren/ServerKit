@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import { GitMerge } from 'lucide-react';
 import api from '../../services/api';
 import EmptyState from '../EmptyState';
@@ -23,6 +23,7 @@ import { formatDateTime } from '@/utils/intl';
 // history and config checkpoints.
 const DeployTab = ({ appId, embedded = false }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm: confirmDeploy } = useConfirm();
     const [config, setConfig] = useState(null);
@@ -270,8 +271,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                             {!embedded && (
                             <>
                             <div className="form-group">
-                                <label>{t('app.deployTab.repositoryUrl', 'Repository URL')}</label>
+                                <label htmlFor={`${fieldId}-repo-url`}>{t('app.deployTab.repositoryUrl', 'Repository URL')}</label>
                                 <Input
+                                    id={`${fieldId}-repo-url`}
                                     type="text"
                                     value={configForm.repoUrl}
                                     onChange={e => setConfigForm({...configForm, repoUrl: e.target.value})}
@@ -280,8 +282,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('common.labels.branch', 'Branch')}</label>
+                                <label htmlFor={`${fieldId}-branch`}>{t('common.labels.branch', 'Branch')}</label>
                                 <Input
+                                    id={`${fieldId}-branch`}
                                     type="text"
                                     value={configForm.branch}
                                     onChange={e => setConfigForm({...configForm, branch: e.target.value})}
@@ -301,8 +304,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                             </>
                             )}
                             <div className="form-group">
-                                <label>{t('app.deployTab.preDeployScript', 'Pre-deploy script')}</label>
+                                <label htmlFor={`${fieldId}-pre-deploy`}>{t('app.deployTab.preDeployScript', 'Pre-deploy script')}</label>
                                 <Textarea
+                                    id={`${fieldId}-pre-deploy`}
                                     value={configForm.preDeployScript}
                                     onChange={e => setConfigForm({...configForm, preDeployScript: e.target.value})}
                                     placeholder={t('app.deployTab.npmInstall', 'npm install')}
@@ -310,8 +314,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('app.deployTab.postDeployScript', 'Post-deploy script')}</label>
+                                <label htmlFor={`${fieldId}-post-deploy`}>{t('app.deployTab.postDeployScript', 'Post-deploy script')}</label>
                                 <Textarea
+                                    id={`${fieldId}-post-deploy`}
                                     value={configForm.postDeployScript}
                                     onChange={e => setConfigForm({...configForm, postDeployScript: e.target.value})}
                                     placeholder={t('app.deployTab.npmRunBuild', 'npm run build')}

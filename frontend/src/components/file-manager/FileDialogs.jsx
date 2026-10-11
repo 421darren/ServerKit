@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import Modal from '@/components/Modal';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 export function NamePromptModal({
     title, label, initialValue = '', placeholder, hint, submitLabel, onSubmit, onClose,
 }) {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [value, setValue] = useState(initialValue);
     const submit = () => {
@@ -20,8 +21,9 @@ export function NamePromptModal({
     return (
         <Modal open onClose={onClose} title={title}>
             <div className="form-group">
-                <Label>{label}</Label>
+                <Label htmlFor={`${fieldId}-name`}>{label}</Label>
                 <Input
+                    id={`${fieldId}-name`}
                     type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
@@ -40,6 +42,7 @@ export function NamePromptModal({
 }
 
 export function PermissionsModal({ entry, onSubmit, onClose }) {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [mode, setMode] = useState(entry.permissions_octal || '755');
     const submit = () => {
@@ -48,8 +51,9 @@ export function PermissionsModal({ entry, onSubmit, onClose }) {
     return (
         <Modal open onClose={onClose} title={t('app.fileManager.changePermissions', 'Change permissions')}>
             <div className="form-group">
-                <Label>{t('app.fileManager.permissionsOctal', 'Permissions (octal)')}</Label>
+                <Label htmlFor={`${fieldId}-mode`}>{t('app.fileManager.permissionsOctal', 'Permissions (octal)')}</Label>
                 <Input
+                    id={`${fieldId}-mode`}
                     type="text"
                     value={mode}
                     onChange={(e) => setMode(e.target.value)}

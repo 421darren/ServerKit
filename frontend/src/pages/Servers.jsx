@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Folder, Plus, RefreshCw, Server as ServerLucideIcon, X } from 'lucide-react';
 import api from '../services/api';
@@ -554,6 +554,7 @@ const Servers = () => {
 };
 
 const PairAgentForm = ({ groups, onClose, onClaimed }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [pairCode, setPairCode] = useState('');
     const [passphrase, setPassphrase] = useState('');
@@ -653,8 +654,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.servers.pairCode', 'Pair code')}</label>
+                    <label htmlFor={`${fieldId}-code`}>{t('app.servers.pairCode', 'Pair code')}</label>
                     <Input
+                        id={`${fieldId}-code`}
                         type="text"
                         value={formatDisplay(formattedCode)}
                         onChange={(e) => {
@@ -692,8 +694,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 )}
 
                 <div className="form-group">
-                    <label>{t('app.servers.passphrase', 'Passphrase *')}</label>
+                    <label htmlFor={`${fieldId}-passphrase`}>{t('app.servers.passphrase', 'Passphrase *')}</label>
                     <Input
+                        id={`${fieldId}-passphrase`}
                         type="text"
                         value={passphrase}
                         onChange={(e) => setPassphrase(e.target.value)}
@@ -707,8 +710,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
 
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.servers.serverName', 'Server name')}</label>
+                        <label htmlFor={`${fieldId}-name`}>{t('app.servers.serverName', 'Server name')}</label>
                         <Input
+                            id={`${fieldId}-name`}
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}

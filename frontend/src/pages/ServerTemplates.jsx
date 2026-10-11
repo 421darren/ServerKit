@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import { useTopbarActions, useTopbarChrome } from '@/hooks/useTopbarActions';
 import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
@@ -216,6 +216,7 @@ const BUILTIN_VIEWS = [
 ];
 
 const ServerTemplates = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const toast = useToast();
     const { user } = useAuth();
@@ -676,12 +677,12 @@ const ServerTemplates = () => {
                 )}
             >
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
-                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                    <label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</label>
+                    <Input id={`${fieldId}-name`} value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
-                    <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
+                    <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
+                    <Textarea id={`${fieldId}-description`} value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
                 </div>
                 <div className="form-group">
                     <label htmlFor="server-template-category">{t('app.serverTemplates.category', 'Category')}</label>
@@ -693,8 +694,8 @@ const ServerTemplates = () => {
                     </Select>
                 </div>
                 <div className="form-group">
-                    <label>{t('app.serverTemplates.packagesOnePerLine', 'Packages (one per line)')}</label>
-                    <Textarea className="form-input--mono" value={form.packages} onChange={e => setForm({...form, packages: e.target.value})} rows={4} placeholder={t('app.serverTemplates.nginxPhpFpmCertbot', 'nginx\nphp-fpm\ncertbot')} />
+                    <label htmlFor={`${fieldId}-packages`}>{t('app.serverTemplates.packagesOnePerLine', 'Packages (one per line)')}</label>
+                    <Textarea id={`${fieldId}-packages`} className="form-input--mono" value={form.packages} onChange={e => setForm({...form, packages: e.target.value})} rows={4} placeholder={t('app.serverTemplates.nginxPhpFpmCertbot', 'nginx\nphp-fpm\ncertbot')} />
                 </div>
                 <div className="form-group">
                     <label className="checkbox-label">

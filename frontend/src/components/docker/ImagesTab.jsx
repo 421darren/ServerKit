@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -441,6 +441,7 @@ const ImagesTab = ({ onStatsChange }) => {
 };
 
 const PullImageModal = ({ onClose, onPulled }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { serverId, isRemote } = useServer();
     const [image, setImage] = useState('');
@@ -475,8 +476,9 @@ const PullImageModal = ({ onClose, onPulled }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.imagesTab.imageName', 'Image name *')}</label>
+                    <label htmlFor={`${fieldId}-image`}>{t('app.imagesTab.imageName', 'Image name *')}</label>
                     <Input
+                        id={`${fieldId}-image`}
                         type="text"
                         value={image}
                         onChange={(e) => setImage(e.target.value)}
@@ -486,8 +488,9 @@ const PullImageModal = ({ onClose, onPulled }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.imagesTab.tag', 'Tag')}</label>
+                    <label htmlFor={`${fieldId}-tag`}>{t('app.imagesTab.tag', 'Tag')}</label>
                     <Input
+                        id={`${fieldId}-tag`}
                         type="text"
                         value={tag}
                         onChange={(e) => setTag(e.target.value)}

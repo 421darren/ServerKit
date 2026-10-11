@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -359,6 +359,7 @@ const VolumesTab = ({ onStatsChange }) => {
 };
 
 const CreateVolumeModal = ({ onClose, onCreated }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -386,8 +387,9 @@ const CreateVolumeModal = ({ onClose, onCreated }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.volumesTab.volumeName', 'Volume name *')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.volumesTab.volumeName', 'Volume name *')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}

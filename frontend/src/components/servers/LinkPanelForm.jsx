@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { Unlink } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -27,6 +27,7 @@ function formatTimestamp(iso) {
 // badge flips to Connected live.
 const LinkPanelForm = ({ onClose }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const [status, setStatus] = useState(null); // null = still loading
     const [masterUrl, setMasterUrl] = useState('');
@@ -136,8 +137,9 @@ const LinkPanelForm = ({ onClose }) => {
                 {linkError && <div className="error-message">{linkError}</div>}
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.masterUrl', 'Master URL *')}</label>
+                    <label htmlFor={`${fieldId}-master-url`}>{t('app.linkPanelForm.masterUrl', 'Master URL *')}</label>
                     <Input
+                        id={`${fieldId}-master-url`}
                         type="url"
                         value={masterUrl}
                         onChange={(e) => setMasterUrl(e.target.value)}
@@ -147,8 +149,9 @@ const LinkPanelForm = ({ onClose }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.registrationToken', 'Registration token *')}</label>
+                    <label htmlFor={`${fieldId}-token`}>{t('app.linkPanelForm.registrationToken', 'Registration token *')}</label>
                     <Input
+                        id={`${fieldId}-token`}
                         type="password"
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
@@ -158,8 +161,9 @@ const LinkPanelForm = ({ onClose }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.displayName', 'Display name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.linkPanelForm.displayName', 'Display name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}

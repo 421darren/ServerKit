@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { useAuth } from '../../contexts/useAuth.js';
 import api from '../../services/api';
 import useSettingFocus from '../../hooks/useSettingFocus';
@@ -354,6 +354,7 @@ const ApiKeysSection = () => {
 
 // ─── Rate Limits Section ───────────────────────────────
 const RateLimitsSection = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const register = useSettingFocus();
     const [limits, setLimits] = useState({
@@ -420,8 +421,9 @@ const RateLimitsSection = () => {
             <div className="api-settings__rate-limits">
                 {Object.entries(limits).map(([key, value]) => (
                     <div key={key} className="form-group form-group--inline">
-                        <Label>{labels[key]}</Label>
+                        <Label htmlFor={`${fieldId}-${key}`}>{labels[key]}</Label>
                         <Input
+                            id={`${fieldId}-${key}`}
                             type="text"
                             value={value}
                             onChange={e => setLimits(prev => ({ ...prev, [key]: e.target.value }))}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState  } from 'react';
+import { useCallback, useEffect, useMemo, useState, useId  } from 'react';
 import api from '../../services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,7 @@ const formatDate = (d) => (d ? formatDateTime(d) : '—');
  * (Secret storage moved to the Organization tab group at /vaults earlier.)
  */
 export default function WebhooksTab() {
+    const fieldId = useId();
     const { t } = useTranslation();
     const toast = useToast();
     const { confirm } = useConfirm();
@@ -340,8 +341,8 @@ export default function WebhooksTab() {
             >
                 <p className="sk-modal__subtitle">{t('app.webhooksTab.copyThisSecretNowItWill', 'Copy this secret now. It will not be shown again.')}</p>
                 <div className="settings-webhook-secret-field">
-                        <Label>{t('app.webhooksTab.endpoint', 'Endpoint')}</Label>
-                        <Input readOnly value={regeneratedSecret?.name || ''} />
+                        <Label htmlFor={`${fieldId}-endpoint`}>{t('app.webhooksTab.endpoint', 'Endpoint')}</Label>
+                        <Input id={`${fieldId}-endpoint`} readOnly value={regeneratedSecret?.name || ''} />
                         <CopyField label={t('app.webhooksTab.secret', 'Secret')} value={regeneratedSecret?.secret || ''} secret />
                     </div>
             </Modal>

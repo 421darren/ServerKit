@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
     Globe, Plus, ShieldCheck, RefreshCw, Trash2, ExternalLink,
@@ -128,6 +128,7 @@ const BUILTIN_VIEWS = [
 ];
 
 const Domains = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { confirm } = useConfirm();
     const toast = useToast();
@@ -897,9 +898,9 @@ const Domains = () => {
             <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.domains.addDomain2', 'Add domain')}>
                 <form onSubmit={handleAddDomain}>
                     <div className="form-group">
-                        <Label>{t('app.domains.application', 'Service')}</Label>
+                        <Label htmlFor={`${fieldId}-app`}>{t('app.domains.application', 'Service')}</Label>
                         <Select value={selectedAppId} onValueChange={setSelectedAppId} required>
-                            <SelectTrigger><SelectValue placeholder={t('app.domains.selectAnApplication', 'Select a service')} /></SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-app`}><SelectValue placeholder={t('app.domains.selectAnApplication', 'Select a service')} /></SelectTrigger>
                             <SelectContent>
                                 {apps.map(app => (
                                     <SelectItem key={app.id} value={String(app.id)}>{app.name}</SelectItem>
@@ -908,9 +909,10 @@ const Domains = () => {
                         </Select>
                     </div>
                     <div className="form-group">
-                        <Label>{t('common.labels.domain', 'Domain')}</Label>
+                        <Label htmlFor={`${fieldId}-domain`}>{t('common.labels.domain', 'Domain')}</Label>
                         {showAddModal && (
                             <DomainField
+                                id={`${fieldId}-domain`}
                                 exclude={domains.map((d) => d.name)}
                                 rejectExisting
                                 onChange={(name, info) => { setDomainName(name); setDomainInfo(info); }}
@@ -945,8 +947,9 @@ const Domains = () => {
                             </div>
                         </div>
                         <div className="form-group">
-                            <Label>{t('app.domains.emailAddress', 'Email address')}</Label>
+                            <Label htmlFor={`${fieldId}-email`}>{t('app.domains.emailAddress', 'Email address')}</Label>
                             <Input
+                                id={`${fieldId}-email`}
                                 type="email"
                                 placeholder={acmeContact || 'admin@example.com'}
                                 value={sslEmail || acmeContact}

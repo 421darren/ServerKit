@@ -1,5 +1,5 @@
 import { Card as SharedCard } from '@/components/ui/card';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import api from '../services/api';
 import { useToast } from '../contexts/useToast.js';
@@ -19,6 +19,7 @@ import { toastError } from '@/utils/errorMessage';
 
 const CloudProvision = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { user } = useAuth();
     const [providers, setProviders] = useState([]);
@@ -215,8 +216,8 @@ const CloudProvision = () => {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="form-group"><label>{t('common.labels.name', 'Name')}</label><Input value={providerForm.name} onChange={e => setProviderForm({...providerForm, name: e.target.value})} /></div>
-                <div className="form-group"><label>{t('app.cloudProvision.apiKey', 'API key')}</label><Input type="password" value={providerForm.api_key} onChange={e => setProviderForm({...providerForm, api_key: e.target.value})} /></div>
+                <div className="form-group"><label htmlFor={`${fieldId}-provider-name`}>{t('common.labels.name', 'Name')}</label><Input id={`${fieldId}-provider-name`} value={providerForm.name} onChange={e => setProviderForm({...providerForm, name: e.target.value})} /></div>
+                <div className="form-group"><label htmlFor={`${fieldId}-api-key`}>{t('app.cloudProvision.apiKey', 'API key')}</label><Input id={`${fieldId}-api-key`} type="password" value={providerForm.api_key} onChange={e => setProviderForm({...providerForm, api_key: e.target.value})} /></div>
             </Modal>
 
             <Modal
@@ -242,7 +243,7 @@ const CloudProvision = () => {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="form-group"><label>{t('app.cloudProvision.serverName', 'Server name')}</label><Input value={serverForm.name} onChange={e => setServerForm({...serverForm, name: e.target.value})} /></div>
+                <div className="form-group"><label htmlFor={`${fieldId}-server-name`}>{t('app.cloudProvision.serverName', 'Server name')}</label><Input id={`${fieldId}-server-name`} value={serverForm.name} onChange={e => setServerForm({...serverForm, name: e.target.value})} /></div>
                 {providerOptions && (
                     <>
                         <div className="form-group">

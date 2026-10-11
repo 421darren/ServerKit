@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -31,6 +31,7 @@ const PROXY_OPTIONS = [
 
 const ProxyStackPanel = ({ serverId }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const [stack, setStack] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -275,8 +276,9 @@ const ProxyStackPanel = ({ serverId }) => {
 
             {!isNginx && (
                 <section className="proxy-panel__section">
-                    <label className="proxy-panel__label">{t('app.proxyStackPanel.customConfigSnippet', 'Custom config snippet')}</label>
+                    <label htmlFor={`${fieldId}-snippet`} className="proxy-panel__label">{t('app.proxyStackPanel.customConfigSnippet', 'Custom config snippet')}</label>
                     <Textarea
+                        id={`${fieldId}-snippet`}
                         rows={6}
                         value={snippet}
                         onChange={(e) => setSnippet(e.target.value)}

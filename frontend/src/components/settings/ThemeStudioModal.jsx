@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useId } from 'react';
 import { Download, Save, Github } from 'lucide-react';
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -36,6 +36,7 @@ function seedTokens(theme, mode) {
 // the skin preview), start from any installed theme, then Export a valid
 // theme.json, Save it into this panel, or Submit it to the registry.
 const ThemeStudioModal = ({ open, onOpenChange }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { availableThemes, previewSkin, clearPreview, refreshInstalledThemes, setSkin } = useTheme();
     const { user } = useAuth();
@@ -203,7 +204,7 @@ const ThemeStudioModal = ({ open, onOpenChange }) => {
                                     const value = activeTokens[token] ?? '';
                                     return (
                                         <div key={token} className="theme-studio__token">
-                                            <label>{token}</label>
+                                            <label htmlFor={`${fieldId}-${token}`}>{token}</label>
                                             <div className="theme-studio__token-input">
                                                 {isColor && /^#([0-9a-fA-F]{6})$/.test(value) && (
                                                     <input
@@ -213,6 +214,7 @@ const ThemeStudioModal = ({ open, onOpenChange }) => {
                                                     />
                                                 )}
                                                 <input
+                                                    id={`${fieldId}-${token}`}
                                                     type="text"
                                                     value={value}
                                                     placeholder="unset"

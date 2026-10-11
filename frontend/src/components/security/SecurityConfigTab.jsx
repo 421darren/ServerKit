@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { Button } from '@/components/ui/button';
 import ErrorState from '@/components/ErrorState';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 
 const SecurityConfigTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -109,8 +110,9 @@ const SecurityConfigTab = () => {
                     </div>
 
                     <div className="form-group">
-                        <Label>{t('app.securityConfigTab.quarantinePath', 'Quarantine path')}</Label>
+                        <Label htmlFor={`${fieldId}-quarantine`}>{t('app.securityConfigTab.quarantinePath', 'Quarantine path')}</Label>
                         <Input
+                            id={`${fieldId}-quarantine`}
                             type="text"
                             value={config?.clamav?.quarantine_path || '/var/quarantine'}
                             onChange={(e) => updateConfig('clamav', 'quarantine_path', e.target.value)}

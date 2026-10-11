@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Modal from '../Modal';
 import ApiKeyScopesModal from '../api/ApiKeyScopesModal';
@@ -16,6 +16,7 @@ const TIER_OPTIONS = [
 
 const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [name, setName] = useState('');
     const [scopes, setScopes] = useState(['*']);
     const [tier, setTier] = useState('standard');
@@ -59,8 +60,9 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         <div className="form-group">
-                            <Label>{t('common.labels.name', 'Name')}</Label>
+                            <Label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</Label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
@@ -92,8 +94,9 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
                         </div>
 
                         <div className="form-group">
-                            <Label>{t('app.apiKeyModal.expirationOptional', 'Expiration (optional)')}</Label>
+                            <Label htmlFor={`${fieldId}-expires`}>{t('app.apiKeyModal.expirationOptional', 'Expiration (optional)')}</Label>
                             <Input
+                                id={`${fieldId}-expires`}
                                 type="datetime-local"
                                 value={expiresAt}
                                 onChange={e => setExpiresAt(e.target.value)}

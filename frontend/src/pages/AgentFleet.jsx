@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useId, useState, useEffect  } from 'react';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import {
     Shield,
@@ -42,6 +42,7 @@ import { formatDate, formatDateTime } from '@/utils/intl';
 
 const AgentFleet = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
@@ -637,8 +638,8 @@ const AgentFleet = () => {
                                     {rolloutStrategy === 'staged' && (
                                         <>
                                             <div className="form-group">
-                                                <label>{t('app.agentFleet.batchSize', 'Batch size')}</label>
-                                                <Input
+                                                <label htmlFor={`${fieldId}-batch-size`}>{t('app.agentFleet.batchSize', 'Batch size')}</label>
+                                                <Input id={`${fieldId}-batch-size`}
                                                     type="number"
                                                     value={rolloutBatchSize}
                                                     onChange={e => setRolloutBatchSize(parseInt(e.target.value) || 5)}
@@ -646,8 +647,8 @@ const AgentFleet = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <label>{t('app.agentFleet.delayMinutes', 'Delay (minutes)')}</label>
-                                                <Input
+                                                <label htmlFor={`${fieldId}-delay`}>{t('app.agentFleet.delayMinutes', 'Delay (minutes)')}</label>
+                                                <Input id={`${fieldId}-delay`}
                                                     type="number"
                                                     value={rolloutDelay}
                                                     onChange={e => setRolloutDelay(parseInt(e.target.value) || 10)}

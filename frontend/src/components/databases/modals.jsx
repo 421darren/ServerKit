@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Plus } from 'lucide-react';
 import api from '../../services/api';
 import Modal from '@/components/Modal';
@@ -108,6 +108,7 @@ function EnginePicker({ value, onChange, status, onInstallEngine }) {
 
 export function CreateDatabaseModal({ engine: initialEngine = 'mysql', status, onClose, onCreated, onInstallEngine }) {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [engine, setEngine] = useState(initialEngine);
     const [formData, setFormData] = useState({
         name: '', charset: 'utf8mb4', collation: 'utf8mb4_unicode_ci', encoding: 'UTF8', create_user: true,
@@ -188,8 +189,8 @@ export function CreateDatabaseModal({ engine: initialEngine = 'mysql', status, o
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.modals.databaseName', 'Database name *')}</label>
-                    <Input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="my_database" required pattern="[a-zA-Z0-9_]+" autoFocus />
+                    <label htmlFor={`${fieldId}-name`}>{t('app.modals.databaseName', 'Database name *')}</label>
+                    <Input id={`${fieldId}-name`} type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="my_database" required pattern="[a-zA-Z0-9_]+" autoFocus />
                 </div>
 
                 {isMySQL ? (
@@ -268,6 +269,7 @@ export function CreateDatabaseModal({ engine: initialEngine = 'mysql', status, o
 
 export function CreateMySQLUserModal({ databases, onClose, onCreated }) {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [formData, setFormData] = useState({ username: '', password: '', host: 'localhost', database: '', privileges: 'ALL' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -311,13 +313,13 @@ export function CreateMySQLUserModal({ databases, onClose, onCreated }) {
             {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.modals.username', 'Username *')}</label>
-                    <Input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="db_user" required autoFocus />
+                    <label htmlFor={`${fieldId}-username`}>{t('app.modals.username', 'Username *')}</label>
+                    <Input id={`${fieldId}-username`} type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="db_user" required autoFocus />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.password', 'Password')}</label>
+                    <label htmlFor={`${fieldId}-password`}>{t('common.labels.password', 'Password')}</label>
                     <div className="input-with-button">
-                        <Input type="text" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder={t('app.modals.leaveEmptyToAutoGenerate', 'Leave empty to auto-generate')} />
+                        <Input id={`${fieldId}-password`} type="text" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder={t('app.modals.leaveEmptyToAutoGenerate', 'Leave empty to auto-generate')} />
                         <Button type="button" variant="outline" size="sm" onClick={generatePassword}>{t('app.modals.generate', 'Generate')}</Button>
                     </div>
                 </div>
@@ -352,6 +354,7 @@ export function CreateMySQLUserModal({ databases, onClose, onCreated }) {
 
 export function CreatePostgreSQLUserModal({ databases, onClose, onCreated }) {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [formData, setFormData] = useState({ username: '', password: '', database: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -395,13 +398,13 @@ export function CreatePostgreSQLUserModal({ databases, onClose, onCreated }) {
             {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.modals.username', 'Username *')}</label>
-                    <Input type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="db_user" required autoFocus />
+                    <label htmlFor={`${fieldId}-username`}>{t('app.modals.username', 'Username *')}</label>
+                    <Input id={`${fieldId}-username`} type="text" value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} placeholder="db_user" required autoFocus />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.password', 'Password')}</label>
+                    <label htmlFor={`${fieldId}-password`}>{t('common.labels.password', 'Password')}</label>
                     <div className="input-with-button">
-                        <Input type="text" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder={t('app.modals.leaveEmptyToAutoGenerate', 'Leave empty to auto-generate')} />
+                        <Input id={`${fieldId}-password`} type="text" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder={t('app.modals.leaveEmptyToAutoGenerate', 'Leave empty to auto-generate')} />
                         <Button type="button" variant="outline" size="sm" onClick={generatePassword}>{t('app.modals.generate', 'Generate')}</Button>
                     </div>
                 </div>

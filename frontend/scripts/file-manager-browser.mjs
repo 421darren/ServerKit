@@ -126,7 +126,8 @@ try {
     assert.deepEqual(await lastOp(), ['rename', '/home/projects', 'work']);
 
     await dlg.getByTitle('Permissions').first().click();
-    const modeInput = dlg.getByPlaceholder('755');
+    // Found by its label: the label is associated with the field.
+    const modeInput = dlg.getByLabel('Permissions (octal)');
     assert.equal(await modeInput.inputValue(), '750');
     await modeInput.fill('700');
     await dlg.getByRole('button', { name: 'Apply' }).click();

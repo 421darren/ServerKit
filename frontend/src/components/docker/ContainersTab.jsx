@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useId } from 'react';
 import { statusKind } from '@/components/ds/status';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -1171,6 +1171,7 @@ function portMappings(rows) {
 
 const RunContainerModal = ({ onClose, onCreated }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [formData, setFormData] = useState({
         image: '',
         name: '',
@@ -1219,8 +1220,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.containersTab.image3', 'Image *')}</label>
+                    <label htmlFor={`${fieldId}-image`}>{t('app.containersTab.image3', 'Image *')}</label>
                     <Input
+                        id={`${fieldId}-image`}
                         type="text"
                         name="image"
                         value={formData.image}
@@ -1231,8 +1233,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.containersTab.containerName', 'Container name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.containersTab.containerName', 'Container name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         name="name"
                         value={formData.name}
@@ -1289,8 +1292,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.containersTab.volumesCommaSeparated', 'Volumes (comma-separated)')}</label>
+                    <label htmlFor={`${fieldId}-volumes`}>{t('app.containersTab.volumesCommaSeparated', 'Volumes (comma-separated)')}</label>
                     <Input
+                        id={`${fieldId}-volumes`}
                         type="text"
                         name="volumes"
                         value={formData.volumes}

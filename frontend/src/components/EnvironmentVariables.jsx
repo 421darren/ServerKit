@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import {
     Copy, Download, Eye, EyeOff, History, Pencil, Plus, Trash2, Upload, Variable,
 } from 'lucide-react';
@@ -74,6 +74,7 @@ const EVERY_SERVICE = '__all';
 
 const EnvironmentVariables = ({ appId }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const showError = toast.error;
     const { confirm } = useConfirm();
@@ -635,8 +636,9 @@ const EnvironmentVariables = ({ appId }) => {
             <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.environmentVariables.addEnvironmentVariable', 'Add environment variable')}>
                 <form onSubmit={handleAdd}>
                     <div className="form-group">
-                        <Label>{t('common.labels.key', 'Key')}</Label>
+                        <Label htmlFor={`${fieldId}-key`}>{t('common.labels.key', 'Key')}</Label>
                         <Input
+                            id={`${fieldId}-key`}
                             type="text"
                             value={newKey}
                             onChange={(e) => setNewKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
@@ -646,8 +648,9 @@ const EnvironmentVariables = ({ appId }) => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('common.labels.value', 'Value')}</Label>
+                        <Label htmlFor={`${fieldId}-value`}>{t('common.labels.value', 'Value')}</Label>
                         <Input
+                            id={`${fieldId}-value`}
                             type="text"
                             value={newValue}
                             onChange={(e) => setNewValue(e.target.value)}
@@ -655,8 +658,9 @@ const EnvironmentVariables = ({ appId }) => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('common.labels.description', 'Description')} <span className="env-optional">(optional)</span></Label>
+                        <Label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')} <span className="env-optional">(optional)</span></Label>
                         <Input
+                            id={`${fieldId}-description`}
                             type="text"
                             value={newDescription}
                             onChange={(e) => setNewDescription(e.target.value)}

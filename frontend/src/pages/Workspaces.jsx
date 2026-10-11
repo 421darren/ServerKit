@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../contexts/useToast.js';
@@ -86,6 +86,7 @@ const formatSince = (iso) => {
 
 const Workspaces = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const navigate = useNavigate();
     const { activeWorkspaceId } = useWorkspace();
@@ -283,26 +284,27 @@ const Workspaces = () => {
                 )}
             >
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
-                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('app.workspaces.myTeam', 'My team')} />
+                    <label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</label>
+                    <Input id={`${fieldId}-name`} value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('app.workspaces.myTeam', 'My team')} />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
-                    <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
+                    <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
+                    <Textarea id={`${fieldId}-description`} value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
                 </div>
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.workspaces.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
-                        <Input type="number" value={form.max_servers} onChange={e => setForm({...form, max_servers: parseInt(e.target.value) || 0})} />
+                        <label htmlFor={`${fieldId}-max-servers`}>{t('app.workspaces.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
+                        <Input id={`${fieldId}-max-servers`} type="number" value={form.max_servers} onChange={e => setForm({...form, max_servers: parseInt(e.target.value) || 0})} />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.workspaces.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
-                        <Input type="number" value={form.max_users} onChange={e => setForm({...form, max_users: parseInt(e.target.value) || 0})} />
+                        <label htmlFor={`${fieldId}-max-users`}>{t('app.workspaces.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
+                        <Input id={`${fieldId}-max-users`} type="number" value={form.max_users} onChange={e => setForm({...form, max_users: parseInt(e.target.value) || 0})} />
                     </div>
                 </div>
                 <div className="form-group">
-                    <label>{t('app.workspaces.brandColor', 'Brand color')}</label>
+                    <label htmlFor={`${fieldId}-color`}>{t('app.workspaces.brandColor', 'Brand color')}</label>
                     <input
+                        id={`${fieldId}-color`}
                         type="color"
                         className="workspace-color-input"
                         value={form.primary_color}

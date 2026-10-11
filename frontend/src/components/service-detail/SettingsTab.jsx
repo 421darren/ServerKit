@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
     SlidersHorizontal,
@@ -467,6 +467,7 @@ where a new release is asked, and for how long. */}
 // show current primary domain, SSL health, attach a new domain, and request a
 // certificate from Let&apos;s Encrypt.
 const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const toast = useToast();
     const [health, setHealth] = useState(null);
@@ -652,8 +653,9 @@ const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
                                 <CheckItem ok label={t('app.settingsTab.domainConfigured', 'Domain {{primaryDomain}} configured', { primaryDomain: primaryDomain })} />
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.settingsTab.adminEmail', 'Admin email')}</Label>
+                                <Label htmlFor={`${fieldId}-email`}>{t('app.settingsTab.adminEmail', 'Admin email')}</Label>
                                 <Input
+                                    id={`${fieldId}-email`}
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}

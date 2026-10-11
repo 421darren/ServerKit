@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import EmptyState from '../EmptyState';
@@ -18,6 +18,7 @@ import { formatDateTime } from '@/utils/intl';
 
 const BuildTab = ({ appId, app }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm: confirmBuild } = useConfirm();
     const [buildConfig, setBuildConfig] = useState(null);
@@ -311,8 +312,9 @@ const BuildTab = ({ appId, app }) => {
                             </div>
                             {configForm.buildMethod === 'dockerfile' && (
                                 <div className="form-group">
-                                    <label>{t('app.buildTab.dockerfilePath', 'Dockerfile path')}</label>
+                                    <label htmlFor={`${fieldId}-dockerfile`}>{t('app.buildTab.dockerfilePath', 'Dockerfile path')}</label>
                                     <Input
+                                        id={`${fieldId}-dockerfile`}
                                         type="text"
                                         value={configForm.dockerfilePath}
                                         onChange={e => setConfigForm({...configForm, dockerfilePath: e.target.value})}
@@ -322,8 +324,9 @@ const BuildTab = ({ appId, app }) => {
                             {configForm.buildMethod === 'custom' && (
                                 <>
                                     <div className="form-group">
-                                        <label>{t('app.buildTab.buildCommand', 'Build command')}</label>
+                                        <label htmlFor={`${fieldId}-build-cmd`}>{t('app.buildTab.buildCommand', 'Build command')}</label>
                                         <Input
+                                            id={`${fieldId}-build-cmd`}
                                             type="text"
                                             value={configForm.customBuildCmd}
                                             onChange={e => setConfigForm({...configForm, customBuildCmd: e.target.value})}
@@ -331,8 +334,9 @@ const BuildTab = ({ appId, app }) => {
                                         />
                                     </div>
                                     <div className="form-group">
-                                        <label>{t('app.buildTab.startCommand', 'Start command')}</label>
+                                        <label htmlFor={`${fieldId}-start-cmd`}>{t('app.buildTab.startCommand', 'Start command')}</label>
                                         <Input
+                                            id={`${fieldId}-start-cmd`}
                                             type="text"
                                             value={configForm.customStartCmd}
                                             onChange={e => setConfigForm({...configForm, customStartCmd: e.target.value})}
@@ -342,8 +346,9 @@ const BuildTab = ({ appId, app }) => {
                                 </>
                             )}
                             <div className="form-group">
-                                <label>{t('app.buildTab.timeoutSeconds', 'Timeout (seconds)')}</label>
+                                <label htmlFor={`${fieldId}-timeout`}>{t('app.buildTab.timeoutSeconds', 'Timeout (seconds)')}</label>
                                 <Input
+                                    id={`${fieldId}-timeout`}
                                     type="number"
                                     value={configForm.timeout}
                                     onChange={e => setConfigForm({...configForm, timeout: parseInt(e.target.value)})}

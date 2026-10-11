@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import api from '../../services/api';
 import { Button } from '@/components/ui/button';
 import ErrorState from '../ErrorState';
@@ -21,6 +21,7 @@ const POLICY_LABELS = {
 // `props` are spread onto the card root so a parent can attach a ref /
 // focus-highlight class (see useSettingFocus / command-palette deep links).
 const TwoFactorPolicyCard = (props) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [policy, setPolicy] = useState('off');
     const [graceDays, setGraceDays] = useState(7);
@@ -89,9 +90,9 @@ const TwoFactorPolicyCard = (props) => {
             </p>
 
             <div className="form-group">
-                <label>{t('app.twoFactorPolicyCard.whoMustEnrol', 'Who must enrol')}</label>
+                <label htmlFor={`${fieldId}-policy`}>{t('app.twoFactorPolicyCard.whoMustEnrol', 'Who must enrol')}</label>
                 <Select value={policy} onValueChange={setPolicy}>
-                    <SelectTrigger>
+                    <SelectTrigger id={`${fieldId}-policy`}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -104,8 +105,9 @@ const TwoFactorPolicyCard = (props) => {
 
             {policy !== 'off' && (
                 <div className="form-group">
-                    <label>{t('app.twoFactorPolicyCard.gracePeriodDays', 'Grace period (days)')}</label>
+                    <label htmlFor={`${fieldId}-grace`}>{t('app.twoFactorPolicyCard.gracePeriodDays', 'Grace period (days)')}</label>
                     <Input
+                        id={`${fieldId}-grace`}
                         type="number"
                         className="policy-grace-input"
                         min="0"

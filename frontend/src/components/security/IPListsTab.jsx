@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -131,6 +131,7 @@ const IP_LIST_VIEWS = [
 ];
 
 const IPListsTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [lists, setLists] = useState({ allowlist: [], blocklist: [] });
     const [loading, setLoading] = useState(true);
@@ -334,8 +335,9 @@ const IPListsTab = () => {
 
             <Modal open={!!showAddModal} onClose={() => setShowAddModal(null)} title={t('app.iPListsTab.addTo2', 'Add to {{value}}', { value: showAddModal || '' })}>
                 <div className="form-group">
-                    <Label>{t('app.iPListsTab.ipAddressOrCidr', 'IP address or CIDR')}</Label>
+                    <Label htmlFor={`${fieldId}-ip`}>{t('app.iPListsTab.ipAddressOrCidr', 'IP address or CIDR')}</Label>
                     <Input
+                        id={`${fieldId}-ip`}
                         type="text"
                         value={newIP}
                         onChange={(e) => setNewIP(e.target.value)}
@@ -343,8 +345,9 @@ const IPListsTab = () => {
                     />
                 </div>
                 <div className="form-group">
-                    <Label>{t('app.iPListsTab.commentOptional', 'Comment (optional)')}</Label>
+                    <Label htmlFor={`${fieldId}-comment`}>{t('app.iPListsTab.commentOptional', 'Comment (optional)')}</Label>
                     <Input
+                        id={`${fieldId}-comment`}
                         type="text"
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}

@@ -1,5 +1,5 @@
 import { TOKEN_EXPIRY_OPTIONS } from './serverDetailData';
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -62,6 +62,7 @@ const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
 
 const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { confirm: confirmSettings } = useConfirm();
     const [formData, setFormData] = useState({
         name: server.name || '',
@@ -181,8 +182,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>{t('app.serverSettingsTab.serverName', 'Server name')}</label>
+                            <label htmlFor={`${fieldId}-name`}>{t('app.serverSettingsTab.serverName', 'Server name')}</label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 name="name"
                                 value={formData.name}
@@ -192,8 +194,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         </div>
 
                         <div className="form-group">
-                            <label>{t('common.labels.description', 'Description')}</label>
+                            <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
                             <Textarea
+                                id={`${fieldId}-description`}
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
@@ -203,8 +206,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
+                                <label htmlFor={`${fieldId}-hostname`}>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
                                 <Input
+                                    id={`${fieldId}-hostname`}
                                     type="text"
                                     name="hostname"
                                     value={formData.hostname}
@@ -212,8 +216,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('common.labels.ipAddress', 'IP address')}</label>
+                                <label htmlFor={`${fieldId}-ip`}>{t('common.labels.ipAddress', 'IP address')}</label>
                                 <Input
+                                    id={`${fieldId}-ip`}
                                     type="text"
                                     name="ip_address"
                                     value={formData.ip_address}

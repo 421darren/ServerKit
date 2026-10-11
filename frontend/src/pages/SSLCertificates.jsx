@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useId, useMemo } from 'react';
 import {
     ShieldCheck, RefreshCw, Plus, Lock, MoreVertical,
     Settings, Download, Upload,
@@ -97,6 +97,7 @@ const SSL_BUILTIN_VIEWS = [
 
 const SSLCertificates = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm } = useConfirm();
     const [status, setStatus] = useState(null);
@@ -586,8 +587,8 @@ const SSLCertificates = () => {
                             {!wildcard && (
                                 <>
                                     <div className="form-group">
-                                        <Label>{t('app.sSLCertificates.emailAddress', 'Email address')}</Label>
-                                        <Input
+                                        <Label htmlFor={`${fieldId}-email`}>{t('app.sSLCertificates.emailAddress', 'Email address')}</Label>
+                                        <Input id={`${fieldId}-email`}
                                             type="email"
                                             placeholder="admin@example.com"
                                             value={email}
@@ -607,8 +608,8 @@ const SSLCertificates = () => {
                                     </div>
                                     {!useNginx && (
                                         <div className="form-group">
-                                            <Label>{t('app.sSLCertificates.webrootPath', 'Webroot path')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-webroot`}>{t('app.sSLCertificates.webrootPath', 'Webroot path')}</Label>
+                                            <Input id={`${fieldId}-webroot`}
                                                 type="text"
                                                 placeholder="/var/www/html"
                                                 value={webrootPath}
@@ -634,8 +635,8 @@ const SSLCertificates = () => {
                                     </div>
                                     {dnsProvider === 'cloudflare' ? (
                                         <div className="form-group">
-                                            <Label>{t('app.sSLCertificates.cloudflareApiToken', 'Cloudflare API token')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-cf-token`}>{t('app.sSLCertificates.cloudflareApiToken', 'Cloudflare API token')}</Label>
+                                            <Input id={`${fieldId}-cf-token`}
                                                 type="password"
                                                 placeholder={t('app.sSLCertificates.apiTokenWithDnsEditRights', 'API token with DNS edit rights')}
                                                 value={dnsToken}
@@ -646,8 +647,8 @@ const SSLCertificates = () => {
                                     ) : (
                                         <>
                                             <div className="form-group">
-                                                <Label>{t('app.sSLCertificates.awsAccessKeyId', 'AWS access key ID')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-aws-access-key`}>{t('app.sSLCertificates.awsAccessKeyId', 'AWS access key ID')}</Label>
+                                                <Input id={`${fieldId}-aws-access-key`}
                                                     type="text"
                                                     value={awsAccessKey}
                                                     onChange={e => setAwsAccessKey(e.target.value)}
@@ -655,8 +656,8 @@ const SSLCertificates = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <Label>{t('app.sSLCertificates.awsSecretAccessKey', 'AWS secret access key')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-aws-secret-key`}>{t('app.sSLCertificates.awsSecretAccessKey', 'AWS secret access key')}</Label>
+                                                <Input id={`${fieldId}-aws-secret-key`}
                                                     type="password"
                                                     value={awsSecretKey}
                                                     onChange={e => setAwsSecretKey(e.target.value)}
@@ -705,8 +706,8 @@ const SSLCertificates = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('app.sSLCertificates.certificatePem', 'Certificate (PEM)')}</Label>
-                        <textarea
+                        <Label htmlFor={`${fieldId}-cert-pem`}>{t('app.sSLCertificates.certificatePem', 'Certificate (PEM)')}</Label>
+                        <textarea id={`${fieldId}-cert-pem`}
                             className="ui-textarea ssl-pem-input"
                             rows={5}
                             placeholder={t('app.sSLCertificates.beginCertificate', '-----BEGIN CERTIFICATE-----')}
@@ -716,8 +717,8 @@ const SSLCertificates = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('app.sSLCertificates.privateKeyPem', 'Private key (PEM)')}</Label>
-                        <textarea
+                        <Label htmlFor={`${fieldId}-key-pem`}>{t('app.sSLCertificates.privateKeyPem', 'Private key (PEM)')}</Label>
+                        <textarea id={`${fieldId}-key-pem`}
                             className="ui-textarea ssl-pem-input"
                             rows={5}
                             placeholder={t('app.sSLCertificates.beginPrivateKey', '-----BEGIN PRIVATE KEY-----')}
@@ -727,8 +728,8 @@ const SSLCertificates = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('app.sSLCertificates.chainPemOptional', 'Chain (PEM, optional)')}</Label>
-                        <textarea
+                        <Label htmlFor={`${fieldId}-chain-pem`}>{t('app.sSLCertificates.chainPemOptional', 'Chain (PEM, optional)')}</Label>
+                        <textarea id={`${fieldId}-chain-pem`}
                             className="ui-textarea ssl-pem-input"
                             rows={4}
                             placeholder={t('app.sSLCertificates.beginCertificateIntermediateChain', '-----BEGIN CERTIFICATE----- (intermediate chain)')}
