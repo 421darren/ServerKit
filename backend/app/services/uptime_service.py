@@ -45,8 +45,10 @@ class UptimeService:
 
     @classmethod
     def _load_history(cls) -> Dict:
-        """Load uptime history from file, or a fresh one if unreadable."""
-        cls._ensure_data_dir()
+        """Load uptime history from file, or a fresh one if unreadable.
+
+        Reading creates nothing: at boot the data dir may not exist and may not
+        be creatable (the container runs unprivileged)."""
         return load_json_config(cls.UPTIME_FILE, {
             'start_time': datetime.now().isoformat(),
             'checks': [],

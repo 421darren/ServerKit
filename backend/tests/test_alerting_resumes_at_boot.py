@@ -87,3 +87,15 @@ def test_stopped_uptime_tracking_stays_stopped(uptime):
 def test_never_started_uptime_tracking_stays_off(uptime):
     UptimeService.resume_if_enabled()
     assert uptime == []
+
+
+def test_resume_does_not_create_an_uncreatable_data_dir(uptime, tmp_path, monkeypatch):
+    """The image runs unprivileged and cannot create /var/lib/serverkit; boot
+    called resume and crashed on that makedirs before serving anything."""
+    blocker = tmp_path / 'not-a-dir'
+    blocker.write_text('')
+    data_dir = blocker / 'serverkit'           # makedirs here always fails
+    monkeypatch.setattr(UptimeService, 'DATA_DIR', str(data_dir))
+    monkeypatch.setattr(UptimeService, 'UPTIME_FILE', str(data_dir / 'uptime_history.json'))
+    UptimeService.resume_if_enabled()
+    assert uptime == [] and not data_dir.exists()

@@ -488,11 +488,16 @@ def create_app(config_name=None):
             # Threshold alerting and the uptime sampler are switched on from
             # the UI; without this they silently stop at the next restart
             # while their status still reads "enabled".
+            # Best effort: a resume failure must never stop the panel booting.
             if not app.config.get('TESTING'):
                 from app.services.monitoring_service import MonitoringService
                 from app.services.uptime_service import UptimeService
-                MonitoringService.resume_if_enabled(app)
-                UptimeService.resume_if_enabled()
+                for resume in (lambda: MonitoringService.resume_if_enabled(app),
+                               UptimeService.resume_if_enabled):
+                    try:
+                        resume()
+                    except Exception:  # noqa: BLE001
+                        app.logger.exception('Could not resume a background monitor at boot')
 
             # Resume the embedded agent when this panel is linked to a master
             # ServerKit panel (ServerKit-to-ServerKit peering).
