@@ -216,7 +216,6 @@ def stop_application(app, *, user_id=None):
             WorkerProcessService.each(app, 'stop')
             # A stopped app keeps no warm standby running behind it.
             if getattr(app, 'slot_deploys_enabled', False):
-                from app.services.slot_deploy_service import SlotDeployService
                 SlotDeployService.stop_standby(app)
         else:
             result = DockerService.compose_down(

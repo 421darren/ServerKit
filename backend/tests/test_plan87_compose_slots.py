@@ -360,6 +360,11 @@ def test_lifecycle_and_status_follow_the_live_project(app, compose_world):
     lifecycle.restart_application(row)
     assert w.compose_calls[-1] == ('shop-b', 'restart')
 
+    lifecycle.stop_application(row)
+    assert w.compose_calls[-2:] == [('shop-b', 'stop'), (sc.original_project(row), 'stop')], \
+        'the live project stops, then the standby'
+    assert row.status == 'stopped'
+
     index = _ContainerIndex([
         {'id': '1', 'name': 'shop-b-web-1', 'project': 'shop-b', 'state': 'running'},
         {'id': '2', 'name': 'x-web-1', 'project': sc.original_project(row), 'state': 'exited'},
