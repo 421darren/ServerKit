@@ -63,6 +63,7 @@
 @import 'components/_linked-apps';
 @import 'components/_api-settings';
 @import 'components/_empty-state';
+@import 'components/_extensions';      // ExtensionBoundary failure card (was never imported)
 @import 'components/_status-badge';
 @import 'components/_connection-status';
 @import 'components/_detail-tabs';
@@ -125,6 +126,7 @@
 @import 'pages/_storage';
 @import 'pages/_notification-center';
 @import 'pages/_connections';
+@import 'pages/_coexistence';              // Coexistence page (was never imported)
 @import 'pages/_file-manager';
 @import 'pages/_ftp-server';
 @import 'pages/_firewall';
