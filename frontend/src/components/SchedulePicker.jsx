@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Check, AlertTriangle } from 'lucide-react';
 import { SegControl } from '@/components/ds';
 import { Input } from '@/components/ui/input';
@@ -234,6 +234,8 @@ const MODES = [
 ];
 
 export default function SchedulePicker({ value = '', onChange, compact = false, presets = DEFAULT_PRESETS }) {
+    // Several pickers can share a page (one per schedule card).
+    const baseId = useId();
     const { t } = useTranslation();
     const [mode, setMode] = useState('presets');
     const builder = useMemo(() => cronToBuilder(value), [value]);
@@ -276,9 +278,9 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
             {mode === 'builder' && (
                 <div className="schedule-picker__builder">
                     <div className="schedule-picker__row">
-                        <label id="sp-frequency">{t('app.schedulePicker.frequency', 'Frequency')}</label>
+                        <label id={`${baseId}-frequency`}>{t('app.schedulePicker.frequency', 'Frequency')}</label>
                         <SegControl
-                            aria-labelledby="sp-frequency"
+                            aria-labelledby={`${baseId}-frequency`}
                             value={builder.frequency}
                             onChange={(frequency) => patchBuilder({ frequency })}
                             options={[
@@ -292,12 +294,12 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
 
                     {builder.frequency !== 'hourly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-hour">{t('app.schedulePicker.atHour', 'At hour')}</label>
+                            <label htmlFor={`${baseId}-hour`}>{t('app.schedulePicker.atHour', 'At hour')}</label>
                             <Select
                                 value={String(builder.hour)}
                                 onValueChange={(v) => patchBuilder({ hour: Number(v) })}
                             >
-                                <SelectTrigger id="sp-hour" size="sm">
+                                <SelectTrigger id={`${baseId}-hour`} size="sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -306,12 +308,12 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <label htmlFor="sp-minute">minute</label>
+                            <label htmlFor={`${baseId}-minute`}>minute</label>
                             <Select
                                 value={String(builder.minute)}
                                 onValueChange={(v) => patchBuilder({ minute: Number(v) })}
                             >
-                                <SelectTrigger id="sp-minute" size="sm">
+                                <SelectTrigger id={`${baseId}-minute`} size="sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -325,12 +327,12 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
 
                     {builder.frequency === 'hourly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-minute-h">{t('app.schedulePicker.atMinute', 'At minute')}</label>
+                            <label htmlFor={`${baseId}-minute-h`}>{t('app.schedulePicker.atMinute', 'At minute')}</label>
                             <Select
                                 value={String(builder.minute)}
                                 onValueChange={(v) => patchBuilder({ minute: Number(v) })}
                             >
-                                <SelectTrigger id="sp-minute-h" size="sm">
+                                <SelectTrigger id={`${baseId}-minute-h`} size="sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -362,9 +364,9 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
 
                     {builder.frequency === 'monthly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-dom">{t('app.schedulePicker.onDay', 'On day')}</label>
+                            <label htmlFor={`${baseId}-dom`}>{t('app.schedulePicker.onDay', 'On day')}</label>
                             <Input
-                                id="sp-dom"
+                                id={`${baseId}-dom`}
                                 type="number"
                                 min={1}
                                 max={31}
