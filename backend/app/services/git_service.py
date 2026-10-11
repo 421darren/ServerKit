@@ -43,7 +43,6 @@ class GitService:
     @staticmethod
     def _generate_secret() -> str:
         """Generate a random webhook secret."""
-        import secrets
         return secrets.token_hex(32)
 
     @classmethod
