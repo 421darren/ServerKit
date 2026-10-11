@@ -53,6 +53,31 @@ class JobService:
         return job
 
     @classmethod
+    def recover_interrupted(cls):
+        """Boot-time cleanup after a restart; call before any consumer starts.
+
+        A job still 'running' lost its runner with the old process. It is
+        failed, not re-run: a half-finished deploy or restore is not safe to
+        repeat blind. Every other stranded queue message is redelivered.
+        """
+        now = datetime.utcnow()
+        interrupted = Job.query.filter_by(status=Job.STATUS_RUNNING).all()
+        for job in interrupted:
+            job.status = Job.STATUS_FAILED
+            job.completed_at = now
+            job.error_message = ('Interrupted: the panel restarted while this '
+                                 'job was running. Run it again if needed.')
+            if job.queue_message_id:
+                try:
+                    QueueBusService.complete(GROUP_SLUG, QUEUE_SLUG, job.queue_message_id)
+                except Exception:
+                    logger.warning('No queue message %s for job %s',
+                                   job.queue_message_id, job.id)
+        db.session.commit()
+        released = QueueBusService.recover_in_flight()
+        return {'failed_jobs': len(interrupted), 'released_messages': released}
+
+    @classmethod
     def _publish(cls, job, delay_ms=0):
         QueueBusService.ensure_queue(GROUP_SLUG, QUEUE_SLUG, config=QUEUE_CONFIG)
         msg = QueueBusService.send(

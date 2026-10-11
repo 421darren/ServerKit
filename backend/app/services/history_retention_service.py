@@ -1,4 +1,4 @@
-"""Age out history tables that nothing else prunes (plan 85 A4).
+"""Age out history tables that nothing else prunes.
 
 Every table here records something that already happened — an audit entry,
 a delivered notification, a finished cron run — and grew forever: no handler

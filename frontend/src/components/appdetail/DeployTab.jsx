@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import { GitMerge } from 'lucide-react';
 import api from '../../services/api';
 import EmptyState from '../EmptyState';
@@ -14,6 +14,7 @@ import Modal from '@/components/Modal';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { CardFooter as SharedCardFooter } from '@/components/ui/card';
+import { formatDateTime } from '@/utils/intl';
 
 // `embedded` renders this inside the Settings → Git & Deploy section, where the
 // shared RepoConnectForm already owns the connect/disconnect + repo identity. In
@@ -22,6 +23,7 @@ import { CardFooter as SharedCardFooter } from '@/components/ui/card';
 // history and config checkpoints.
 const DeployTab = ({ appId, embedded = false }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm: confirmDeploy } = useConfirm();
     const [config, setConfig] = useState(null);
@@ -240,7 +242,7 @@ const DeployTab = ({ appId, embedded = false }) => {
                                     {history.slice(0, 5).map((dep, idx) => (
                                         <div key={idx} className="deployment-item">
                                             <Pill kind={statusKind(dep.status)}>{dep.status}</Pill>
-                                            <span className="deployment-date">{new Date(dep.timestamp).toLocaleString()}</span>
+                                            <span className="deployment-date">{formatDateTime(dep.timestamp)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -269,8 +271,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                             {!embedded && (
                             <>
                             <div className="form-group">
-                                <label>{t('app.deployTab.repositoryUrl', 'Repository URL')}</label>
+                                <label htmlFor={`${fieldId}-repo-url`}>{t('app.deployTab.repositoryUrl', 'Repository URL')}</label>
                                 <Input
+                                    id={`${fieldId}-repo-url`}
                                     type="text"
                                     value={configForm.repoUrl}
                                     onChange={e => setConfigForm({...configForm, repoUrl: e.target.value})}
@@ -279,8 +282,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('common.labels.branch', 'Branch')}</label>
+                                <label htmlFor={`${fieldId}-branch`}>{t('common.labels.branch', 'Branch')}</label>
                                 <Input
+                                    id={`${fieldId}-branch`}
                                     type="text"
                                     value={configForm.branch}
                                     onChange={e => setConfigForm({...configForm, branch: e.target.value})}
@@ -300,8 +304,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                             </>
                             )}
                             <div className="form-group">
-                                <label>{t('app.deployTab.preDeployScript', 'Pre-deploy script')}</label>
+                                <label htmlFor={`${fieldId}-pre-deploy`}>{t('app.deployTab.preDeployScript', 'Pre-deploy script')}</label>
                                 <Textarea
+                                    id={`${fieldId}-pre-deploy`}
                                     value={configForm.preDeployScript}
                                     onChange={e => setConfigForm({...configForm, preDeployScript: e.target.value})}
                                     placeholder={t('app.deployTab.npmInstall', 'npm install')}
@@ -309,8 +314,9 @@ const DeployTab = ({ appId, embedded = false }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('app.deployTab.postDeployScript', 'Post-deploy script')}</label>
+                                <label htmlFor={`${fieldId}-post-deploy`}>{t('app.deployTab.postDeployScript', 'Post-deploy script')}</label>
                                 <Textarea
+                                    id={`${fieldId}-post-deploy`}
                                     value={configForm.postDeployScript}
                                     onChange={e => setConfigForm({...configForm, postDeployScript: e.target.value})}
                                     placeholder={t('app.deployTab.npmRunBuild', 'npm run build')}

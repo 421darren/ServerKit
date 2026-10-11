@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, SearchField } from '@/components/ds';
 import {
@@ -22,6 +23,7 @@ import {
     normalizeListResponse,
 } from './dockerHelpers';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 export const PullImageButton = () => {
     const { t } = useTranslation();
@@ -175,13 +177,18 @@ const ImagesTab = ({ onStatsChange }) => {
         storageKey: 'serverkit-table-docker-images-cols',
     });
     const [groupBy, setGroupBy] = useState(null);
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         loadImages();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadImages() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -190,10 +197,13 @@ const ImagesTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getImages();
             }
+            if (seq !== loadSeq.current) return;
             setImages(data.images || []);
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load images:', err);
-        } finally {
+            if (seq !== loadSeq.current) return;
+            setImages([]);
+            setLoadError(err);
             setLoading(false);
         }
     }
@@ -297,7 +307,7 @@ const ImagesTab = ({ onStatsChange }) => {
                 if (ms == null) return <span className="dx-muted-line">-</span>;
                 const iso = new Date(ms).toISOString();
                 return (
-                    <span className="dx-muted-line" title={new Date(ms).toLocaleString()}>
+                    <span className="dx-muted-line" title={formatDateTime(ms)}>
                         {formatRelativeTime(iso)}
                     </span>
                 );
@@ -389,7 +399,12 @@ const ImagesTab = ({ onStatsChange }) => {
             {/* Only the SEARCH can empty the pane outright. A column rule that
                 matches nothing keeps the table mounted — the header menu that
                 undoes it lives in the header. */}
-            {filteredImages.length === 0 ? (
+            {loadError ? (
+                <ErrorState
+                    error={loadError}
+                    onRetry={loadImages}
+                />
+            ) : filteredImages.length === 0 ? (
                 <EmptyState
                     icon={Layers}
                     title={images.length === 0 ? t('app.imagesTab.noImages', 'No images') : t('app.imagesTab.noMatchingImages', 'No matching images')}
@@ -426,6 +441,7 @@ const ImagesTab = ({ onStatsChange }) => {
 };
 
 const PullImageModal = ({ onClose, onPulled }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { serverId, isRemote } = useServer();
     const [image, setImage] = useState('');
@@ -460,8 +476,9 @@ const PullImageModal = ({ onClose, onPulled }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.imagesTab.imageName', 'Image name *')}</label>
+                    <label htmlFor={`${fieldId}-image`}>{t('app.imagesTab.imageName', 'Image name *')}</label>
                     <Input
+                        id={`${fieldId}-image`}
                         type="text"
                         value={image}
                         onChange={(e) => setImage(e.target.value)}
@@ -471,8 +488,9 @@ const PullImageModal = ({ onClose, onPulled }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.imagesTab.tag', 'Tag')}</label>
+                    <label htmlFor={`${fieldId}-tag`}>{t('app.imagesTab.tag', 'Tag')}</label>
                     <Input
+                        id={`${fieldId}-tag`}
                         type="text"
                         value={tag}
                         onChange={(e) => setTag(e.target.value)}

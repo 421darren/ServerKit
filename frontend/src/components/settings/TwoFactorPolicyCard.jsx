@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import api from '../../services/api';
 import { Button } from '@/components/ui/button';
 import ErrorState from '../ErrorState';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 
-// Admin control for the require-2FA policy (plan 22 #14). A policy, never a
+// Admin control for the require-2FA policy. A policy, never a
 // default: 'off' (nobody forced), 'admins', or 'all'. Within the grace window a
 // user still logs in with a password + a nudge; past it, login yields an
 // enrollment-scoped token until they add a passkey or authenticator app.
@@ -21,6 +21,7 @@ const POLICY_LABELS = {
 // `props` are spread onto the card root so a parent can attach a ref /
 // focus-highlight class (see useSettingFocus / command-palette deep links).
 const TwoFactorPolicyCard = (props) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [policy, setPolicy] = useState('off');
     const [graceDays, setGraceDays] = useState(7);
@@ -89,9 +90,9 @@ const TwoFactorPolicyCard = (props) => {
             </p>
 
             <div className="form-group">
-                <label>{t('app.twoFactorPolicyCard.whoMustEnrol', 'Who must enrol')}</label>
+                <label htmlFor={`${fieldId}-policy`}>{t('app.twoFactorPolicyCard.whoMustEnrol', 'Who must enrol')}</label>
                 <Select value={policy} onValueChange={setPolicy}>
-                    <SelectTrigger>
+                    <SelectTrigger id={`${fieldId}-policy`}>
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -104,8 +105,9 @@ const TwoFactorPolicyCard = (props) => {
 
             {policy !== 'off' && (
                 <div className="form-group">
-                    <label>{t('app.twoFactorPolicyCard.gracePeriodDays', 'Grace period (days)')}</label>
+                    <label htmlFor={`${fieldId}-grace`}>{t('app.twoFactorPolicyCard.gracePeriodDays', 'Grace period (days)')}</label>
                     <Input
+                        id={`${fieldId}-grace`}
                         type="number"
                         className="policy-grace-input"
                         min="0"

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import CopyField from '../CopyField';
 import { useTranslation } from 'react-i18next';
+import { formatTime } from '@/utils/intl';
 
 const TTL_OPTIONS = [15, 30, 60];
 
@@ -76,10 +77,10 @@ const LoginLinksSection = ({ users, currentUserId }) => {
 
     function formatExpiry(dateString) {
         if (!dateString) return '—';
-        return new Date(`${dateString}Z`).toLocaleTimeString([], {
+        return formatTime(`${dateString}Z`, { parts: {
             hour: '2-digit',
             minute: '2-digit',
-        });
+        } });
     }
 
     return (

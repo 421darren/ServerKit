@@ -13,6 +13,7 @@ import { formatBytes } from '@/utils/formatBytes';
 import { ENGINE_META } from './dbAdapter';
 import { useTranslation } from 'react-i18next';
 import { translateLabel } from '@/i18n/labels';
+import { formatDateTime } from '@/utils/intl';
 
 // Import a SQL dump into an existing database.
 //
@@ -253,7 +254,7 @@ export default function ImportDumpModal({ preset, isAdmin = false, onClose, onIm
                                             <span className="dbx-dump__name">{b.filename}</span>
                                             <span className="dbx-dump__meta">
                                                 {b.database} · {formatBytes(b.size, { decimals: 1, defaultValue: '0 B' })}
-                                                {' · '}{new Date(b.created_at).toLocaleString()}
+                                                {' · '}{formatDateTime(b.created_at)}
                                             </span>
                                         </span>
                                         <span className={`dbx-dump__tag is-${b.type}`}>

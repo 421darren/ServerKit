@@ -9,7 +9,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { formatRelativeShort } from '@/utils/intl';
 import { toastError } from '@/utils/errorMessage';
 
-// A/B slot deploys (plan 87 §F). Shows which slot serves, which one is the
+// A/B slot deploys. Shows which slot serves, which one is the
 // standby and for how long it stays warm, with the instant switch back. When
 // the feature is off it says why the app does or does not qualify.
 function minutesLeft(until) {

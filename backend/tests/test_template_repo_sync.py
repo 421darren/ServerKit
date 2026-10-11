@@ -134,7 +134,7 @@ def _run_sync(tmp_path, index_entry, body):
     with patch.object(TemplateService, 'TEMPLATES_DIR', str(templates_dir)), \
             patch.object(TemplateService, 'TEMPLATE_CONFIG', str(config_path)), \
             patch.object(TemplateService, 'CONFIG_DIR', str(tmp_path)), \
-            patch('app.services.template_service.requests.get', side_effect=fake_get):
+            patch('app.services.template_catalog.requests.get', side_effect=fake_get):
         result = TemplateService.sync_templates()
 
     return result, templates_dir / 'demo.yaml'
@@ -203,7 +203,7 @@ def test_one_bad_template_does_not_abort_the_rest(tmp_path):
     with patch.object(TemplateService, 'TEMPLATES_DIR', str(templates_dir)), \
             patch.object(TemplateService, 'TEMPLATE_CONFIG', str(config_path)), \
             patch.object(TemplateService, 'CONFIG_DIR', str(tmp_path)), \
-            patch('app.services.template_service.requests.get', side_effect=fake_get):
+            patch('app.services.template_catalog.requests.get', side_effect=fake_get):
         result = TemplateService.sync_templates()
 
     assert result['synced'] == 1

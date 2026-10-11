@@ -149,31 +149,3 @@ def normalize_ip(ip: str) -> str:
         return str(ipaddress.ip_address(ip))
     except ValueError:
         return ip
-
-
-def get_ip_info(ip: str) -> dict:
-    """
-    Get information about an IP address.
-
-    Args:
-        ip: The IP address to analyze
-
-    Returns:
-        dict: Information about the IP
-    """
-    try:
-        addr = ipaddress.ip_address(ip)
-        return {
-            'ip': str(addr),
-            'version': addr.version,
-            'is_private': addr.is_private,
-            'is_loopback': addr.is_loopback,
-            'is_multicast': addr.is_multicast,
-            'is_reserved': addr.is_reserved,
-            'is_global': addr.is_global,
-        }
-    except ValueError:
-        return {
-            'ip': ip,
-            'error': 'Invalid IP address'
-        }

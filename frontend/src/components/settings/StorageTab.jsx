@@ -41,7 +41,7 @@ function diskTone(percent) {
 }
 
 /**
- * Where the panel host's disk goes (plan 85 §D1/§D2). Reads the storage
+ * Where the panel host's disk goes. Reads the storage
  * overview, hands cleanup to the existing curated reclaim flow, and edits the
  * retention settings that bound ServerKit's own share of the disk.
  */

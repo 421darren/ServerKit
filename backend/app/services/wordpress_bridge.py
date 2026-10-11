@@ -1,6 +1,6 @@
 """Importlib bridge to the ``serverkit-wordpress`` extension backend.
 
-WordPress is a standalone extension (plan 52 Phase 5 — own repo, registry
+WordPress is a standalone extension (own repo, registry
 install). Its backend loads as the *dashed* package
 ``app.plugins.serverkit-wordpress``. Because the slug contains a dash it can
 never be reached with a normal ``import`` statement

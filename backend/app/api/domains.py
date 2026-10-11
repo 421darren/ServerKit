@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app domain routes gate on the shared
+# Bucket: PER-APP. Per-app domain routes gate on the shared
 # app-access seam (can_access_app for reads, can_edit_app for mutations);
 # host-level DNS/nginx surfaces stay admin-only.
 import re
@@ -11,6 +11,7 @@ from app.services.nginx_service import NginxService
 from app.services.ssl_service import SSLService, get_acme_contact, remember_acme_contact
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import already_exists, not_found, permission_denied
+from app.api._request import json_object
 
 domains_bp = Blueprint('domains', __name__)
 
@@ -146,7 +147,7 @@ def get_domain(domain_id):
 def create_domain():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -278,7 +279,7 @@ def give_subdomain():
     publish under a specific registered base domain."""
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
-    data = request.get_json() or {}
+    data = json_object()
     app = (Application.query_active().filter_by(id=data.get('application_id')).first()
            if data.get('application_id') else None)
     if not app:
@@ -307,7 +308,7 @@ def update_domain(domain_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
 
     if 'is_primary' in data and data['is_primary']:
         # Unset any existing primary domain for this app
@@ -386,7 +387,7 @@ def enable_ssl(domain_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     # An address on the request wins; otherwise the panel-wide ACME contact,
     # so the modal stops asking for the same address on every certificate.
     email = get_acme_contact(data.get('email'))

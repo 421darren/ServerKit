@@ -7,14 +7,13 @@ it cannot power a revert on its own. This service therefore:
 
 * **snapshots** the domain's existing provider records (server-sourced — the
   panel reads them itself; the client may only filter which *names* to include,
-  never supply record data — plan 31 #2);
+  never supply record data);
 * performs the **cutover** (with a dry-run that returns the exact provider ops
-  without writing — plan 31 #1), tracking the records it *creates* so the revert
+  without writing), tracking the records it *creates* so the revert
   can undo them;
-* **verifies** post-cutover resolution across public resolvers (plan 31 #1);
+* **verifies** post-cutover resolution across public resolvers;
 * **reverts** by DELETING the records the cutover created (reverse order) and
-  re-applying every captured record, restoring the world byte-for-byte
-  (plan 31 #3, Decision 3).
+  re-applying every captured record, restoring the world byte-for-byte.
 
 The provider client is resolved through the registered ``DNSProviderConfig``
 providers (Decision 4); providers without a shared client stay a clean 501
@@ -295,14 +294,14 @@ class DnsCutoverService:
                 'domain': snapshot.domain, 'target': target, 'ops': ops,
                 'results': results, 'snapshot': snapshot.to_dict()}
 
-    # ── verify (plan 31 #1) ──────────────────────────────────────────────────
+    # ── verify ──────────────────────────────────────────────────
     @classmethod
     def verify(cls, domain, record_type='A', expected=None, snapshot_id=None):
         """Check post-cutover resolution across public resolvers.
 
         Thin wrapper over the multi-resolver propagation check. When
         ``expected`` (the address the cutover pointed at) is given, annotate the
-        result with whether every resolver already returns it (plan 31 #1).
+        result with whether every resolver already returns it.
         """
         from app.services.dns_zone_service import DNSZoneService
 
@@ -337,7 +336,7 @@ class DnsCutoverService:
         so a create-only cutover reverts to *empty*, not to a stale target. Then
         re-apply every captured record with ``allow_foreign=True`` (the record
         now points at the new box — our own cutover write — and we deliberately
-        restore the operator's original value). (plan 31 #3, Decision 3.)
+        restore the operator's original value).
         """
         from app.services.dns import DnsRecordSpec
 

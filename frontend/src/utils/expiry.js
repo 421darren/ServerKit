@@ -1,3 +1,4 @@
+import { formatDate } from './intl';
 // Human-friendly expiry formatting for registration / certificate dates. Returns
 // null for a missing or unparseable date, otherwise both an exact date and a
 // relative phrase plus an urgency tone, so callers can show e.g. "439 days left"
@@ -8,7 +9,7 @@ export function formatExpiry(iso) {
     if (Number.isNaN(date.getTime())) return null;
 
     const days = Math.round((date.getTime() - Date.now()) / 86400000);
-    const absolute = date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    const absolute = formatDate(date, { parts: { year: 'numeric', month: 'short', day: 'numeric' } });
 
     let relative;
     if (days < 0) relative = `Expired ${Math.abs(days)}d ago`;

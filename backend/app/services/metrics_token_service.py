@@ -1,4 +1,4 @@
-"""The panel's Prometheus scrape token (plan 86 §A4).
+"""The panel's Prometheus scrape token.
 
 ``/api/v1/fleet-monitor/prometheus`` only accepted a ``PROMETHEUS_TOKEN`` set in
 the environment, which almost no install sets, so an installed Prometheus had

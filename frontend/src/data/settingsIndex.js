@@ -1,4 +1,4 @@
-// Searchable settings index (plan 41, Phase 2). Every meaningful settings card
+// Searchable settings index. Every meaningful settings card
 // or field — not just the tab — becomes a palette result that lands you on the
 // exact card via `/settings/<tab>?focus=setting:<id>` (see hooks/useSettingFocus).
 //

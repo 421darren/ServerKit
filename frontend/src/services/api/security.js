@@ -1,7 +1,7 @@
 // Firewall, SSL certificates, file integrity, SSH keys, IP lists and the
 // security audit — the core security surfaces. The install-gated tool
 // clients (ClamAV/YARA/quarantine, fail2ban, Lynis, auto-updates) moved into
-// their security extensions with their tabs (plan 47 Ph3b-4).
+// their security extensions with their tabs.
 
 // Firewall endpoints
 export async function getFirewallStatus() {
@@ -133,7 +133,7 @@ export async function installCertbot() {
     return this.request('/ssl/install-certbot', { method: 'POST' });
 }
 
-// Advanced SSL endpoints — unified under the one /ssl surface (§5). The old
+// Advanced SSL endpoints — unified under the one /ssl surface. The old
 // /ssl/advanced/* paths still resolve (deprecated alias).
 export async function getSSLProfiles() {
     return this.request('/ssl/profiles');

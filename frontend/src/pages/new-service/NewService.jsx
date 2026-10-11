@@ -16,7 +16,7 @@ const STEPS = [
     { n: 3, labelKey: 'app.newService.review', label: 'Review' },
 ];
 
-// New Service — a real three-step wizard (plan 43 Phase 3). Step state and
+// New Service — a real three-step wizard. Step state and
 // submit live in the form hook; each step is a presentational component.
 const NewService = () => {
     const { t } = useTranslation();

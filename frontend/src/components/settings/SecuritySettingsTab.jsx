@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useAuth } from '../../contexts/useAuth.js';
 import api from '../../services/api';
 import useSettingFocus from '../../hooks/useSettingFocus';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import CopyField from '../CopyField';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatDateTime } from '@/utils/intl';
 
 const LinkedAccounts = ({ register }) => {
     const { t } = useTranslation();
@@ -129,6 +130,7 @@ const LinkedAccounts = ({ register }) => {
 
 const SecuritySettingsTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { updateUser, user, isAdmin } = useAuth();
     const register = useSettingFocus();
     const [formData, setFormData] = useState({
@@ -284,7 +286,7 @@ const SecuritySettingsTab = () => {
 
     function downloadBackupCodes() {
         const content = `ServerKit Backup Codes
-Generated: ${new Date().toLocaleString()}
+Generated: ${formatDateTime(new Date())}
 
 These codes can be used to access your account if you lose your authenticator device.
 Each code can only be used once.
@@ -336,7 +338,7 @@ Keep these codes in a safe place.`;
                         <div className="two-fa-status">
                             <Badge variant="success">{t('app.securitySettingsTab.enabled', 'Enabled')}</Badge>
                             <span className="two-fa-info">
-                                {t('app.securitySettingsTab.enabledOn', 'Enabled on')} {new Date(twoFAStatus.confirmed_at).toLocaleDateString()}
+                                {t('app.securitySettingsTab.enabledOn', 'Enabled on')} {formatDate(twoFAStatus.confirmed_at)}
                             </span>
                         </div>
                         <div className="two-fa-backup-info">
@@ -388,8 +390,9 @@ Keep these codes in a safe place.`;
                 <h3>{t('app.securitySettingsTab.changePassword', 'Change password')}</h3>
 
                 <div className="form-group">
-                    <Label>{t('app.securitySettingsTab.currentPassword', 'Current password')}</Label>
+                    <Label htmlFor={`${fieldId}-current-password`}>{t('app.securitySettingsTab.currentPassword', 'Current password')}</Label>
                     <Input
+                        id={`${fieldId}-current-password`}
                         type="password"
                         value={formData.currentPassword}
                         onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
@@ -398,8 +401,9 @@ Keep these codes in a safe place.`;
                 </div>
 
                 <div className="form-group">
-                    <Label>{t('app.securitySettingsTab.newPassword', 'New password')}</Label>
+                    <Label htmlFor={`${fieldId}-new-password`}>{t('app.securitySettingsTab.newPassword', 'New password')}</Label>
                     <Input
+                        id={`${fieldId}-new-password`}
                         type="password"
                         value={formData.newPassword}
                         onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
@@ -410,8 +414,9 @@ Keep these codes in a safe place.`;
                 </div>
 
                 <div className="form-group">
-                    <Label>{t('app.securitySettingsTab.confirmNewPassword', 'Confirm new password')}</Label>
+                    <Label htmlFor={`${fieldId}-confirm-password`}>{t('app.securitySettingsTab.confirmNewPassword', 'Confirm new password')}</Label>
                     <Input
+                        id={`${fieldId}-confirm-password`}
                         type="password"
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
@@ -523,8 +528,9 @@ Keep these codes in a safe place.`;
                                 <p>{t('app.securitySettingsTab.disabling2faWillMakeYourAccount', 'Disabling 2FA will make your account less secure. You will only need your password to sign in.')}</p>
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.securitySettingsTab.enterAVerificationCodeOrBackup', 'Enter a verification code or backup code to disable 2FA:')}</Label>
+                                <Label htmlFor={`${fieldId}-disable-code`}>{t('app.securitySettingsTab.enterAVerificationCodeOrBackup', 'Enter a verification code or backup code to disable 2FA:')}</Label>
                                 <Input
+                                    id={`${fieldId}-disable-code`}
                                     type="text"
                                     value={verificationCode}
                                     onChange={(e) => setVerificationCode(e.target.value)}
@@ -575,8 +581,9 @@ Keep these codes in a safe place.`;
                                 <>
                                     <p>{t('app.securitySettingsTab.enterACodeFromYourAuthenticator', 'Enter a code from your authenticator app to generate new backup codes. This will invalidate all existing backup codes.')}</p>
                                     <div className="form-group">
-                                        <Label>{t('app.securitySettingsTab.verificationCode', 'Verification code')}</Label>
+                                        <Label htmlFor={`${fieldId}-verify-code`}>{t('app.securitySettingsTab.verificationCode', 'Verification code')}</Label>
                                         <Input
+                                            id={`${fieldId}-verify-code`}
                                             type="text"
                                             value={verificationCode}
                                             onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

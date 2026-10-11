@@ -155,8 +155,8 @@ def get_active_contributions():
         'tabs': tabs,
         'walkthroughs': walkthroughs,
         'ai': ai,
-        # Panel SDK version the client uses to gate runtime bundles (plan 25 #1).
+        # Panel SDK version the client uses to gate runtime bundles.
         'sdk_version': SDK_VERSION,
-        # Runtime-loadable ESM frontends (plan 25 Phase 2, core-slim #39).
+        # Runtime-loadable ESM frontends (core-slim #39).
         'frontends': _runtime_frontends(plugins),
     }

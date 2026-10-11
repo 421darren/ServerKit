@@ -45,7 +45,7 @@ export { api, default as defaultApi } from '../../services/api';
 // Design-system primitives — the sanctioned building blocks for plugin pages.
 // A plugin page should look like a core page: PageTopbar + KpiBand +
 // DataTable/ResourceList. Extensions previously deep-imported '@/components/ds'
-// (still works, same modules); this is the blessed surface (Plan 20 Decision 4).
+// (still works, same modules); this is the blessed surface.
 export {
     KpiBand,
     MetricCard,
@@ -118,7 +118,7 @@ export {
     Outlet,
 } from 'react-router-dom';
 
-// Layout + feedback primitives (plan 52 Phase 4 — the WordPress frontend
+// Layout + feedback primitives (the WordPress frontend
 // relocation proved these out). Generic re-exports, same modules core pages
 // use; an extension page should be able to mirror a core page's chrome
 // (tab group, modal, confirm, empty/loading states) without deep imports.
@@ -152,7 +152,7 @@ export { useTopbarActions } from '../../hooks/useTopbarActions';
 export { formatBytes } from '../../utils/formatBytes';
 export { timeAgo, formatRelativeTime, formatDuration } from '../../utils/time';
 
-// Localization (plan 79). These are the HOST's singletons, not a parallel
+// Localization. These are the HOST's singletons, not a parallel
 // extension i18n: `useTranslation`/`Trans` resolve against the panel's own
 // i18next instance (shared via vendorManifest), so an extension's copy follows
 // the user's language, plural rules and locale switch with no wiring of its
@@ -173,7 +173,7 @@ export {
     formatNumber, formatPercent, formatList,
 } from '../../utils/intl';
 
-// Generic page furniture + cross-feature embeds (plan 52 Phase 5 — the
+// Generic page furniture + cross-feature embeds (the
 // WordPress runtime-ESM extraction proved these out). Two consumer classes:
 //   - generic primitives any extension page may need (ErrorBoundary,
 //     DangerZone, ResourceAdvisory, ResourceListPage, the logs drawer, and
@@ -194,7 +194,7 @@ export { RepoProviderStrip } from '../../components/git/GitProviders';
 export { GIT_PROVIDERS, detectProvider } from '../../components/git/gitProviderData';
 export { default as ProtectionPanel } from '../../components/backups/ProtectionPanel';
 
-// List-page chrome (1.4.0, plan 52 Phase 2 — the email/cloudflare-ops frontend
+// List-page chrome (1.4.0 — the email/cloudflare-ops frontend
 // relocations proved these out). The full table kit a relocated list page
 // needs: the DataTable footer/toolbar pieces, the saved-view chrome from
 // ds/grid, the standalone-page layout, and the two table hooks. Same modules

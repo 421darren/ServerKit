@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Settings, PanelLeft, Check, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { useToast } from '../../contexts/useToast.js';
@@ -37,21 +37,24 @@ const SETTINGS_ITEMS = SETTINGS_GROUPS.flatMap((g) => g.items);
 
 const GeneralSection = ({ form, setForm }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     return (
         <div className="ws-settings__section">
             <h3 className="ws-settings__section-title">{t('app.workspaceSettingsTab.general', 'General')}</h3>
             <SharedCard variant="legacy" className="card settings-section">
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         value={form.name}
                         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                         placeholder={t('app.workspaceSettingsTab.myTeam', 'My team')}
                     />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
+                    <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
                     <Textarea
+                        id={`${fieldId}-description`}
                         value={form.description}
                         onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                         rows={2}
@@ -59,16 +62,18 @@ const GeneralSection = ({ form, setForm }) => {
                 </div>
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.workspaceSettingsTab.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
+                        <label htmlFor={`${fieldId}-max-servers`}>{t('app.workspaceSettingsTab.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
                         <Input
+                            id={`${fieldId}-max-servers`}
                             type="number"
                             value={form.max_servers}
                             onChange={(e) => setForm((f) => ({ ...f, max_servers: parseInt(e.target.value) || 0 }))}
                         />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.workspaceSettingsTab.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
+                        <label htmlFor={`${fieldId}-max-users`}>{t('app.workspaceSettingsTab.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
                         <Input
+                            id={`${fieldId}-max-users`}
                             type="number"
                             value={form.max_users}
                             onChange={(e) => setForm((f) => ({ ...f, max_users: parseInt(e.target.value) || 0 }))}
@@ -76,8 +81,9 @@ const GeneralSection = ({ form, setForm }) => {
                     </div>
                 </div>
                 <div className="form-group">
-                    <label>{t('app.workspaceSettingsTab.brandColor', 'Brand color')}</label>
+                    <label htmlFor={`${fieldId}-brand-color`}>{t('app.workspaceSettingsTab.brandColor', 'Brand color')}</label>
                     <input
+                        id={`${fieldId}-brand-color`}
                         type="color"
                         className="workspace-color-input"
                         value={form.primary_color}

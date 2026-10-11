@@ -17,13 +17,7 @@ class ImageUpdateService:
 
     @staticmethod
     def _docker(args, timeout=60):
-        """Run ``docker <args>`` — via DockerService.run (§G3).
-
-        The seam stays (tests stub it), but the result shape is now the one
-        every other docker caller gets. This wrapper used to hand back a raw
-        ``CompletedProcess`` while the two other private ``_docker`` wrappers
-        returned dicts — three names, three contracts.
-        """
+        """Run ``docker <args>`` via DockerService.run (tests stub this)."""
         return DockerService.run(args, timeout=timeout)
 
     @classmethod

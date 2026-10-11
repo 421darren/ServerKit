@@ -1,9 +1,10 @@
 """Linked-panel API — manage this panel's link to a master ServerKit panel."""
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.middleware.rbac import developer_required
 from app.services.linked_panel_service import LinkedPanelService
+from app.api._request import json_object
 
 linked_panel_bp = Blueprint('linked_panel', __name__)
 
@@ -25,7 +26,7 @@ def link():
     The registration token comes from the master's Servers page (Add Server
     / regenerate-token) — the same token the Go agent consumes.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     result = LinkedPanelService.link(
         master_url=data.get('master_url'),
         registration_token=data.get('registration_token'),

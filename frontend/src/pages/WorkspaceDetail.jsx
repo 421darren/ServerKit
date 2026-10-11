@@ -29,6 +29,7 @@ import WorkspaceSettingsTab from '../components/workspaces/WorkspaceSettingsTab'
 import { useWorkspace } from '../contexts/useWorkspace.js';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 const VALID_TABS = ['overview', 'servers', 'services', 'sites', 'members', 'settings'];
 
@@ -46,7 +47,7 @@ const formatSince = (iso) => {
     const d = new Date(iso);
     return Number.isNaN(d.getTime())
         ? null
-        : d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+        : formatDate(d, { parts: { month: 'short', year: 'numeric' } });
 };
 
 const asServerList = (data) => (Array.isArray(data) ? data : (data?.servers || []));

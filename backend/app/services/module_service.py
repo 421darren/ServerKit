@@ -62,32 +62,3 @@ def list_modules():
         }
         for name, meta in MODULES.items()
     ]
-
-
-def attach_module_guard(bp, name):
-    """Attach a before_request that 503s a blueprint when its module is off.
-
-    Mirrors plugin_service._attach_status_guard so a disabled module's API
-    behaves exactly like a disabled plugin's.
-
-    Idempotent: core blueprints are module-level singletons reused across app
-    instances (e.g. every test builds a fresh app), and Flask forbids calling
-    the `before_request` setup method after a blueprint has been registered
-    once. We attach the handler a single time — it lives on the blueprint and
-    applies to every app it's registered on — and read the toggle fresh on each
-    request, so re-creating the app never re-attaches.
-    """
-    if getattr(bp, '_module_guard_attached', False):
-        return
-
-    def _check():
-        if not is_module_enabled(name):
-            from flask import jsonify
-            return jsonify({
-                'error': f"The {MODULES[name]['label']} module is disabled",
-                'module': name,
-            }), 503
-        return None
-
-    bp.before_request(_check)
-    bp._module_guard_attached = True

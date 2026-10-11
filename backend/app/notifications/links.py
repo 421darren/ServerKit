@@ -1,4 +1,4 @@
-"""Deep-link helpers for notifications (plan 24).
+"""Deep-link helpers for notifications.
 
 A notification's ``action_path`` is stored relative (e.g. ``/domains``) so a
 route move never breaks old rows. For channels that need an absolute URL (email,

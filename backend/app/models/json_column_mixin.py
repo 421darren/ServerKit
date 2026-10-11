@@ -1,4 +1,4 @@
-"""One implementation of the JSON-in-a-Text-column accessor pattern (plan 75 §F2).
+"""One implementation of the JSON-in-a-Text-column accessor pattern.
 
 Dozens of models hand-roll the same pair over a ``db.Text`` column:
 
@@ -25,7 +25,7 @@ optional shape check, falsy-on-write.
 
 Corrupt JSON reads as the default, never raises: a hand-edited or
 partially-written row must not 500 every endpoint that serializes the model.
-This is the tree-wide convention as of plan 77 B4, which reversed the earlier
+This is the tree-wide convention, which reversed the earlier
 ruling that unprotected ``json.loads`` sites were out of scope: the sites that
 used to let corrupt data raise were converted too, so a corrupt row now
 degrades to the accessor's default instead of failing every request that

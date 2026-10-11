@@ -1,4 +1,4 @@
-"""The deploy health gate (plan 87 §A3).
+"""The deploy health gate.
 
 ``_wait_for_health`` used to be advisory: it logged "did not pass" and the
 deploy carried on as a success, and it counted a 4xx on the health path as

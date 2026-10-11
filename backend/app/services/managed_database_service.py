@@ -91,7 +91,7 @@ class ManagedDatabaseService:
 
     @classmethod
     def delete(cls, managed, drop=False, user_id=None):
-        """Delete a managed database (plan 77 B5, plan-70 semantics).
+        """Delete a managed database (semantics).
 
         - ``drop=False``: SOFT delete — the row tombstones into the Recycle
           Bin. The actual database on the server is untouched and any managed

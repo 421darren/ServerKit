@@ -41,6 +41,18 @@ class WorkspaceService:
         return ws
 
     @staticmethod
+    def visible_workspace_ids(user, workspace_id=None):
+        """Workspace ids whose resources ``user`` may see: just ``workspace_id``
+        when a context is active, otherwise every workspace the user belongs
+        to (all of them for an admin)."""
+        if workspace_id is not None:
+            return [workspace_id]
+        if user.is_admin:
+            from app.models.workspace import Workspace
+            return [w.id for w in Workspace.query.all()]
+        return [w.id for w in WorkspaceService.list_workspaces(user_id=user.id)]
+
+    @staticmethod
     def resolve_workspace_id(user, requested):
         """Resolve an optionally-requested workspace context to a usable workspace
         id, or None for "no active context".
@@ -131,6 +143,30 @@ class WorkspaceService:
         global developer who is merely a 'viewer' member of this workspace gets
         read-only access to it (workspace role caps capability, narrow-only)."""
         return WorkspaceService.effective_role(user, workspace_id) != User.ROLE_VIEWER
+
+    @staticmethod
+    def can_access_server(user, server):
+        """Whether the user may operate *server*: admins always, otherwise only
+        servers outside any named workspace or in one they are a member of.
+        The Default workspace counts as none — servers created without a
+        context are stamped into it, and nobody is a member of it.
+        The one rule for both the REST routes and the Socket.IO rooms."""
+        if user.is_admin or not server.workspace_id:
+            return True
+        default = Workspace.query.filter_by(
+            slug=WorkspaceService.DEFAULT_WORKSPACE_SLUG).first()
+        if default is not None and server.workspace_id == default.id:
+            return True
+        return WorkspaceService.get_user_role(server.workspace_id, user.id) is not None
+
+    @staticmethod
+    def get_accessible_server(user, server_id):
+        """The server if *user* may operate it (see can_access_server), else None."""
+        from app.models.server import Server
+        server = Server.query.get(server_id)
+        if server is None or not WorkspaceService.can_access_server(user, server):
+            return None
+        return server
 
     @staticmethod
     def check_quota(workspace_id, current_count, quota_field):

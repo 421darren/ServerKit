@@ -1,6 +1,6 @@
 """API Key management endpoints."""
 from datetime import datetime
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.middleware.rbac import get_current_user
 from app.middleware.api_scope_middleware import SCOPES, require_scope
@@ -8,6 +8,7 @@ from app.services.api_key_service import ApiKeyService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.exceptions import not_found
+from app.api._request import json_object
 
 api_keys_bp = Blueprint('api_keys', __name__)
 
@@ -40,7 +41,7 @@ def create_key():
     if not user or not user.is_developer:
         return jsonify({'error': 'Developer access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     name = data.get('name')
     if not name:
         return jsonify({'error': 'Name is required'}), 400
@@ -100,7 +101,7 @@ def update_key(key_id):
     if not user or not user.is_developer:
         return jsonify({'error': 'Developer access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     api_key = ApiKeyService.update_key(
         key_id=key_id,
         user_id=user.id,

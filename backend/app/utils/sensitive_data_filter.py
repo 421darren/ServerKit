@@ -22,8 +22,8 @@ MASK = '••••••••'
 REVEAL_SCOPE = 'secrets:read'
 
 # Substrings that mark a dict key as sensitive. Matched case-insensitively
-# against the key name. THE union of every sink's former private list
-# (plan 77 F3): response filter, audit_service, middleware/audit (the only
+# against the key name. THE union of every sink's former private list:
+# response filter, audit_service, middleware/audit (the only
 # one that covered totp/otp/csrf/session), telemetry. A keyword added here
 # is redacted by ALL sinks; adding one to a single sink again is ratcheted
 # by tests/test_redaction_one_door.py.

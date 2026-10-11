@@ -493,7 +493,7 @@ class WebhookService:
                     actions.append('deployed')
                     log.status = 'processed'
                     log.status_message = f'Deployed v{deployment_result.get("version")} ({log.commit_sha[:7] if log.commit_sha else "unknown"})'
-                    # Push-to-reconfigure: re-read serverkit.yaml (plan 17 #17).
+                    # Push-to-reconfigure: re-read serverkit.yaml.
                     try:
                         from app.services.manifest_sync_service import ManifestSyncService
                         ManifestSyncService.resync_for_app(
@@ -584,56 +584,3 @@ class WebhookService:
         except Exception as e:
             db.session.rollback()
             return {'success': False, 'error': str(e)}
-
-    @classmethod
-    def get_webhook_setup_instructions(cls, webhook_id: int) -> Dict:
-        """Get setup instructions for a webhook."""
-        from app.models import GitWebhook
-
-        webhook = GitWebhook.query.get(webhook_id)
-        if not webhook:
-            return {'success': False, 'error': 'Webhook not found'}
-
-        webhook_url = webhook.to_dict()['webhook_url']
-
-        instructions = {
-            'github': {
-                'title': 'GitHub Webhook Setup',
-                'steps': [
-                    'Go to your GitHub repository Settings > Webhooks',
-                    'Click "Add webhook"',
-                    f'Payload URL: YOUR_SERVER_URL{webhook_url}',
-                    'Content type: application/json',
-                    f'Secret: (the secret provided when creating this webhook)',
-                    'Select "Just the push event" or customize events',
-                    'Click "Add webhook"'
-                ]
-            },
-            'gitlab': {
-                'title': 'GitLab Webhook Setup',
-                'steps': [
-                    'Go to your GitLab project Settings > Webhooks',
-                    f'URL: YOUR_SERVER_URL{webhook_url}',
-                    f'Secret token: (the secret provided when creating this webhook)',
-                    'Select "Push events" trigger',
-                    'Click "Add webhook"'
-                ]
-            },
-            'bitbucket': {
-                'title': 'Bitbucket Webhook Setup',
-                'steps': [
-                    'Go to your Bitbucket repository Settings > Webhooks',
-                    'Click "Add webhook"',
-                    f'URL: YOUR_SERVER_URL{webhook_url}',
-                    'Select "Repository push" trigger',
-                    'Click "Save"'
-                ]
-            }
-        }
-
-        return {
-            'success': True,
-            'source': webhook.source,
-            'webhook_url': webhook_url,
-            'instructions': instructions.get(webhook.source, {})
-        }

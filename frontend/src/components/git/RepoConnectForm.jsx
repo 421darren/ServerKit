@@ -14,6 +14,7 @@ import GiteaRepoPicker from './GiteaRepoPicker';
 import PathSelector from './PathSelector';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Canonical "connect a repository" form, shared across ServerKit's surfaces
 // (WordPress Git settings, the New Service page, the service connect modal).
@@ -172,7 +173,7 @@ const RepoConnectForm = ({
                     {gitStatus.last_deploy_at && (
                         <div className="git-connect-status__meta-item">
                             <span>{t('app.repoConnectForm.deployedAt', 'Deployed At')}</span>
-                            <strong>{new Date(gitStatus.last_deploy_at).toLocaleString()}</strong>
+                            <strong>{formatDateTime(gitStatus.last_deploy_at)}</strong>
                         </div>
                     )}
                 </div>

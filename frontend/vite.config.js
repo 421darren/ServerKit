@@ -114,21 +114,23 @@ export default defineConfig(({ mode }) => {
             sourcemap: false,
             rollupOptions: {
                 output: {
-                    // Vite 8 bundles with rolldown, which only accepts the
-                    // FUNCTION form of manualChunks (the object form that
-                    // Rollup allowed throws "manualChunks is not a function").
-                    // Match on node_modules path so each listed package — plus
-                    // its private deps — lands in one cohesive vendor chunk.
-                    // Anything unmatched falls through to Vite's default
-                    // chunking, so shared deps (e.g. d3 used by both charts and
-                    // flow) get their own common chunk instead of duplicating.
-                    manualChunks(id) {
-                        if (!id.includes('node_modules')) return
-                        if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|@remix-run[\\/]router|scheduler)[\\/]/.test(id)) return 'vendor-react'
-                        if (/[\\/]node_modules[\\/]recharts[\\/]/.test(id)) return 'vendor-charts'
-                        if (/[\\/]node_modules[\\/]@xyflow[\\/]/.test(id)) return 'vendor-flow'
-                        if (/[\\/]node_modules[\\/]@xterm[\\/]/.test(id)) return 'vendor-xterm'
-                        if (/[\\/]node_modules[\\/]lucide-react[\\/]/.test(id)) return 'vendor-icons'
+                    // A group also captures its matched modules' dependencies,
+                    // so priority decides who claims a shared one. React must
+                    // win: with manualChunks, recharts pulled React core into
+                    // vendor-charts and every page (Login included) preloaded
+                    // the chart and flow libraries. Unmatched modules fall
+                    // through to the default chunking.
+                    codeSplitting: {
+                        groups: [
+                            { name: 'vendor-react', priority: 50, test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|@remix-run[\\/]router|scheduler)[\\/]/ },
+                            { name: 'vendor-icons', priority: 40, test: /[\\/]node_modules[\\/]lucide-react[\\/]/ },
+                            { name: 'vendor-xterm', priority: 30, test: /[\\/]node_modules[\\/]@xterm[\\/]/ },
+                            // Only the package itself: their small shared deps
+                            // are also used by i18n, which would otherwise
+                            // import (and preload) the whole chunk for them.
+                            { name: 'vendor-flow', priority: 20, includeDependenciesRecursively: false, test: /[\\/]node_modules[\\/]@xyflow[\\/]/ },
+                            { name: 'vendor-charts', priority: 10, includeDependenciesRecursively: false, test: /[\\/]node_modules[\\/]recharts[\\/]/ },
+                        ],
                     },
                 },
             },

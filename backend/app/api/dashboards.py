@@ -1,4 +1,4 @@
-"""Dashboard boards API (plan 62) — /api/v1/dashboards.
+"""Dashboard boards API — /api/v1/dashboards.
 
 Per-user dashboard tabs and their widget layout. Everything here is scoped to
 the calling user: a board that belongs to somebody else is indistinguishable
@@ -15,11 +15,12 @@ would be a broken dashboard the user cannot fix without an API call.
 """
 import logging
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services import dashboard_service
 from app.services.dashboard_service import GRID_COLS, MAX_WIDGETS_PER_BOARD
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ def create_board():
     """Add a board for this user. ``widgets`` is optional — a new tab usually
     starts empty and gets filled from the widget library."""
     user_id = get_jwt_identity()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
 
     name, err = _validate_name(body.get('name'))
     if err:
@@ -169,7 +170,7 @@ def update_board(board_id):
     if not board:
         return jsonify({'error': 'Board not found'}), 404
 
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     name = icon = position = widgets = None
 
     if body.get('name') is not None:

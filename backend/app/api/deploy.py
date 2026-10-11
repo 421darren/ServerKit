@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Deploy config reads/writes gate on the shared
+# Bucket: PER-APP. Deploy config reads/writes gate on the shared
 # app-access seam (can_access_app / can_edit_app); the public inbound webhook is
 # token/signature-verified (ALLOWLISTed — no per-app user session).
 import os
@@ -11,6 +11,7 @@ from app.models import User, Application
 from app.services.git_service import GitService
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 deploy_bp = Blueprint('deploy', __name__)
 
@@ -47,7 +48,7 @@ def configure_deployment(app_id):
     if not app:
         raise not_found('service')
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -89,7 +90,7 @@ def trigger_deploy(app_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     result = GitService.deploy(app_id, force=data.get('force', False))
 
     return jsonify(result), 200 if result['success'] else 400
@@ -109,7 +110,7 @@ def pull_changes(app_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     result = GitService.pull_changes(app.root_path, data.get('branch'))
 
     return jsonify(result), 200 if result['success'] else 400
@@ -180,7 +181,7 @@ def get_deployment_history():
 @admin_required
 def clone_repository():
     """Clone a Git repository to a new location."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -229,7 +230,7 @@ def get_branches(app_id):
 @developer_required
 def get_branches_from_url():
     """Get list of branches from a repository URL (before cloning)."""
-    data = request.get_json()
+    data = json_object()
     if not data or 'repo_url' not in data:
         return jsonify({'error': 'repo_url is required'}), 400
 

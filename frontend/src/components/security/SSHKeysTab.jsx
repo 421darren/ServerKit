@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { KeyRound } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -63,6 +63,7 @@ const SSH_KEY_VIEWS = [
 ];
 
 const SSHKeysTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [keys, setKeys] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -281,8 +282,9 @@ const SSHKeysTab = () => {
 
             <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.sSHKeysTab.addSshPublicKey', 'Add SSH public key')} size="lg">
                 <div className="form-group">
-                    <Label>{t('app.sSHKeysTab.publicKey', 'Public key')}</Label>
+                    <Label htmlFor={`${fieldId}-public-key`}>{t('app.sSHKeysTab.publicKey', 'Public key')}</Label>
                     <Textarea
+                        id={`${fieldId}-public-key`}
                         value={newKey}
                         onChange={(e) => setNewKey(e.target.value)}
                         placeholder={t('app.sSHKeysTab.sshRsaAaaaUserHostOr', 'ssh-rsa AAAA... user@host or ssh-ed25519 AAAA... user@host')}

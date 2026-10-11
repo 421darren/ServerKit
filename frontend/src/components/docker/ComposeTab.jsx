@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, SearchField } from '@/components/ds';
 import {
@@ -106,12 +107,18 @@ const ComposeTab = ({ onStatsChange }) => {
         storageKey: 'serverkit-table-docker-compose-cols',
     });
 
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
+
     useEffect(() => {
         loadProjects();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadProjects() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -119,11 +126,13 @@ const ComposeTab = ({ onStatsChange }) => {
             } else {
                 data = await api.composeList();
             }
+            if (seq !== loadSeq.current) return;
             setProjects(normalizeListResponse(data, 'projects'));
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load compose projects:', err);
+            if (seq !== loadSeq.current) return;
             setProjects([]);
-        } finally {
+            setLoadError(err);
             setLoading(false);
         }
     }
@@ -395,7 +404,9 @@ const ComposeTab = ({ onStatsChange }) => {
 
             <GridChips {...chrome.chipProps} />
 
-            {filteredProjects.length === 0 ? (
+            {loadError ? (
+                <ErrorState error={loadError} onRetry={loadProjects} />
+            ) : filteredProjects.length === 0 ? (
                 <EmptyState
                     icon={Package}
                     title={projects.length === 0 ? t('app.composeTab.noComposeProjects', 'No compose projects') : t('app.composeTab.noMatchingProjects', 'No matching compose projects')}

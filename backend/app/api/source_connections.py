@@ -6,6 +6,7 @@ from requests import HTTPError
 
 from app.middleware.rbac import admin_required, get_current_user
 from app.services.source_connection_service import SourceConnectionService
+from app.api._request import json_object
 
 source_connections_bp = Blueprint('source_connections', __name__)
 
@@ -35,7 +36,7 @@ def github_authorize():
 @jwt_required()
 def github_callback():
     user_id = int(get_jwt_identity())
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -125,7 +126,7 @@ def github_admin_config():
 def update_github_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_github_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200
@@ -150,7 +151,7 @@ def github_app_manifest():
 def complete_github_app_manifest():
     """Convert the manifest code GitHub returned into a stored GitHub App."""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     try:
         result = SourceConnectionService.complete_github_app_manifest(
             code=data.get('code', ''),
@@ -200,7 +201,7 @@ def gitlab_authorize():
 @jwt_required()
 def gitlab_callback():
     user_id = int(get_jwt_identity())
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -290,7 +291,7 @@ def gitlab_admin_config():
 def update_gitlab_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_gitlab_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200
@@ -332,7 +333,7 @@ def bitbucket_authorize():
 @jwt_required()
 def bitbucket_callback():
     user_id = int(get_jwt_identity())
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -422,7 +423,7 @@ def bitbucket_admin_config():
 def update_bitbucket_admin_config():
     user = get_current_user()
     result = SourceConnectionService.update_bitbucket_config(
-        request.get_json() or {},
+        json_object(),
         user_id=user.id if user else None,
     )
     return jsonify(result), 200

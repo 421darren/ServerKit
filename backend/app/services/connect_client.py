@@ -433,7 +433,7 @@ def disconnect(remove_key: bool = False) -> dict:
     """Forget the pairing locally. Does NOT revoke anything on ServerKit Cloud."""
     stop_relay_client()  # no-op unless the client runs in this process
     # The managed profile belongs to the pairing and leaves with it: a panel
-    # that is no longer connected is not managed (plan 25).
+    # that is no longer connected is not managed.
     from app.services import connect_managed_profile
     connect_managed_profile.clear('disconnected')
     removed = []
@@ -814,7 +814,7 @@ class RelayClient:
 
     def _clear_managed_profile(self):
         """A revoked panel is not managed: lift the profile immediately
-        (plan 25 "Revoked or unpaired")."""
+        ("Revoked or unpaired")."""
         try:
             from app.services import connect_managed_profile
             connect_managed_profile.clear('revoked', app=self.app)

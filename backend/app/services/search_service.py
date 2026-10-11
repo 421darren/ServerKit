@@ -1,4 +1,4 @@
-"""Unified entity omnisearch (plan 41, Phase 4).
+"""Unified entity omnisearch.
 
 Fans a short search term out across the panel's core entity types and returns a
 flat list of lightweight, deep-linkable rows. Each entity type reuses its
@@ -207,7 +207,7 @@ class SearchService:
             logger.exception('search: server fan-out failed')
 
         # --- project / environment (access derives from Workspace membership) ---
-        accessible_workspace_ids = SearchService._accessible_workspace_ids(user, ws_id)
+        accessible_workspace_ids = WorkspaceService.visible_workspace_ids(user, ws_id)
         try:
             if (not includes('project') or required_capabilities
                     or environment_id is not None):
@@ -520,14 +520,3 @@ class SearchService:
     def _server_capabilities(server):
         raw = server.cached_capabilities if isinstance(server.cached_capabilities, dict) else {}
         return {str(name) for name, enabled in raw.items() if enabled is True}
-
-    @staticmethod
-    def _accessible_workspace_ids(user, workspace_id):
-        if workspace_id is not None:
-            return [workspace_id]
-        from app.services.workspace_service import WorkspaceService
-        if getattr(user, 'is_admin', False):
-            from app.models.workspace import Workspace
-            return [workspace.id for workspace in Workspace.query.all()]
-        return [workspace.id for workspace in
-                WorkspaceService.list_workspaces(user_id=user.id)]

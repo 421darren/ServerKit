@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.user import User
 from app import db
 from app.exceptions import not_found
+from app.api._request import json_object
 
 mobile_bp = Blueprint('mobile', __name__)
 
@@ -12,7 +13,7 @@ mobile_bp = Blueprint('mobile', __name__)
 def register_push():
     """Register a device for push notifications."""
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
     subscription = data.get('subscription')
     device_name = data.get('device_name', 'Unknown')
 
@@ -45,7 +46,7 @@ def register_push():
 @jwt_required()
 def unregister_push():
     """Unregister a device from push notifications."""
-    data = request.get_json() or {}
+    data = json_object()
     endpoint = data.get('endpoint')
     if not endpoint:
         return jsonify({'error': 'endpoint required'}), 400
@@ -69,7 +70,7 @@ def get_quick_actions():
 @jwt_required()
 def execute_quick_action(action_id):
     """Execute a quick action."""
-    data = request.get_json() or {}
+    data = json_object()
 
     if action_id == 'view_stats':
         # MonitoringService owns the live-metrics probe; ServerMetricsService

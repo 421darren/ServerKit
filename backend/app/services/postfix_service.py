@@ -100,7 +100,7 @@ mailbox_size_limit = 0
         hostname = None
 
         try:
-            result = run_checked(['which', 'postfix'], timeout=None)
+            result = run_checked(['which', 'postfix'])
             installed = result['success']
             if not installed:
                 installed = PackageManager.is_installed('postfix')
@@ -109,12 +109,12 @@ mailbox_size_limit = 0
                 running = ServiceControl.is_active('postfix')
                 enabled = ServiceControl.is_enabled('postfix')
 
-                result = run_checked(['postconf', 'mail_version'], timeout=None)
+                result = run_checked(['postconf', 'mail_version'])
                 match = re.search(r'mail_version\s*=\s*(\S+)', result['output'])
                 if match:
                     version = match.group(1)
 
-                result = run_checked(['postconf', 'myhostname'], timeout=None)
+                result = run_checked(['postconf', 'myhostname'])
                 match = re.search(r'myhostname\s*=\s*(\S+)', result['output'])
                 if match:
                     hostname = match.group(1)
@@ -328,7 +328,7 @@ mailbox_size_limit = 0
     def get_queue(cls) -> Dict:
         """Get the Postfix mail queue."""
         try:
-            result = run_checked(['mailq'], timeout=None)
+            result = run_checked(['mailq'])
             output = result['output']
 
             if 'Mail queue is empty' in output:

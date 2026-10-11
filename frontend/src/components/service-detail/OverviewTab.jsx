@@ -18,6 +18,7 @@ import { KpiBand, MetricCard, Pill, Gauge, EnvTag, statusKind } from '@/componen
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { normalizeContainerStats, resolveAppContainerId } from '@/utils/containerMetrics';
+import { formatDate } from '@/utils/intl';
 
 // Live metrics cadence.
 const METRICS_REFRESH_MS = 10000;
@@ -198,9 +199,9 @@ const OverviewTab = ({ app, deployConfig }) => {
                         )}
                         <InfoItem label={t('common.labels.created', 'Created')}>
                             <span className="info-value">
-                                {new Date(app.created_at).toLocaleDateString('en-US', {
+                                {formatDate(app.created_at, { parts: {
                                     year: 'numeric', month: 'short', day: 'numeric'
-                                })}
+                                } })}
                             </span>
                         </InfoItem>
                         {deployConfig && (
@@ -331,16 +332,16 @@ const OverviewTab = ({ app, deployConfig }) => {
             {/* Traffic (timed access log; hidden until requests exist) */}
             <RequestMetricsCard appId={app.id} />
 
-            {/* Bottleneck hints from the traffic above (plan 86 §A5) */}
+            {/* Bottleneck hints from the traffic above */}
             <HintsCard app={app} />
 
-            {/* Cache / storage / queue this app uses (plan 86 §C4) */}
+            {/* Cache / storage / queue this app uses */}
             <AttachmentsCard app={app} />
 
-            {/* PgBouncer beside an installed PostgreSQL (plan 86 §D1) */}
+            {/* PgBouncer beside an installed PostgreSQL */}
             <PoolerCard app={app} />
 
-            {/* A/B slot deploys: live release, warm standby, switch back (plan 87) */}
+            {/* A/B slot deploys: live release, warm standby, switch back */}
             <SlotsCard app={app} />
 
             {/* Recent Deployments */}

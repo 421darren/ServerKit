@@ -16,7 +16,7 @@ export async function repairDoctorItems(items) {
     });
 }
 
-// Fleet doctor (plan 26) — the per-server health sweep merged across every
+// Fleet doctor — the per-server health sweep merged across every
 // connected agent. getFleetDoctorReport returns { report: { ran_at, servers } };
 // runFleetSweep enqueues the sweep job (fan-out runs off the request thread)
 // and returns { job_id }.

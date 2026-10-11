@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, useId } from 'react';
 import { statusKind } from '@/components/ds/status';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -6,6 +6,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import LogToolbar from '../log-viewer/LogToolbar';
 import LogContent from '../log-viewer/LogContent';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { Drawer, DataTable, DataTableFooter, Pill, SearchField } from '@/components/ds';
 import {
@@ -224,6 +225,10 @@ const ContainersTab = ({ onStatsChange }) => {
     // Not persisted on its own: a grouping worth keeping is a saved view.
     const [groupBy, setGroupBy] = useState(null);
     const statsRequestSeq = useRef(0);
+    // Switching servers fires a new load while the old one may still be in
+    // flight; only the newest may write, or the old server's list wins.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         loadContainers();
@@ -304,7 +309,9 @@ const ContainersTab = ({ onStatsChange }) => {
     );
 
     async function loadContainers() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -313,6 +320,7 @@ const ContainersTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getContainers(showAll);
             }
+            if (seq !== loadSeq.current) return;
             const containerList = data.containers || [];
             const requestSeq = ++statsRequestSeq.current;
             setContainers(containerList);
@@ -324,7 +332,13 @@ const ContainersTab = ({ onStatsChange }) => {
             setLoading(false);
             refreshContainerStats(containerList, requestSeq);
         } catch (err) {
-            console.error('Failed to load containers:', err);
+            if (seq !== loadSeq.current) return;
+            // An empty list here would read as "No containers" on a host
+            // running many; say that the list could not be read instead.
+            setContainers([]);
+            setContainerStats({});
+            setSelectedContainer(null);
+            setLoadError(err);
             setLoading(false);
         }
     }
@@ -818,7 +832,12 @@ const ContainersTab = ({ onStatsChange }) => {
             {/* Only the SEARCH can empty the pane outright. A column rule that
                 matches nothing keeps the table mounted — the header menu that
                 undoes it lives in the header. */}
-            {filteredContainers.length === 0 ? (
+            {loadError ? (
+                <ErrorState
+                    error={loadError}
+                    onRetry={loadContainers}
+                />
+            ) : filteredContainers.length === 0 ? (
                 <EmptyState
                     icon={Box}
                     title={containers.length === 0 ? t('app.containersTab.noContainers', 'No containers') : t('app.containersTab.noMatchingContainers', 'No matching containers')}
@@ -1152,6 +1171,7 @@ function portMappings(rows) {
 
 const RunContainerModal = ({ onClose, onCreated }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [formData, setFormData] = useState({
         image: '',
         name: '',
@@ -1200,8 +1220,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.containersTab.image3', 'Image *')}</label>
+                    <label htmlFor={`${fieldId}-image`}>{t('app.containersTab.image3', 'Image *')}</label>
                     <Input
+                        id={`${fieldId}-image`}
                         type="text"
                         name="image"
                         value={formData.image}
@@ -1212,8 +1233,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.containersTab.containerName', 'Container name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.containersTab.containerName', 'Container name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         name="name"
                         value={formData.name}
@@ -1270,8 +1292,9 @@ const RunContainerModal = ({ onClose, onCreated }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.containersTab.volumesCommaSeparated', 'Volumes (comma-separated)')}</label>
+                    <label htmlFor={`${fieldId}-volumes`}>{t('app.containersTab.volumesCommaSeparated', 'Volumes (comma-separated)')}</label>
                     <Input
+                        id={`${fieldId}-volumes`}
                         type="text"
                         name="volumes"
                         value={formData.volumes}

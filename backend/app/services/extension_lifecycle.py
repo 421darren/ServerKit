@@ -168,7 +168,7 @@ def remove_jobs(plugin, manifest):
 
 
 # --------------------------------------------------------------------------- #
-# Core hooks (plan 52 D4 — hook inversion)
+# Core hooks (hook inversion)
 # --------------------------------------------------------------------------- #
 
 def register_capabilities(plugin, manifest):

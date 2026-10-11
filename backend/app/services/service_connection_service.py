@@ -1,4 +1,4 @@
-"""Connection properties an installed service offers to other apps (plan 86 §C1).
+"""Connection properties an installed service offers to other apps.
 
 ``fromService`` used to resolve full connection details only for a
 ``ManagedDatabase``. Any other sibling got a generic ``host``/``port``/``url``
@@ -139,7 +139,7 @@ class ServiceConnectionService:
                                'password': password})
 
         if protocol == 'postgresql' and getattr(app, 'pooler_enabled', False):
-            # Through the PgBouncer sidecar (plan 86 §D1); same credentials.
+            # Through the PgBouncer sidecar; same credentials.
             from app.services.pooler_service import container_name
             pooled = _URL_PROTOCOLS['postgresql'].format(
                 userinfo=userinfo, **dict(ctx, host=container_name(app), port='5432'))

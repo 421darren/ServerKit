@@ -8,6 +8,7 @@ import { Globe, RefreshCw, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDate } from '@/utils/intl';
 
 function expiryTone(days) {
     if (days == null) return 'neutral';
@@ -71,7 +72,7 @@ export default function RegistrarPortfolio() {
                             <span className="reg-portfolio__via">{d.registrar_name || d.registrar}</span>
                             <span className={`reg-portfolio__expiry reg-portfolio__expiry--${tone}`}>{daysLabel}</span>
                             <span className="reg-portfolio__date">
-                                {d.expires_at ? new Date(d.expires_at).toLocaleDateString() : ''}
+                                {d.expires_at ? formatDate(d.expires_at) : ''}
                             </span>
                             {d.auto_renew != null && (
                                 <span className={`reg-portfolio__renew${d.auto_renew ? ' is-on' : ''}`}>

@@ -33,8 +33,8 @@ class DatabaseService:
         """Check if MySQL/MariaDB is installed."""
         # run_checked also resolves argv[0] when $PATH misses it, so a client
         # installed outside the unit's PATH stops reading as "not installed"
-        # (plan 74's outage class).
-        return run_checked(['mysql', '--version'], timeout=None)['success']
+        # (the class behind a past outage).
+        return run_checked(['mysql', '--version'])['success']
 
     @staticmethod
     def mysql_is_running():
@@ -45,7 +45,7 @@ class DatabaseService:
     def _mysql_env(root_password):
         """Process env with ``MYSQL_PWD`` set, or ``None`` when there is no password.
 
-        Pasted verbatim eight times in this file (plan 75 §G5). It carries a
+        Pasted verbatim eight times in this file. It carries a
         real rule — the password goes in the environment, never on the argv,
         where ``ps`` and the shell history would see it — and a rule that lives
         in eight copies is a rule that only holds in the copies someone
@@ -394,7 +394,7 @@ class DatabaseService:
     @staticmethod
     def pg_is_installed():
         """Check if PostgreSQL is installed."""
-        return run_checked(['psql', '--version'], timeout=None)['success']
+        return run_checked(['psql', '--version'])['success']
 
     @staticmethod
     def pg_is_running():
@@ -1148,8 +1148,7 @@ class DatabaseService:
         no box drawing. Callers that parse the output need it; callers that
         show the output to a human do not. It is a flag rather than a second
         method because ``db_config_tuner_service`` used to keep a private copy
-        of this whole function purely to add those two characters
-        (plan 75 §G5).
+        of this whole function purely to add those two characters.
         """
         try:
             cmd = ['docker', 'exec']

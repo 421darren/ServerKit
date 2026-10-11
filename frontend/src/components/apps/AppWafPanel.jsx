@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
 import { translateLabel } from '@/i18n/labels';
+import { formatDateTime } from '@/utils/intl';
 
 // WAF modes with one-line descriptions shown under the selector.
 const MODE_OPTIONS = [
@@ -83,7 +84,7 @@ const WAF_EVENT_COLUMNS = [
         key: 'time',
         headerKey: 'common.labels.time', header: 'Time',
         cellClassName: 'sk-cell-dim waf-panel__time',
-        render: (ev) => (ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'),
+        render: (ev) => (ev.timestamp ? formatDateTime(ev.timestamp) : '—'),
     },
 ];
 

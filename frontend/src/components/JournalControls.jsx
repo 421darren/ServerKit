@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -37,12 +38,14 @@ export function JournalControls({
     loadLabel = 'Load Logs',
 }) {
     const { t } = useTranslation();
+    const fieldId = useId();
     return (
         <div className="journal-controls">
             <div className="control-group">
-                <label>{unitLabel}</label>
+                <label htmlFor={`${fieldId}-unit`}>{unitLabel}</label>
                 <div className="input-with-suggestions">
                     <Input
+                        id={`${fieldId}-unit`}
                         type="text"
                         value={unit}
                         onChange={(e) => onUnitChange?.(e.target.value)}
@@ -66,9 +69,9 @@ export function JournalControls({
 
             {onLineCountChange && (
                 <div className="control-group">
-                    <label>{t('app.journalControls.lines', 'Lines')}</label>
+                    <label htmlFor={`${fieldId}-lines`}>{t('app.journalControls.lines', 'Lines')}</label>
                     <Select value={String(lineCount)} onValueChange={(v) => onLineCountChange(parseInt(v, 10))}>
-                        <SelectTrigger aria-label={t('app.journalControls.lines', 'Lines')}>
+                        <SelectTrigger id={`${fieldId}-lines`} aria-label={t('app.journalControls.lines', 'Lines')}>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -82,12 +85,12 @@ export function JournalControls({
 
             {showPriority && onPriorityChange && (
                 <div className="control-group">
-                    <label>{t('app.journalControls.priority', 'Priority')}</label>
+                    <label htmlFor={`${fieldId}-priority`}>{t('app.journalControls.priority', 'Priority')}</label>
                     <Select
                         value={priority == null || priority === '' ? ALL_PRIORITIES : String(priority)}
                         onValueChange={(v) => onPriorityChange(v === ALL_PRIORITIES ? '' : v)}
                     >
-                        <SelectTrigger aria-label={t('app.journalControls.priority', 'Priority')}>
+                        <SelectTrigger id={`${fieldId}-priority`} aria-label={t('app.journalControls.priority', 'Priority')}>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

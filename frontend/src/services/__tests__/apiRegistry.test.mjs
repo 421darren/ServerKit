@@ -45,14 +45,13 @@ test('previously colliding operations have distinct URLs, preserving public winn
     const paths = [];
     const client = { request: async (path) => { paths.push(path); } };
     bindApiMethods(client, [apps, system, jobs, servers, plugins]);
-    await client.getServices();
     await client.getAppServices();
     await client.getJobStats();
     await client.getBackgroundJobStats();
     await client.uninstallPlugin('panel');
     await client.uninstallPluginInstall('agent');
     assert.deepEqual(paths, [
-        '/system/services', '/apps', '/jobs/stats', '/performance/jobs/stats',
+        '/apps', '/jobs/stats', '/performance/jobs/stats',
         '/plugins/panel', '/agent-plugins/installs/agent',
     ]);
 });

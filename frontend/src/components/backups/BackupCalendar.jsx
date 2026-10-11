@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDate } from '@/utils/intl';
 
 // Card of the backup "Protection" panel: a Monday-first month grid of backup
 // runs. Pairs with the .backup-calendar styles. Uses native Date math (no libs).
@@ -95,7 +96,7 @@ export default function BackupCalendar({ runs, onDayClick }) {
         return result;
     }, [cursor, dayMap]);
 
-    const monthLabel = cursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const monthLabel = formatDate(cursor, { parts: { month: 'long', year: 'numeric' } });
 
     const prevMonth = () => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1));
     const nextMonth = () => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1));

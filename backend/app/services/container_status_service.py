@@ -363,7 +363,7 @@ class _ContainerIndex:
         """Containers belonging to ``app``, in the trust order documented above."""
         slot_project = _live_slot_project(app)
         if slot_project:
-            # A compose app on A/B slots (plan 87): only the live slot's
+            # A compose app on A/B slots: only the live slot's
             # project counts. The standby is not rolled into the status, so a
             # stopped standby never reads as a degraded app.
             return self.by_project.get(slot_project, [])

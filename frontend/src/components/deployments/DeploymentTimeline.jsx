@@ -14,11 +14,12 @@ import { ListToolbar, Pill, SegControl } from '@/components/ds';
 import { Button } from '@/components/ui/button';
 import ConfigDiffModal from './ConfigDiffModal';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 function formatTime(iso) {
     if (!iso) return '';
     try {
-        return new Date(iso).toLocaleString();
+        return formatDateTime(iso);
     } catch {
         return iso;
     }

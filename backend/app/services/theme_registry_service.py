@@ -1,4 +1,4 @@
-"""Remote theme registry (plan 60, Phase 3).
+"""Remote theme registry.
 
 Mirrors the extension registry_service pattern, minus the trust machinery: a
 theme is data, not code, so there are no zips, no sha256, no permissions — the
@@ -89,7 +89,7 @@ def _read_index_payload(payload, base_url=None):
     return [t for t in (_normalize(x, base_url) for x in themes) if t]
 
 
-# One remote-catalog engine (plan 77 F1); this module stays a thin
+# One remote-catalog engine; this module stays a thin
 # normalizer. The failure-retry semantics this service pioneered
 # (last-good served under full TTL, bundled held only error_ttl) now live
 # in CachedRemoteIndex for every catalog.

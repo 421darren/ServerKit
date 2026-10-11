@@ -31,6 +31,7 @@ import { METRIC_LABELS } from '../components/monitoring/fleetMetrics';
 import { impactTone, INCIDENT_STATES } from '../components/monitoring/monitorShared';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Built-in views. This page used to carry THREE old affordances at once — a KPI
 // band whose tiles set a filter, an Active/Resolved/All segment row, and the
@@ -119,7 +120,7 @@ function formatWhen(iso) {
     if (!iso) return 'unknown';
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return 'unknown';
-    return date.toLocaleString();
+    return formatDateTime(date);
 }
 
 function formatValue(value) {

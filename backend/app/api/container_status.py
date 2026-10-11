@@ -1,4 +1,4 @@
-# Bucket: PER-APP read (plan 29 #9). The single-app status read gates on app
+# Bucket: PER-APP read. The single-app status read gates on app
 # visibility via require_app_member (viewer+); the all-apps roll-up is a
 # panel-wide authed read.
 """REST surface for the centralized container status aggregator.

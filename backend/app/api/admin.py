@@ -14,6 +14,7 @@ from app.services.settings_service import SettingsService
 from app.services.permission_service import PermissionService
 from app.utils.domain import detect_request_domain, canonical_origin, is_valid_canonical_domain
 from app.exceptions import not_found
+from app.api._request import json_object
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -36,7 +37,7 @@ def list_users():
 @admin_required
 def create_user():
     """Create a new user."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if not data:
@@ -104,7 +105,7 @@ def get_user(user_id):
 @admin_required
 def update_user(user_id):
     """Update a user."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     user = User.query.get(user_id)
@@ -304,7 +305,7 @@ def get_settings():
 @admin_required
 def update_settings():
     """Update system settings."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if not data:
@@ -346,7 +347,7 @@ def get_setting(key):
 @admin_required
 def update_setting(key):
     """Update a specific setting."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if 'value' not in data:
@@ -391,7 +392,7 @@ def get_domain_detection():
 @admin_required
 def set_canonical_domain():
     """Persist the canonical panel domain and HTTPS flag."""
-    data = request.get_json() or {}
+    data = json_object()
     domain = (data.get('domain') or '').strip().lower()
     https_enabled = bool(data.get('https_enabled', False))
     current_user_id = get_jwt_identity()
@@ -441,7 +442,7 @@ def sites_https_setup():
     """Create the wildcard DNS record + issue the wildcard cert for a base domain
     (the default base when ``base`` is omitted)."""
     from app.services.sites_https_service import SitesHttpsService
-    data = request.get_json() or {}
+    data = json_object()
     result = SitesHttpsService.setup(data.get('provider_id'), email=data.get('email'),
                                      base=data.get('base') or data.get('domain'))
     return jsonify(result), 200 if result.get('success') else 400
@@ -452,7 +453,7 @@ def sites_https_setup():
 def sites_base_domain_add():
     """Register a base domain managed sites can publish under."""
     from app.services.site_base_domain_service import SiteBaseDomainService
-    data = request.get_json() or {}
+    data = json_object()
     result = SiteBaseDomainService.add(
         data.get('domain'),
         dns_provider_config_id=data.get('provider_id') or data.get('dns_provider_config_id'),
@@ -485,7 +486,7 @@ def sites_base_domain_set_default(domain):
 def sites_base_domain_update(domain):
     """Update a base domain's DNS mode (wildcard | per-site)."""
     from app.services.site_base_domain_service import SiteBaseDomainService
-    data = request.get_json() or {}
+    data = json_object()
     result = SiteBaseDomainService.update(domain, dns_mode=data.get('dns_mode'))
     return jsonify(result), 200 if result.get('success') else 404
 
@@ -541,7 +542,7 @@ def get_user_permissions(user_id):
 @admin_required
 def update_user_permissions(user_id):
     """Update a user's custom permissions."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if not data or 'permissions' not in data:

@@ -1,6 +1,5 @@
 // Reversible DNS cutover (/api/v1/dns-cutover) — snapshot a domain's records
-// before a migration cutover so the switch can be reverted (plan 27 #13,
-// plan 31 #1/#2/#4).
+// before a migration cutover so the switch can be reverted.
 
 export async function getCutoverTtlGuidance(records) {
     return this.request('/dns-cutover/ttl-guidance', {
@@ -9,7 +8,7 @@ export async function getCutoverTtlGuidance(records) {
     });
 }
 
-// Server-sourced snapshot (plan 31 #2): the panel reads live records from the
+// Server-sourced snapshot: the panel reads live records from the
 // provider itself; the client may only pass `names` to filter which record
 // names to include (never the record data). Requires a connected provider zone.
 export async function snapshotDnsForCutover(domain, providerZoneId, provider = null, names = null) {
@@ -28,7 +27,7 @@ export async function getCutoverSnapshot(snapshotId) {
     return this.request(`/dns-cutover/snapshots/${snapshotId}`);
 }
 
-// Perform (or dry-run) a cutover (plan 31 #1). `dryRun: true` returns the exact
+// Perform (or dry-run) a cutover. `dryRun: true` returns the exact
 // provider ops (create/update, old→new) without writing and needs no provider.
 export async function performDnsCutover(snapshotId, target, { recordTypes = ['A'], dryRun = false } = {}) {
     return this.request('/dns-cutover/cutover', {
@@ -37,7 +36,7 @@ export async function performDnsCutover(snapshotId, target, { recordTypes = ['A'
     });
 }
 
-// Post-cutover resolution check across public resolvers (plan 31 #1).
+// Post-cutover resolution check across public resolvers.
 export async function verifyDnsCutover(domain, { recordType = 'A', expected = null, snapshotId = null } = {}) {
     return this.request('/dns-cutover/verify', {
         method: 'POST',

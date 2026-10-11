@@ -69,6 +69,12 @@ class ConflictError(ApplicationError):
     default_message = 'Resource conflict'
 
 
+class RateLimitedError(ApplicationError):
+    status_code = 429
+    code = 'rate_limited'
+    default_message = 'Too many requests'
+
+
 class DependencyUnavailableError(ApplicationError):
     status_code = 503
     code = 'dependency_unavailable'
@@ -86,7 +92,7 @@ class AgentOfflineError(DependencyUnavailableError):
 
 
 # ---------------------------------------------------------------------------
-# Stable codes the client translates (plan 88 §C).
+# Stable codes the client translates.
 #
 # The frontend (``frontend/src/services/api/errorCodes.js``) swaps the server's
 # English for its own translation when it knows the ``code``. A translated code
@@ -104,7 +110,7 @@ class AgentOfflineError(DependencyUnavailableError):
 #   conflict.exists        "<Resource> already exists"      resource
 #   agent.offline          AgentOfflineError's message      -
 #
-# Resource words are the UI's nouns (plan 88 glossary), not model names: an
+# Resource words are the UI's nouns (glossary), not model names: an
 # ``Application`` row is a "service" to the person reading the toast.
 # ---------------------------------------------------------------------------
 

@@ -15,6 +15,7 @@ import { useDeployments } from '../../hooks/useDeployments';
 import { getDeployStatus, formatRelativeTime, formatDuration } from '../../utils/serviceTypes';
 import EmptyState from '../EmptyState';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Deployment status → tone and env-var change action → tone both come from
 // the ONE shared status vocabulary (ds/status).
@@ -192,7 +193,7 @@ const EventsTab = ({ appId }) => {
             sortValue: (event) => event.ts,
             cellClassName: 'sk-cell-dim',
             render: (event) => (
-                <span title={event.at ? new Date(event.at).toLocaleString() : ''}>
+                <span title={event.at ? formatDateTime(event.at) : ''}>
                     {formatRelativeTime(event.at)}
                 </span>
             ),
@@ -387,7 +388,7 @@ const EventsTab = ({ appId }) => {
                 open={!!deployDetail}
                 onOpenChange={(open) => { if (!open) setDeployDetail(null); }}
                 title={deployDetail?.text || t('app.eventsTab.deployment', 'Deployment')}
-                subtitle={deployDetail?.at ? new Date(deployDetail.at).toLocaleString() : ''}
+                subtitle={deployDetail?.at ? formatDateTime(deployDetail.at) : ''}
             >
                 {deployDetail?.deploy && (
                     <>

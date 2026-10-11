@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Pill, Drawer } from '@/components/ds';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/intl';
 
 // Read-only summary of an app's scheduled (cron) jobs. Rendered on the service
 // detail and WordPress detail Overview tabs. The backend endpoint is
@@ -162,7 +163,7 @@ function formatWhen(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return formatDateTime(d, { parts: { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } });
 }
 
 export default ScheduledTasksCard;

@@ -1,14 +1,14 @@
 import { t } from '../../i18n/t.js';
 
 /**
- * Translate a server error by its machine code (plan 79 F1).
+ * Translate a server error by its machine code.
  *
  * The problem: 257 render sites do `toast.error(err.message)`, showing a
  * string the backend authored in English. There is no key to translate
  * against, and the frontend cannot invent one — the same prose comes from
  * several routes and a route can change its wording.
  *
- * The backend already answers this. Plan 76 milestone B's typed-error door
+ * The backend already answers this. The typed-error door
  * (`app/exceptions.py` + the global handler) emits a stable body:
  *
  *     { "error": "Invalid username/email or password",
@@ -23,9 +23,9 @@ import { t } from '../../i18n/t.js';
  * else falls through to the server's English, which is exactly today's
  * behaviour.
  *
- * WHICH CODES: plan 76 §C's 23 status-from-prose sites are gone (the status
+ * WHICH CODES: the 23 status-from-prose sites are gone (the status
  * sniffing ratchet is at 0), so translating a message can no longer change a
- * status. Beyond auth, plan 88 §C added the common families, each minted by a
+ * status. Beyond auth, later work added the common families, each minted by a
  * factory in `backend/app/exceptions.py` with ONE fixed message per code:
  *
  *     not_found.<resource>   "<Resource> not found"

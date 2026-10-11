@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, Pill, SearchField } from '@/components/ds';
 import {
@@ -118,12 +119,18 @@ const VolumesTab = ({ onStatsChange }) => {
     });
     const [groupBy, setGroupBy] = useState(null);
 
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
+
     useEffect(() => {
         loadVolumes();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadVolumes() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -132,10 +139,13 @@ const VolumesTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getVolumes();
             }
+            if (seq !== loadSeq.current) return;
             setVolumes(data.volumes || []);
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load volumes:', err);
-        } finally {
+            if (seq !== loadSeq.current) return;
+            setVolumes([]);
+            setLoadError(err);
             setLoading(false);
         }
     }
@@ -310,7 +320,9 @@ const VolumesTab = ({ onStatsChange }) => {
 
             <GridChips {...chrome.chipProps} />
 
-            {filteredVolumes.length === 0 ? (
+            {loadError ? (
+                <ErrorState error={loadError} onRetry={loadVolumes} />
+            ) : filteredVolumes.length === 0 ? (
                 <EmptyState
                     icon={HardDrive}
                     title={volumes.length === 0 ? t('app.volumesTab.noVolumes', 'No volumes') : t('app.volumesTab.noMatchingVolumes', 'No matching volumes')}
@@ -347,6 +359,7 @@ const VolumesTab = ({ onStatsChange }) => {
 };
 
 const CreateVolumeModal = ({ onClose, onCreated }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -374,8 +387,9 @@ const CreateVolumeModal = ({ onClose, onCreated }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.volumesTab.volumeName', 'Volume name *')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.volumesTab.volumeName', 'Volume name *')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}

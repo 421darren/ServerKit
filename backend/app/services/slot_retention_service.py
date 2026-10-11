@@ -1,5 +1,4 @@
-"""Remove the previous version's install once the update has proven itself
-(plan 85 §B1).
+"""Remove the previous version's install once the update has proven itself.
 
 Updates install into the idle blue/green slot (``/opt/serverkit-a`` or
 ``-b``) and flip the ``/opt/serverkit`` symlink, so the version that was

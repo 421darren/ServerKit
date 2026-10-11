@@ -9,7 +9,7 @@ import {
 import { LocaleContext } from './useLocale.js';
 
 /**
- * Owns the active locale (plan 79 §B1).
+ * Owns the active locale.
  *
  * Sits ABOVE AuthProvider — the login screen has to be translated before
  * anyone is signed in — so it cannot read auth state itself. The bridge is

@@ -25,8 +25,8 @@ export async function killDockerDbProcess(container, pid, type, user = null, pas
     });
 }
 
-// Top queries + connection / cache-hit gauges for a Docker database container
-// (plan 86 §A3), and the switch PostgreSQL needs before it records statements.
+// Top queries + connection / cache-hit gauges for a Docker database container,
+// and the switch PostgreSQL needs before it records statements.
 export async function getDockerDbInsights(container, type, user = null, password = null) {
     const headers = password ? { 'X-DB-Password': password } : {};
     const params = new URLSearchParams({ type: type || 'mysql' });

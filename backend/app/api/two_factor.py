@@ -5,7 +5,9 @@ Provides endpoints for enabling, disabling, and managing 2FA.
 """
 
 import logging
-from flask import Blueprint, request, jsonify
+import threading
+import time
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import limiter
 from app.middleware.session_auth import issue_session_tokens
@@ -13,11 +15,33 @@ from app.models import User
 from app.services.totp_service import TOTPService, TwoFactorSetup
 from app.services import auth_throttle_service
 from app.utils.client_ip import get_client_ip
-from app.exceptions import not_found
+from app.exceptions import AuthenticationError, RateLimitedError, not_found
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
 two_factor_bp = Blueprint('two_factor', __name__)
+
+# Codes and temp tokens already spent at /verify. A TOTP code stays valid for
+# its whole window (~90 s with valid_window=1), so without this a code seen
+# over a shoulder or in a proxy log logs in a second time. Process-local is
+# enough: the panel runs a single worker, and entries outlive their validity.
+_spent = {}
+_spent_lock = threading.Lock()
+_TOTP_REPLAY_SECONDS = 120
+_TEMP_TOKEN_SECONDS = 6 * 60
+
+
+def _spend_once(key, ttl):
+    """Record *key* as used; False if it already was (and hasn't expired)."""
+    now = time.monotonic()
+    with _spent_lock:
+        for k in [k for k, exp in _spent.items() if exp <= now]:
+            del _spent[k]
+        if key in _spent:
+            return False
+        _spent[key] = now + ttl
+        return True
 
 
 @two_factor_bp.route('/status', methods=['GET'])
@@ -83,7 +107,7 @@ def confirm_2fa_setup():
     if user.totp_enabled:
         return jsonify({'error': '2FA is already enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'Verification code is required'}), 400
 
@@ -115,7 +139,7 @@ def disable_2fa():
     if not user.totp_enabled:
         return jsonify({'error': '2FA is not enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'Verification code is required'}), 400
 
@@ -148,7 +172,7 @@ def regenerate_backup_codes():
     if not user.totp_enabled:
         return jsonify({'error': '2FA is not enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'TOTP code is required'}), 400
 
@@ -185,7 +209,7 @@ def verify_2fa_code():
             'error': 'Too many failed attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -215,8 +239,19 @@ def verify_2fa_code():
     if not user.totp_enabled:
         return jsonify({'error': '2FA is not enabled for this account'}), 400
 
+    # The lockout login enforces applies here too: failed codes count
+    # toward it, so it must also stop the guessing.
+    if user.is_locked:
+        raise RateLimitedError('Account is locked. Try again later.')
+
+    jti = token_data.get('jti') or temp_token
+    normalized = str(code).replace(' ', '').replace('-', '')
+
     # Try TOTP code first
-    if TOTPService.verify_code(user.totp_secret, code):
+    if (TOTPService.verify_code(user.totp_secret, code)
+            and _spend_once(('totp', user.id, normalized), _TOTP_REPLAY_SECONDS)):
+        if not _spend_once(('temp', jti), _TEMP_TOKEN_SECONDS):
+            raise AuthenticationError('Invalid or expired token')
         # Success - issue real tokens
         auth_throttle_service.reset(client_ip)
         user.reset_failed_login()
@@ -235,6 +270,8 @@ def verify_2fa_code():
     matched_hash = TOTPService.verify_backup_code(code, backup_codes)
 
     if matched_hash:
+        if not _spend_once(('temp', jti), _TEMP_TOKEN_SECONDS):
+            raise AuthenticationError('Invalid or expired token')
         # Valid backup code - remove it (one-time use)
         auth_throttle_service.reset(client_ip)
         user.use_backup_code(matched_hash)

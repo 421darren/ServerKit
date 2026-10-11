@@ -1,4 +1,4 @@
-"""Restore-drill engine (plan 23 Phases 2–3).
+"""Restore-drill engine.
 
 A *drill* is a real restore of a policy's latest restorable point into a scratch
 location (a temp dir for files/application, a throwaway ``skdrill_<run_id>``
@@ -520,7 +520,7 @@ class BackupDrillService:
         }
 
     # ------------------------------------------------------------------ #
-    # WordPress leg (files drill + real scratch-DB import, plan 30)
+    # WordPress leg (files drill + real scratch-DB import)
     # ------------------------------------------------------------------ #
 
     @classmethod
@@ -528,7 +528,7 @@ class BackupDrillService:
         """A WordPress drill proves BOTH halves: extract the files archive into a
         scratch dir, AND import ``database.sql`` into a throwaway scratch DB. A
         drill that verified neither artifact fails instead of earning 'drilled'
-        vacuously (plan 30)."""
+        vacuously."""
         import tarfile
         from app.services.backup_service import BackupService
         from app.services.database_service import DatabaseService

@@ -45,8 +45,10 @@ class UptimeService:
 
     @classmethod
     def _load_history(cls) -> Dict:
-        """Load uptime history from file, or a fresh one if unreadable."""
-        cls._ensure_data_dir()
+        """Load uptime history from file, or a fresh one if unreadable.
+
+        Reading creates nothing: at boot the data dir may not exist and may not
+        be creatable (the container runs unprivileged)."""
         return load_json_config(cls.UPTIME_FILE, {
             'start_time': datetime.now().isoformat(),
             'checks': [],
@@ -57,13 +59,17 @@ class UptimeService:
     def _save_history(cls, history: Dict) -> bool:
         """Save uptime history to file. ``True`` when it was actually written.
 
-        Was ``except Exception: pass`` over a truncating write (plan 75 §G6):
+        Was ``except Exception: pass`` over a truncating write:
         a full disk both destroyed the existing history and reported nothing,
         so the panel went on rendering an uptime figure computed from a file
         that had stopped being updated. Now the write is atomic and the failure
         is logged and returned, so a caller can tell "saved" from "could not".
         """
-        cls._ensure_data_dir()
+        try:
+            cls._ensure_data_dir()
+        except OSError as e:
+            logger.warning('Could not create uptime data dir %s: %s', cls.DATA_DIR, e)
+            return False
         result = save_json_config(cls.UPTIME_FILE, history)
         if not result['success']:
             logger.warning('Could not save uptime history to %s: %s',
@@ -287,12 +293,13 @@ class UptimeService:
         if cls._tracking_thread and cls._tracking_thread.is_alive():
             return {'success': False, 'error': 'Tracking already running'}
 
+        cls._set_tracking_flag(True)
+        # Record initial check
+        cls.record_check('up')
+
         cls._stop_tracking = False
         cls._tracking_thread = threading.Thread(target=cls._tracking_loop, daemon=True)
         cls._tracking_thread.start()
-
-        # Record initial check
-        cls.record_check('up')
 
         return {'success': True, 'message': 'Uptime tracking started'}
 
@@ -300,18 +307,33 @@ class UptimeService:
     def stop_tracking(cls) -> Dict:
         """Stop background uptime tracking."""
         cls._stop_tracking = True
+        cls._set_tracking_flag(False)
         return {'success': True, 'message': 'Uptime tracking stopped'}
+
+    @classmethod
+    def _set_tracking_flag(cls, on: bool) -> None:
+        # Persisted so a restart resumes tracking (resume_if_enabled).
+        history = cls._load_history()
+        history['tracking'] = on
+        cls._save_history(history)
+
+    @classmethod
+    def resume_if_enabled(cls) -> None:
+        """Restart the sampler at boot when the operator left tracking on."""
+        if cls._load_history().get('tracking'):
+            cls.start_tracking()
 
     @classmethod
     def _tracking_loop(cls) -> None:
         """Background tracking loop."""
         while not cls._stop_tracking:
+            time.sleep(cls.CHECK_INTERVAL)
+            if cls._stop_tracking:
+                break
             try:
                 cls.record_check('up')
             except Exception:
-                pass
-
-            time.sleep(cls.CHECK_INTERVAL)
+                logger.exception('Uptime check failed')
 
     @classmethod
     def is_tracking(cls) -> bool:

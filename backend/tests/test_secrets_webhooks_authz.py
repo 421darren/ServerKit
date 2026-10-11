@@ -301,3 +301,43 @@ def test_inbound_webhook_with_a_valid_signature_is_accepted(client, vault_rbac, 
                        headers={'X-Hub-Signature-256': _sign('whsec', payload)})
     assert resp.status_code == 200
     assert forwarded == [payload]
+
+
+def test_unsigned_request_cannot_preempt_an_event_id(client, vault_rbac, monkeypatch):
+    """Dedupe ran before the signature check and event_id is unique, so an
+    unsigned request claiming the next event's id got the real, signed
+    delivery dropped as a 'duplicate'."""
+    from app.services.webhook_gateway_service import WebhookGatewayService
+    forwarded = []
+    monkeypatch.setattr(WebhookGatewayService, '_forward',
+                        classmethod(lambda cls, e, d, p, h: forwarded.append(p) or
+                                    {'success': True, 'status': 200, 'body': ''}))
+    payload = b'{"a": 2}'
+
+    spoof = client.post('/api/v1/webhooks/receive/scope-endpoint',
+                        data=payload, content_type='application/json',
+                        headers={'X-Webhook-Event-ID': 'evt-next'})
+    assert spoof.status_code == 401
+
+    real = client.post('/api/v1/webhooks/receive/scope-endpoint',
+                       data=payload, content_type='application/json',
+                       headers={'X-Webhook-Event-ID': 'evt-next',
+                                'X-Hub-Signature-256': _sign('whsec', payload)})
+    assert real.status_code == 200
+    assert real.get_json()['event_id'] == 'evt-next'
+    assert forwarded == [payload]
+
+
+def test_signed_redelivery_is_still_deduplicated(client, vault_rbac, monkeypatch):
+    from app.services.webhook_gateway_service import WebhookGatewayService
+    forwarded = []
+    monkeypatch.setattr(WebhookGatewayService, '_forward',
+                        classmethod(lambda cls, e, d, p, h: forwarded.append(p) or
+                                    {'success': True, 'status': 200, 'body': ''}))
+    payload = b'{"a": 3}'
+    headers = {'X-Webhook-Event-ID': 'evt-dup', 'X-Hub-Signature-256': _sign('whsec', payload)}
+    for _ in range(2):
+        resp = client.post('/api/v1/webhooks/receive/scope-endpoint', data=payload,
+                           content_type='application/json', headers=headers)
+        assert resp.status_code == 200
+    assert forwarded == [payload]

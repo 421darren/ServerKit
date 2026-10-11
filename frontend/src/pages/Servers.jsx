@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Folder, Plus, RefreshCw, Server as ServerLucideIcon, X } from 'lucide-react';
 import api from '../services/api';
@@ -28,6 +28,7 @@ import LinkPanelForm from '../components/servers/LinkPanelForm';
 import { useTranslation } from 'react-i18next';
 import { t } from '../i18n/t';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Radix Select items cannot use '' — stands in for "no group".
 const NO_GROUP = '__none';
@@ -128,7 +129,7 @@ const formatLastSeen = (timestamp) => {
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return new Date(timestamp).toLocaleDateString();
+    return formatDate(timestamp);
 };
 
 const clamp = (v) => Math.min(100, Math.max(0, Number(v) || 0));
@@ -553,6 +554,7 @@ const Servers = () => {
 };
 
 const PairAgentForm = ({ groups, onClose, onClaimed }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [pairCode, setPairCode] = useState('');
     const [passphrase, setPassphrase] = useState('');
@@ -587,7 +589,7 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 // the agent didn't supply one.
                 const suggestedName = res.system_info?.display_name
                     || res.system_info?.hostname;
-                if (!name && suggestedName) setName(suggestedName);
+                if (suggestedName) setName((prev) => prev || suggestedName);
             })
             .catch((err) => {
                 if (cancelled) return;
@@ -597,7 +599,6 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 if (!cancelled) setLoading(false);
             });
         return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formattedCode]);
 
     async function handleClaim(e) {
@@ -653,8 +654,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.servers.pairCode', 'Pair code')}</label>
+                    <label htmlFor={`${fieldId}-code`}>{t('app.servers.pairCode', 'Pair code')}</label>
                     <Input
+                        id={`${fieldId}-code`}
                         type="text"
                         value={formatDisplay(formattedCode)}
                         onChange={(e) => {
@@ -692,8 +694,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 )}
 
                 <div className="form-group">
-                    <label>{t('app.servers.passphrase', 'Passphrase *')}</label>
+                    <label htmlFor={`${fieldId}-passphrase`}>{t('app.servers.passphrase', 'Passphrase *')}</label>
                     <Input
+                        id={`${fieldId}-passphrase`}
                         type="text"
                         value={passphrase}
                         onChange={(e) => setPassphrase(e.target.value)}
@@ -707,8 +710,9 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
 
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.servers.serverName', 'Server name')}</label>
+                        <label htmlFor={`${fieldId}-name`}>{t('app.servers.serverName', 'Server name')}</label>
                         <Input
+                            id={`${fieldId}-name`}
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}

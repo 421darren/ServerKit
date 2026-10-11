@@ -12,6 +12,7 @@ from flask_jwt_extended import jwt_required
 from app.exceptions import NotFoundError
 from app.middleware.rbac import permission_required
 from app.services.monitor_service import MonitorService
+from app.api._request import json_object
 
 monitors_bp = Blueprint('monitors', __name__)
 
@@ -52,7 +53,7 @@ def get_stats():
 @monitors_bp.route('/', methods=['POST'])
 @permission_required('monitoring', 'write')
 def create_monitor():
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.create(data)
     return jsonify(monitor.to_dict()), 201
 
@@ -69,7 +70,7 @@ def get_monitor(monitor_id):
 @monitors_bp.route('/<int:monitor_id>', methods=['PATCH', 'PUT'])
 @permission_required('monitoring', 'write')
 def update_monitor(monitor_id):
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.update(monitor_id, data)
     if not monitor:
         raise NotFoundError('Monitor not found', code='monitor_not_found')
@@ -98,7 +99,7 @@ def run_check(monitor_id):
 @monitors_bp.route('/<int:monitor_id>/pause', methods=['POST'])
 @permission_required('monitoring', 'write')
 def set_paused(monitor_id):
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.set_paused(monitor_id, data.get('paused', True))
     if not monitor:
         return {'error': 'Monitor not found'}, 404
@@ -151,7 +152,7 @@ def list_incidents():
 @monitors_bp.route('/incidents', methods=['POST'])
 @permission_required('monitoring', 'write')
 def create_incident():
-    data = request.get_json() or {}
+    data = json_object()
     if not data.get('title'):
         return {'error': 'Incident title is required'}, 400
     incident = MonitorService.create_incident(data.get('page_id'), data)
@@ -161,7 +162,7 @@ def create_incident():
 @monitors_bp.route('/incidents/<int:incident_id>', methods=['PATCH', 'PUT'])
 @permission_required('monitoring', 'write')
 def update_incident(incident_id):
-    incident = MonitorService.update_incident(incident_id, request.get_json() or {})
+    incident = MonitorService.update_incident(incident_id, json_object())
     if not incident:
         return {'error': 'Incident not found'}, 404
     return jsonify(incident.to_dict())

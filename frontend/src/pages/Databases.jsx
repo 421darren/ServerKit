@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import PageLayout from '@/layouts/PageLayout';
 import { toastError } from '@/utils/errorMessage';
+import usePersistentState from '@/hooks/usePersistentState';
 
 // Cadence while an engine install is in flight.
 const ENGINE_POLL_MS = 4000;
@@ -140,7 +141,7 @@ export default function Databases() {
     const [activeTabId, setActiveTabId] = useState(null);
     const [tabStatuses, setTabStatuses] = useState({});
 
-    const [sidebarVisible, setSidebarVisible] = useState(() => localStorage.getItem(SIDEBAR_KEY) !== 'false');
+    const [sidebarVisible, setSidebarVisible] = usePersistentState(SIDEBAR_KEY, (v) => v !== 'false');
     const [filter, setFilter] = useState('');
     const [ctxMenu, setCtxMenu] = useState(null);
     const [showManaged, setShowManaged] = useState(false);
@@ -161,7 +162,6 @@ export default function Databases() {
     const didAutoExpand = useRef(false);
     const didDeepLink = useRef(false);
 
-    useEffect(() => { localStorage.setItem(SIDEBAR_KEY, String(sidebarVisible)); }, [sidebarVisible]);
 
     // Which host engines are installed/running. A failure is kept, not
     // logged away: the tree then says it couldn't check, rather than drawing
@@ -667,7 +667,7 @@ export default function Databases() {
                     if (node.conn?.dbType === 'docker' && node.conn.container) {
                         // Curated config tuner is container-scoped (docker-only).
                         actions.splice(2, 0, { labelKey: 'app.databases.configTuner', label: 'Config tuner', icon: SlidersHorizontal, onClick: () => setTunerTarget({ container: node.conn.container, engine: node.engine, password: node.conn.password }) });
-                        // Top queries + hit ratio (plan 86 §A3), docker-only too.
+                        // Top queries + hit ratio, docker-only too.
                         actions.splice(2, 0, { labelKey: 'app.databases.insights', label: 'Insights', icon: Gauge, onClick: () => openInsights(node.conn, node.engine) });
                     }
                     actions.splice(2, 0, { labelKey: 'app.databases.backUpDatabase', label: 'Back up database', icon: DatabaseBackup, onClick: () => backupDatabase(node) });

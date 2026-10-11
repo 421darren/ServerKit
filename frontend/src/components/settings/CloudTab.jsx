@@ -7,8 +7,9 @@ import useLabel from '../../i18n/labels';
 import { MANAGED_CAPABILITY_MAP } from '../sidebarItems';
 import EmptyState from '../EmptyState';
 import ErrorState from '../ErrorState';
+import { formatDateTime } from '@/utils/intl';
 
-// Settings › ServerKit Cloud (plan 25 M3): the one place the customer reads
+// Settings › ServerKit Cloud: the one place the customer reads
 // what ServerKit Cloud holds for them — the connect state, and the managed
 // profile with the responsibilities Cloud took over, since when, until when,
 // and any active support override. Nothing here can turn the profile off;
@@ -38,7 +39,7 @@ const CloudTab = () => {
 
     const held = profile?.held_capabilities || [];
     const fmt = (iso) => (iso
-        ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+        ? formatDateTime(iso)
         : null);
 
     return (

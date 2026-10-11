@@ -1,4 +1,4 @@
-"""Immutable per-deployment image tags and their retention (plan 87 §A1).
+"""Immutable per-deployment image tags and their retention.
 
 Every build used to be tagged ``serverkit-app-<id>:latest``, so "roll back to
 v11" re-ran ``:latest`` — the image v12 had just overwritten — and rolled
@@ -7,7 +7,7 @@ forward instead. A deploy now builds ``serverkit-app-<id>:d<deployment id>``
 the deployment keeps that tag, and a rollback runs the image that actually
 ran.
 
-The price is images per deploy, and plan 85 is about exactly that kind of
+The price is images per deploy, and disk headroom is about exactly that kind of
 leak, so they are pruned on every successful deploy: images of the newest
 ``keep`` deployments stay, plus anything a slot or the live deployment still
 references. ``docker rmi`` without ``-f`` refuses an image a container is

@@ -6,7 +6,7 @@ rsyncs the docroot and (optionally) dumps the site database into the import
 run's work directory, then hands the standard pipeline a ready-to-copy
 ``docroot/`` directory via the analysis' ``staged_docroot`` key.
 
-Security posture (plan 31 Decision 5):
+Security posture:
 
 * **Keyfile-only auth.** Authentication is by an SSH *key file on the panel
   host* (``ssh -i``) under ``BatchMode=yes`` — no interactive password, no
@@ -37,7 +37,7 @@ def parse_ssh_source(source):
     """Validate + normalise an SSH import source into the durable spec.
 
     Required: ``host``, ``user``, ``docroot``. Auth is keyfile-only — any
-    ``password`` field is dropped (plan 31 #8). DB fields are carried through
+    ``password`` field is dropped. DB fields are carried through
     only when present (they drive an optional remote dump). Raises
     :class:`ValueError` when a required field is missing.
     """
@@ -211,7 +211,7 @@ class GenericSshImporter(BaseSiteImporter):
     @staticmethod
     def _write_manifest(staging_dir, source, db_dump):
         """Write a staging manifest recording ONLY non-secret facts — never the
-        DB password or the key material/path (plan 31 #9)."""
+        DB password or the key material/path."""
         source = source or {}
         manifest = {
             'source_type': 'ssh',

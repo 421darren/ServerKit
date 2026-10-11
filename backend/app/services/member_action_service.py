@@ -1,4 +1,4 @@
-"""Member action templates — the safe write escape hatch (plan 19 Phase 5).
+"""Member action templates — the safe write escape hatch.
 
 A member action is a CURATED, parameterized action a workspace member may trigger
 for an app they can reach. It is the only member-write path beyond the plan's
@@ -7,7 +7,7 @@ Phase-4 matrix, and it is deliberately narrow:
   - No free text ever reaches a shell. Every parameter is validated against a
     typed schema (enum / bounded int) before the executor runs.
   - Each template declares (id, label, param schema, executor, min_role). The
-    min_role reuses the same capability tiers as the rest of the plan
+    min_role reuses the panel's capability tiers
     (can_operate_app for 'member', can_admin_app for 'admin').
   - Every run is audit-logged.
   - The whole surface is feature-flagged (config MEMBER_ACTIONS_ENABLED).
@@ -15,7 +15,7 @@ Phase-4 matrix, and it is deliberately narrow:
 The registry ships one concrete template today — `set-backup-frequency`, which
 adjusts an app's backup schedule through the existing BackupPolicyService (no new
 side-channel). The cron "ping this app's scheduler every N minutes" template
-named in the plan is deferred until plan 21 #10 lands its ScheduledJob wiring;
+is deferred until its ScheduledJob wiring lands;
 adding it is just another registry entry.
 """
 from app.services.resource_grant_service import ResourceGrantService
@@ -112,7 +112,7 @@ MEMBER_ACTIONS = {
 def is_enabled():
     """Feature flag — the whole member-action surface can be turned off.
 
-    Two independent kill switches, both must allow (plan 29 #13): the
+    Two independent kill switches, both must allow: the
     ``MEMBER_ACTIONS_ENABLED`` app config (deployment-level, default ON) AND the
     admin-visible ``security_member_actions_enabled`` system setting (default ON).
     Either set to false disables the surface."""

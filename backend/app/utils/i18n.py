@@ -1,4 +1,4 @@
-"""Supported UI languages (plan 79 B2).
+"""Supported UI languages.
 
 The **canonical** list is the frontend manifest,
 ``frontend/src/i18n/languages.json`` — that is what the browser actually loads

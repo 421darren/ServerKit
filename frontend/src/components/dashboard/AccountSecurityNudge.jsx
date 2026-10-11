@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { ShieldAlert, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-// Per-user "secure your account" nudge (plan 22 #12). Shows when the requesting
+// Per-user "secure your account" nudge. Shows when the requesting
 // user has no second factor, deep-linking to Settings → Security where the full
 // guided enrolment lives (passkey-first, then TOTP with its QR). Dismissible;
-// the dismissal is persisted to the account's `setup_snoozes` (plan 29 #8) so it
+// the dismissal is persisted to the account's `setup_snoozes` so it
 // follows the user across browsers, with localStorage kept only as a fast cache
 // so the nudge doesn't flash before the account fetch resolves.
 

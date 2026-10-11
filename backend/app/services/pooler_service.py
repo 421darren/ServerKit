@@ -1,4 +1,4 @@
-"""Opt-in PgBouncer beside an installed PostgreSQL (plan 86 §D1).
+"""Opt-in PgBouncer beside an installed PostgreSQL.
 
 Turning pooling on adds a ``pgbouncer`` service to the PostgreSQL app's
 managed compose override: same project, container ``<app>-pooler``, on the

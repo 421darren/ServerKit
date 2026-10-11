@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '../../contexts/useToast.js';
 import { toastError } from '@/utils/errorMessage';
 
-// Opt-in PgBouncer beside an installed PostgreSQL (plan 86 §D1). Renders only
+// Opt-in PgBouncer beside an installed PostgreSQL. Renders only
 // for PostgreSQL installs. Apps keep the direct connection unless they switch
 // their reference to `pooledUrl`, because transaction pooling breaks session
 // features, and that tradeoff is stated where the choice is made.

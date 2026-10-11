@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app routes gate on the shared app-access
+# Bucket: PER-APP. Per-app routes gate on the shared app-access
 # seam via the file-local _can_access_app (reads) / _can_edit_app (writes)
 # helpers, or the hand-rolled owner-or-admin idiom; host/system ops stay admin.
 import os
@@ -45,7 +45,11 @@ from app.services.upload_service import (
 from app import paths
 from app.middleware.rbac import get_current_user, require_admin_user
 from app.error_reporting import unexpected_response
-from app.exceptions import field_required, not_found, permission_denied
+from app.exceptions import (
+    PermissionDeniedError, ValidationError, field_required, not_found, permission_denied,
+)
+from app.api._access import require_app
+from app.api._request import json_object
 
 apps_bp = Blueprint('apps', __name__)
 
@@ -141,7 +145,7 @@ def link_apps(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -328,7 +332,7 @@ def update_environment(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -437,7 +441,7 @@ def set_app_workspace(app_id):
     if not user.is_admin and app.user_id != user.id:
         raise permission_denied()
 
-    target = (request.get_json() or {}).get('workspace_id')
+    target = json_object().get('workspace_id')
     if target in (None, '', 'default'):
         ws_id = WorkspaceService.ensure_default_workspace().id
     else:
@@ -478,7 +482,7 @@ def move_apps_to_project():
     from app.models.environment import Environment
 
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
 
     raw_ids = data.get('app_ids')
     if not isinstance(raw_ids, list) or not raw_ids:
@@ -674,7 +678,7 @@ def grant_app_access(app_id):
         raise not_found('service')
     if not user.is_admin and app.user_id != user.id:
         raise permission_denied()
-    data = request.get_json() or {}
+    data = json_object()
     grantee_id = data.get('user_id')
     if not grantee_id:
         raise field_required('user_id')
@@ -712,7 +716,7 @@ def create_app_from_repository():
     """Create a new application by cloning a Git repository."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     name = _service_slug(data.get('name'))
     repo_url = (data.get('repo_url') or '').strip()
     source_connection_id = data.get('source_connection_id')
@@ -910,16 +914,27 @@ def create_app_from_repository():
         return unexpected_response(exc)
 
 
+# Fields that point the row at host paths and units root-run code acts on
+# (docker compose up, nginx site files, systemctl) — admin-only, as /manual.
+_HOST_BINDING_FIELDS = ('root_path', 'compose_file', 'systemd_unit', 'managed_by')
+
+
 @apps_bp.route('', methods=['POST'])
 @jwt_required()
 def create_app():
-    current_user_id = get_jwt_identity()
-    data = request.get_json()
+    user = get_current_user()
+    current_user_id = user.id
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
-    name = data.get('name')
+    host_fields = [f for f in _HOST_BINDING_FIELDS if data.get(f)]
+    if host_fields and not user.is_admin:
+        raise PermissionDeniedError(f"Only an admin can set {', '.join(host_fields)}")
+
+    # The name becomes the nginx vhost name and its file path.
+    name = _service_slug(data.get('name'))
     app_type = data.get('app_type')
 
     if not all([name, app_type]):
@@ -929,9 +944,12 @@ def create_app():
     if app_type not in valid_types:
         return jsonify({'error': f'Invalid app_type. Must be one of: {", ".join(valid_types)}'}), 400
 
+    clash = Application.name_clash_error(name)
+    if clash:
+        raise ValidationError(clash)
+
     # Stamp the workspace (#33): the requested one (membership-checked) or the default.
     from app.services.workspace_service import WorkspaceService
-    user = User.query.get(current_user_id)
     ws_id = WorkspaceService.resolve_workspace_id(
         user, request.headers.get('X-Workspace-Id') or request.args.get('workspace_id'))
     # Role reconciliation (#33): a workspace 'viewer' member has read-only access to
@@ -980,7 +998,7 @@ def create_manual_app():
     """Register an app that already exists on the server (manual/local)."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     name = _service_slug(data.get('name'))
     app_type = (data.get('app_type') or 'docker').strip().lower()
     root_path = (data.get('root_path') or '').strip()
@@ -1257,7 +1275,7 @@ def rollback_app_version(app_id):
     if app.source != 'upload':
         return jsonify({'error': 'Rollback is only available for services deployed by upload'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     target = data.get('version')
     if target is None:
         raise field_required('version')
@@ -1307,12 +1325,20 @@ def update_app(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
 
     # Validate before anything is assigned, so a bad setting leaves the app
     # untouched rather than half-updated in the session.
+    host_fields = [f for f in _HOST_BINDING_FIELDS if f in data]
+    if host_fields and not user.is_admin:
+        raise PermissionDeniedError(f"Only an admin can change {', '.join(host_fields)}")
+    if 'name' in data and data['name'] != app.name:
+        if not data['name'] or _service_slug(data['name']) != data['name']:
+            raise ValidationError('Service name must be lowercase letters, digits and hyphens')
+        clash = Application.name_clash_error(data['name'])
+        if clash:
+            raise ValidationError(clash)
     if 'deploy_settings' in data:
-        from app.exceptions import ValidationError
         from app.services import deploy_settings
         _, error = deploy_settings.validate(data['deploy_settings'])
         if error:
@@ -1526,7 +1552,7 @@ def update_sleep_policy(app_id):
         raise not_found('service')
     if not _can_edit_app(user, app):
         raise permission_denied()
-    data = request.get_json() or {}
+    data = json_object()
     policy = ContainerSleepService.set_policy(
         app_id, enabled=data.get('enabled'), idle_timeout_minutes=data.get('idle_timeout_minutes'))
     return jsonify(policy.to_dict())
@@ -1648,7 +1674,7 @@ def update_app_resources(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     try:
         if 'cpu_limit' in data:
             app.cpu_limit = DockerService.validate_cpu_limit(data['cpu_limit'])
@@ -1705,7 +1731,7 @@ def set_micro_cache(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     if 'enabled' not in data:
         return jsonify({'error': "'enabled' is required"}), 400
 
@@ -1751,7 +1777,7 @@ def set_micro_cache(app_id):
 @apps_bp.route('/<int:app_id>/micro-cache/purge', methods=['POST'])
 @jwt_required()
 def purge_micro_cache(app_id):
-    """Clear this site's cached pages (plan 86 §B3).
+    """Clear this site's cached pages.
 
     The zone is shared, but the cache key carries the host, so only entries
     for this app's domains are removed. No nginx reload is needed.
@@ -2176,25 +2202,11 @@ def get_app_status(app_id):
 
 # ==================== BACKUP PROTECTION (policy + runs) ====================
 
-def _load_app_for_backup(app_id, edit=False):
-    """Load an app the current user may access (or edit). Returns (app, error)."""
-    user = get_current_user()
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        raise not_found('service')
-    allowed = _can_edit_app(user, app) if edit else _can_access_app(user, app)
-    if not allowed:
-        raise permission_denied()
-    return app, None
-
-
 @apps_bp.route('/<int:app_id>/backup-policy', methods=['GET'])
 @jwt_required()
 def get_app_backup_policy(app_id):
     """Return the protection policy + status for an app (creating a default)."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     return jsonify(BackupPolicyService.serialize_policy_view(policy))
 
@@ -2203,12 +2215,10 @@ def get_app_backup_policy(app_id):
 @jwt_required()
 def update_app_backup_policy(app_id):
     """Update the protection policy and re-sync its schedule."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
-        BackupPolicyService.update_policy(policy, request.get_json() or {})
+        BackupPolicyService.update_policy(policy, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify(BackupPolicyService.serialize_policy_view(policy))
@@ -2218,9 +2228,7 @@ def update_app_backup_policy(app_id):
 @jwt_required()
 def trigger_app_backup(app_id):
     """Enqueue a one-off backup for the app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         job = BackupPolicyService.run_policy_now(policy, manual=True)
@@ -2233,9 +2241,7 @@ def trigger_app_backup(app_id):
 @jwt_required()
 def list_app_backups(app_id):
     """List backup runs for the app."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     return jsonify({'runs': BackupPolicyService.list_runs(policy)})
 
@@ -2244,12 +2250,10 @@ def list_app_backups(app_id):
 @jwt_required()
 def restore_app_backup(app_id, run_id):
     """Enqueue a restore from a specific backup run."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
-        job = BackupPolicyService.request_restore(policy, run_id, request.get_json() or {})
+        job = BackupPolicyService.request_restore(policy, run_id, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'success': True, 'job_id': job.id}), 202
@@ -2259,9 +2263,7 @@ def restore_app_backup(app_id, run_id):
 @jwt_required()
 def verify_app_backup(app_id, run_id):
     """Verify the remote copy of a backup run."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         result = BackupPolicyService.verify_run(policy, run_id)
@@ -2274,9 +2276,7 @@ def verify_app_backup(app_id, run_id):
 @jwt_required()
 def delete_app_backup(app_id, run_id):
     """Delete a backup run (local + remote + record)."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     policy = BackupPolicyService.get_or_create_policy('application', app_id)
     try:
         BackupPolicyService.delete_run(policy, run_id)
@@ -2286,7 +2286,7 @@ def delete_app_backup(app_id, run_id):
 
 
 # --------------------------------------------------------------------------- #
-# WordPress reachable through the generic application surface (§7 unification).
+# WordPress reachable through the generic application surface.
 # A WordPress site is a 1:1 extension of an Application (WordPressSite.
 # application_id); the WordPressSite record — not app_type — is the source of
 # truth (see wordpress.py:_is_wp_app). These additive routes expose the WP
@@ -2304,9 +2304,7 @@ def _wp_site_for_app(app):
 def app_wordpress_info(app_id):
     """Whether this app is a WordPress site, and the linked site id. Lets the
     generic Services surface discover the WordPress extension."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     site = _wp_site_for_app(app)
     if not site:
         return jsonify({'is_wordpress': False, 'site_id': None}), 200
@@ -2323,9 +2321,7 @@ def app_wordpress_info(app_id):
 @jwt_required()
 def list_app_db_snapshots(app_id):
     """List the WordPress DB snapshots for an app (unified app-id surface)."""
-    app, err = _load_app_for_backup(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
     from app.models.wordpress_site import DatabaseSnapshot
     site = _wp_site_for_app(app)
     if not site:
@@ -2339,9 +2335,7 @@ def list_app_db_snapshots(app_id):
 @jwt_required()
 def create_app_db_snapshot(app_id):
     """Create a WordPress DB snapshot for an app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     from app.models.wordpress_site import DatabaseSnapshot
     from app.services.db_sync_service import DatabaseSyncService
     site = _wp_site_for_app(app)
@@ -2349,7 +2343,7 @@ def create_app_db_snapshot(app_id):
         return jsonify({'error': 'This service is not a WordPress site'}), 400
     # Resolve the extension only once we know this IS a WordPress site — with
     # serverkit-wordpress uninstalled a non-WP app must get the 400, not an
-    # import error (plan 52 Phase 5 graceful absence). A WP SITE with the
+    # import error (graceful absence). A WP SITE with the
     # extension missing/disabled gets a clean 503, not an uncaught
     # WordPressExtensionMissingError → 500 (audit F3).
     from app.services.wordpress_bridge import (
@@ -2359,7 +2353,7 @@ def create_app_db_snapshot(app_id):
         WordPressEnvService = wordpress_env_service()
     except WordPressExtensionMissingError as e:
         return jsonify({'error': str(e)}), 503
-    data = request.get_json() or {}
+    data = json_object()
     result = DatabaseSyncService.create_snapshot(
         db_name=site.db_name,
         name=data.get('name', f'{app.name}_{site.id}'),
@@ -2389,9 +2383,7 @@ def create_app_db_snapshot(app_id):
 @jwt_required()
 def delete_app_db_snapshot(app_id, snapshot_id):
     """Delete a WordPress DB snapshot for an app."""
-    app, err = _load_app_for_backup(app_id, edit=True)
-    if err:
-        return err
+    app = require_app(app_id, write=True)
     from app.models.wordpress_site import DatabaseSnapshot
     from app.services.db_sync_service import DatabaseSyncService
     site = _wp_site_for_app(app)

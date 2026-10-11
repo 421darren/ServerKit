@@ -12,6 +12,7 @@ import {
 import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Built-in saved views. These are the five chips that used to sit in a second
 // toolbar row on Terminal › Processes (All / Running / Sleeping / Stopped /
@@ -346,7 +347,7 @@ export function ProcessDetailsPanel({ process, onClose, formatMemory = defaultFo
                     <DetailItem label={t('app.processTable.threads', 'Threads')} value={process.num_threads} />
                     <DetailItem
                         label={t('common.labels.created', 'Created')}
-                        value={process.create_time ? new Date(process.create_time * 1000).toLocaleString() : '-'}
+                        value={process.create_time ? formatDateTime(process.create_time * 1000) : '-'}
                     />
                 </div>
                 {process.command && (

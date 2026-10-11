@@ -36,7 +36,7 @@ def unique_slug(base, exists, default='untitled', start=1):
         default: Fallback string when `base` slugifies to something empty.
         start: First suffix to try. `saved_view_service` numbered its
             duplicates from 2 and kept a private copy of this loop for that one
-            difference (plan 75 §G6); a parameter is cheaper than a second
+            difference; a parameter is cheaper than a second
             implementation, and changing its numbering would have renamed
             handles users already had.
 

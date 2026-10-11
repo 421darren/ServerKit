@@ -12,9 +12,9 @@ export async function runServerSurvey(serverId) {
 }
 
 // Switch a server between 'managed' and 'observed' adoption modes. Optionally
-// toggle the observed-mode agent:update break-glass (plan 31 #10). The response
+// toggle the observed-mode agent:update break-glass. The response
 // carries `observed_blocked_count` — how many commands the Observe guard has
-// refused on this server (plan 31 #11).
+// refused on this server.
 export async function setServerManagementMode(serverId, mode, allowAgentUpdateObserved = undefined) {
     const body = { mode };
     if (allowAgentUpdateObserved !== undefined) {
@@ -27,7 +27,7 @@ export async function setServerManagementMode(serverId, mode, allowAgentUpdateOb
 }
 
 // Observe-mode status: current mode, the agent:update break-glass flag, and the
-// count of commands the Observe guard has blocked (plan 31 #10/#11).
+// count of commands the Observe guard has blocked.
 export async function getServerObservedStatus(serverId) {
     return this.request(`/servers/${serverId}/observed-status`);
 }

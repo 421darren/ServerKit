@@ -44,7 +44,7 @@ def format_size(num_bytes):
     Lives here rather than in a service because capacity_service and
     host_inventory_service both need it, and this module imports nothing — the
     duplicate that prompted this was written to dodge an import cycle that
-    cannot exist (plan 75 §F1).
+    cannot exist.
     """
     if num_bytes is None:
         return 'unknown'

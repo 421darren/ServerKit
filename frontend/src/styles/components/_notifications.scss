@@ -10,7 +10,7 @@
 }
 
 // "Email bouncing" warning shown in the Email Settings card when a user's
-// address is auto-muted after repeated hard bounces (plan 33 Phase 4).
+// address is auto-muted after repeated hard bounces.
 .notif-bounce-warning {
     display: flex;
     align-items: center;
@@ -170,7 +170,7 @@
 }
 
 // ============================================
-// PER-EVENT OVERRIDE MATRIX + ORG DEFAULTS (plan 24 Phase 2)
+// PER-EVENT OVERRIDE MATRIX + ORG DEFAULTS
 // ============================================
 
 .notif-event-matrix {
@@ -343,7 +343,7 @@
     }
 }
 
-// Email digest cadence selector (plan 24 Phase 3)
+// Email digest cadence selector
 .notif-digest-options {
     display: flex;
     gap: $space-3;

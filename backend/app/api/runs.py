@@ -1,4 +1,4 @@
-"""Run envelope REST twin (plan 77 E1).
+"""Run envelope REST twin.
 
 The polling counterpart of the `run_log` / `run_status` socket events: any
 run kind's persisted lines, resumable via ?after_id, so a client that missed

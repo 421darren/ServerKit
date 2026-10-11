@@ -145,7 +145,7 @@ const Sidebar = ({ mobileOpen = false, isMobile = false, onMobileClose = () => {
     // Developer-only items (Test Sandbox) — same source the route guard reads.
     const devMode = useDevMode();
 
-    // Sidebar items ServerKit Cloud holds under the managed profile (plan 25).
+    // Sidebar items ServerKit Cloud holds under the managed profile.
     const { hiddenSidebarIds: managedHidden } = useManagedProfile();
 
     const conditions = { wpInstalled, gpuAvailable, wordpressEnabled, devMode };
@@ -205,7 +205,7 @@ const Sidebar = ({ mobileOpen = false, isMobile = false, onMobileClose = () => {
         // and it defines a nav map. This lets a workspace restrict which sidebar
         // items its members see based on their effective workspace role.
         items = applyWorkspaceNavPermissions(items, activeWorkspace, user);
-        // The managed profile (plan 25): capabilities ServerKit Cloud holds
+        // The managed profile: capabilities ServerKit Cloud holds
         // remove their sidebar items from every preset, the same way a
         // workspace nav map removes them.
         if (managedHidden.size > 0) {

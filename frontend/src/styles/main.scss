@@ -55,7 +55,6 @@
 @import 'components/_two-factor';
 @import 'components/_notifications';
 @import 'components/_notification-center';
-@import 'components/_query-runner';
 @import 'components/_deploy';
 @import 'components/_git-connect';
 @import 'components/_docs-link';
@@ -64,6 +63,7 @@
 @import 'components/_linked-apps';
 @import 'components/_api-settings';
 @import 'components/_empty-state';
+@import 'components/_extensions';      // ExtensionBoundary failure card (was never imported)
 @import 'components/_status-badge';
 @import 'components/_connection-status';
 @import 'components/_detail-tabs';
@@ -126,6 +126,7 @@
 @import 'pages/_storage';
 @import 'pages/_notification-center';
 @import 'pages/_connections';
+@import 'pages/_coexistence';              // Coexistence page (was never imported)
 @import 'pages/_file-manager';
 @import 'pages/_ftp-server';
 @import 'pages/_firewall';
@@ -136,8 +137,8 @@
 @import 'pages/_server-survey';
 @import 'pages/_downloads';
 @import 'pages/_ssl';
-// WordPress styles moved into the serverkit-wordpress extension (plan 52
-// Phase 4) — its synced bundle imports them through its own module graph.
+// WordPress styles moved into the serverkit-wordpress extension — its synced
+// bundle imports them through its own module graph.
 @import 'pages/_setup-wizard';
 @import 'pages/_migration-wizard';
 @import 'pages/_import-wizard';

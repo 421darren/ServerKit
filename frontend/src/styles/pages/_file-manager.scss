@@ -4,6 +4,25 @@
 // 1px borders instead of floating cards.
 // ============================================
 
+// Sidebar section sizing. This rule used to sit, unscoped, in the stylesheet
+// of a long-deleted query runner and applied here by accident; it is kept so
+// the rail keeps its layout (first section fills, the last is capped).
+.sidebar-section {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    &:first-child {
+        flex: 1;
+        min-height: 150px;
+    }
+
+    &:last-child {
+        border-top: 1px solid $border-subtle;
+        max-height: 40%;
+    }
+}
+
 // Type colour palette — categorical icon/card tints (literal hex: these feed
 // SCSS fade(), which can't take var()). Aligned to the redesign palette.
 $ft-folder:   #f5b945;

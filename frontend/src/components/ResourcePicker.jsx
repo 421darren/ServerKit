@@ -31,6 +31,7 @@ export default function ResourcePicker({
     searchPlaceholder,
     emptyMessage,
     className = '',
+    id,
 }) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
@@ -107,6 +108,7 @@ export default function ResourcePicker({
         }}>
             <PopoverTrigger asChild>
                 <Button
+                    id={id}
                     type="button"
                     variant="outline"
                     className={triggerClassName}

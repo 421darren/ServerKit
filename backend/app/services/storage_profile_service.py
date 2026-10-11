@@ -1,4 +1,4 @@
-"""Size-aware storage defaults (plan 85 §C).
+"""Size-aware storage defaults.
 
 A 25 GB VPS and a 500 GB server should not keep the same 30 days of
 telemetry: on the small box ServerKit's own history competes with the apps

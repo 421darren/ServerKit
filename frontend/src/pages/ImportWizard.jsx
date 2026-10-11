@@ -20,6 +20,7 @@ import ErrorState from '../components/ErrorState';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { errorReason } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const POLL_MS = 2000;
 
@@ -710,7 +711,7 @@ function ImportWizard() {
                                     <StatusPill status={rec.status} />
                                     <span className="import-wizard__history-src">{rec.source_type}</span>
                                     <span className="import-wizard__history-when">
-                                        {rec.created_at ? new Date(rec.created_at).toLocaleString() : '—'}
+                                        {rec.created_at ? formatDateTime(rec.created_at) : '—'}
                                     </span>
                                     <span className="import-wizard__history-actions">
                                         <Button variant="ghost" size="sm" onClick={() => resumeImport(rec)}>

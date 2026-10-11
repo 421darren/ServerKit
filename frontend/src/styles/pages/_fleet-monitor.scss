@@ -74,7 +74,7 @@
 // read-only view of the same numbers the Host health cards on /monitoring now
 // show, and those cards are clickable — they re-scope the page to that server.
 
-// Fleet doctor rollup card (plan 26) — checks-by-status per server on the
+// Fleet doctor rollup card — checks-by-status per server on the
 // Agent Fleet dashboard, consuming the same rows as the Doctor panel.
 .fleet-doctor-rollup {
     margin-bottom: $space-4;

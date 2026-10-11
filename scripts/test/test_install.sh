@@ -1060,6 +1060,36 @@ else
     bad "fetch_release tag-fallback wrong: state [$res]: $(tr '\n' ';' < "$t/fetch.out" 2>/dev/null)"
 fi
 
+# T31b — a missing checksums.txt used to be "skipping verification" and the
+# unverified tarball was installed. It must fall back to source instead,
+# removing the download, unless SERVERKIT_ALLOW_UNVERIFIED=1.
+cat > "$t/bin/curl" <<EOF
+#!/usr/bin/env bash
+out=""; url=""
+while [ \$# -gt 0 ]; do
+    case "\$1" in -o) out="\$2"; shift 2 ;; -*) shift ;; *) url="\$1"; shift ;; esac
+done
+case "\$url" in
+    *checksums.txt) exit 22 ;;
+    *.tar.gz)       printf 'bytes' > "\$out" ;;
+    *)              exit 22 ;;
+esac
+EOF
+chmod +x "$t/bin/curl"
+res="$( set -Eeuo pipefail; PATH="$t/bin:$PATH"
+        SERVERKIT_OFFLINE_TARBALL=""; SERVERKIT_VERSION="v9.9.9"; INSTALL_FROM_RELEASE=1
+        SERVERKIT_MIRROR_URL="http://mirror.invalid"; DL_ARCH=amd64
+        resolve_release_tag() { echo v9.9.9; }
+        rc=0; fetch_release >"$t/fetch.out" 2>&1 || rc=$?
+        left=no; [ -e /tmp/serverkit-v9.9.9-linux-amd64.tar.gz ] && left=yes
+        printf '%s|%s|%s' "$rc" "$INSTALL_FROM_RELEASE" "$left" )"
+if [ "$res" = "1|0|no" ] && grep -q 'not installing an unverified release' "$t/fetch.out"; then
+    ok "fetch_release falls back to source when checksums.txt is missing (no unverified install)"
+else
+    bad "fetch_release with no checksums.txt: state [$res]: $(tr '\n' ';' < "$t/fetch.out" 2>/dev/null)"
+fi
+rm -f /tmp/serverkit-v9.9.9-linux-amd64.tar.gz
+
 # --------------------------------------------------------------------------
 # T32 — I16: failures inside fetch_release's unpack/copy (corrupt download,
 # disk full) must take the clean fallback-to-source path — return nonzero so

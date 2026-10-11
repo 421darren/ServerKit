@@ -1,6 +1,6 @@
 """Canonical theme token whitelist + alias table + validators (server side).
 
-A ServerKit theme is DATA, not code (plan 60): a map of canonical CSS
+A ServerKit theme is DATA, not code: a map of canonical CSS
 custom-property names to values. This module is the backend source of truth for
 the same three things the panel enforces client-side in
 ``frontend/src/data/themeTokens.js`` — KEEP THE TWO IN SYNC:

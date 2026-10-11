@@ -1,7 +1,7 @@
 """Outbound SMTP relay (smarthost) for the mail server.
 
 The relay is now one row of the unified ``EmailProviderConnection`` table — an
-``smtp`` connection flagged ``uses_relay`` (§6 unification) — so a single store
+``smtp`` connection flagged ``uses_relay`` — so a single store
 drives both the Notification Bus and the Postfix relay. The legacy single-row
 ``email_relay_config`` is migrated in on first boot and kept only as a read
 fallback during the deprecation window.

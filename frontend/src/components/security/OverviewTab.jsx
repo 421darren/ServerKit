@@ -35,7 +35,7 @@ const OverviewTab = ({ status, onRefresh, onNavigateTab }) => {
 
     // Do any installed extensions contribute Security tabs? When none do, the
     // footer offers the Marketplace instead of hardcoding per-tool nag rows —
-    // the plan 47 Ph3e degradation: core posture stays core-only.
+    // the security-suite extraction: core posture stays core-only.
     const { tabs: contributedTabs } = useContributions();
     const hasSecurityExtensions = (contributedTabs || []).some((tab) => tab.group === 'security');
 

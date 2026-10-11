@@ -10,9 +10,9 @@ class NginxAdvancedService:
     """Read-side nginx helpers: vhost config, config test, diff preview, logs.
 
     The reverse-proxy / load-balancer builder was removed with the scaling
-    pieces (plan 86 §E2): one live copy per app, no upstream pools."""
+    pieces: one live copy per app, no upstream pools."""
 
-    # NginxService owns these (plan 75 §G4). Hardcoding them here meant an
+    # NginxService owns these. Hardcoding them here meant an
     # NGINX_CONF_DIR override — the env var NginxService honours, and what
     # tests redirect — silently did not apply to this service.
     NGINX_CONF_DIR = NginxService.NGINX_CONF_DIR
@@ -34,7 +34,7 @@ class NginxAdvancedService:
 
     @staticmethod
     def test_config():
-        """Test nginx config syntax — NginxService owns the call (plan 75 §G4).
+        """Test nginx config syntax — NginxService owns the call.
 
         Kept as a distinct method because its result shape (``valid``/
         ``output``) is what this service's API consumers read.
@@ -70,7 +70,7 @@ class NginxAdvancedService:
 
     @staticmethod
     def reload_nginx():
-        """Reload nginx — NginxService owns it (plan 75 §G4).
+        """Reload nginx — NginxService owns it.
 
         The private version ran `nginx -s reload` with no config test first, so
         a broken vhost written by this same service reloaded straight into

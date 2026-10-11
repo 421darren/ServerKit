@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { useAuth } from '../../contexts/useAuth.js';
 import api from '../../services/api';
 import useSettingFocus from '../../hooks/useSettingFocus';
@@ -23,6 +23,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import EmptyState from '../EmptyState';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatDateTime, formatNumber } from '@/utils/intl';
 
 const ApiSettingsTab = () => {
     const { isAdmin } = useAuth();
@@ -229,7 +230,7 @@ const ApiKeysSection = () => {
             cellClassName: 'api-settings__muted',
             render: (key) => (
                 key.last_used_at
-                    ? new Date(key.last_used_at).toLocaleDateString()
+                    ? formatDate(key.last_used_at)
                     : 'Never'
             ),
         },
@@ -353,6 +354,7 @@ const ApiKeysSection = () => {
 
 // ─── Rate Limits Section ───────────────────────────────
 const RateLimitsSection = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const register = useSettingFocus();
     const [limits, setLimits] = useState({
@@ -419,8 +421,9 @@ const RateLimitsSection = () => {
             <div className="api-settings__rate-limits">
                 {Object.entries(limits).map(([key, value]) => (
                     <div key={key} className="form-group form-group--inline">
-                        <Label>{labels[key]}</Label>
+                        <Label htmlFor={`${fieldId}-${key}`}>{labels[key]}</Label>
                         <Input
+                            id={`${fieldId}-${key}`}
                             type="text"
                             value={value}
                             onChange={e => setLimits(prev => ({ ...prev, [key]: e.target.value }))}
@@ -483,7 +486,7 @@ const DELIVERY_COLUMNS = [
         sortable: true,
         sortValue: (d) => (d.created_at ? new Date(d.created_at).getTime() : null),
         cellClassName: 'api-settings__muted',
-        render: (d) => (d.created_at ? new Date(d.created_at).toLocaleString() : '-'),
+        render: (d) => (d.created_at ? formatDateTime(d.created_at) : '-'),
     },
 ];
 
@@ -685,7 +688,7 @@ const ENDPOINT_COLUMNS = [
         headerKey: 'app.apiSettingsTab.requests', header: 'Requests',
         sortable: true,
         sortValue: (ep) => ep.count ?? null,
-        render: (ep) => ep.count.toLocaleString(),
+        render: (ep) => formatNumber(ep.count),
     },
     {
         key: 'avgTime',
@@ -760,7 +763,7 @@ const AnalyticsSection = () => {
                     {overview && (
                         <div className="stat-strip">
                             <div className="stat-strip__item">
-                                <span className="stat-strip__value">{overview.total_requests.toLocaleString()}</span>
+                                <span className="stat-strip__value">{formatNumber(overview.total_requests)}</span>
                                 <span className="stat-strip__label">{t('app.apiSettingsTab.totalRequests', 'Total requests')}</span>
                             </div>
                             <div className="stat-strip__item">
@@ -772,7 +775,7 @@ const AnalyticsSection = () => {
                                 <span className="stat-strip__label">{t('app.apiSettingsTab.errorRate', 'Error rate')}</span>
                             </div>
                             <div className="stat-strip__item">
-                                <span className="stat-strip__value">{overview.success_count.toLocaleString()}</span>
+                                <span className="stat-strip__value">{formatNumber(overview.success_count)}</span>
                                 <span className="stat-strip__label">{t('app.apiSettingsTab.successful', 'Successful')}</span>
                             </div>
                         </div>

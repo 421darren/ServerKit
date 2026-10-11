@@ -1,4 +1,4 @@
-"""Recipe run API (plan 68).
+"""Recipe run API.
 
 Starts runs from three manifest sources — a registry slug (the curated
 ``serverkit-recipes`` catalog), reviewed inline YAML/JSON, or a manifest
@@ -23,6 +23,7 @@ from app.services.recipe_execution_service import (
     RECIPE_JOB_KIND,
     RecipeExecutionService,
 )
+from app.api._request import json_object
 
 
 recipes_bp = Blueprint('recipes', __name__)
@@ -89,7 +90,7 @@ def get_recipe_registry_entry(slug):
 @recipes_bp.route('/runs', methods=['POST'])
 @admin_required
 def start_recipe_run():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
 
     project = None
     server = None
@@ -164,7 +165,7 @@ def submit_recipe_handoff(job_id, step_id):
     job = DeploymentJob.query.get(job_id)
     if not job or job.kind != RECIPE_JOB_KIND:
         return jsonify({'error': 'Recipe run not found'}), 404
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     user = get_current_user()
     wait = request.args.get('wait', 'false').lower() == 'true'
     result = RecipeExecutionService.submit_handoff(

@@ -7,7 +7,7 @@ from app.models.json_column_mixin import JsonColumnMixin
 
 class FleetDoctorResult(JsonColumnMixin, db.Model):
     """One row per ``(server_id, check_key)`` recorded by the fleet health sweep
-    (Fleet Parity Sweep, plan 26 Phase 2, Decision 3).
+    (Fleet Parity Sweep).
 
     The panel-host doctor keeps its ``doctor_last_report`` settings blob; the
     fleet sweep instead records each remote server's per-check outcome as a ROW

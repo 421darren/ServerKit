@@ -72,7 +72,7 @@ def _is_single_container_app(app):
     if app.server_id or app.compose_file or not app.root_path:
         return False
     if getattr(app, 'slot_deploys_enabled', False) and app.active_slot:
-        return True     # a slot app runs one live container (plan 87)
+        return True     # a slot app runs one live container
     if not app.buildpack_type:
         return False
     return not any(
@@ -83,7 +83,7 @@ def _is_single_container_app(app):
 
 
 def _is_slot_compose_app(app):
-    """A compose app on A/B slots (plan 87): its live release is the slot
+    """A compose app on A/B slots: its live release is the slot
     project, not the project the app's own compose file would name."""
     from app.services.slot_deploy_service import SlotDeployService
     return SlotDeployService.is_compose_slot_app(app)
@@ -93,7 +93,7 @@ def _app_container_name(app):
     """The single container serving this app.
 
     ``serverkit-app-<id>`` for an in-place deploy (``DeploymentService.
-    _deploy_docker``); the live slot's container for a slot app (plan 87).
+    _deploy_docker``); the live slot's container for a slot app.
     """
     from app.services.slot_deploy_service import live_container_name
     return live_container_name(app)
@@ -216,7 +216,6 @@ def stop_application(app, *, user_id=None):
             WorkerProcessService.each(app, 'stop')
             # A stopped app keeps no warm standby running behind it.
             if getattr(app, 'slot_deploys_enabled', False):
-                from app.services.slot_deploy_service import SlotDeployService
                 SlotDeployService.stop_standby(app)
         else:
             result = DockerService.compose_down(

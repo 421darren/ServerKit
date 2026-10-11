@@ -1,5 +1,5 @@
 /**
- * Dashboard boards — load, edit and persist a user's widget layouts (plan 62).
+ * Dashboard boards — load, edit and persist a user's widget layouts.
  *
  * Supersedes `useDashboardLayout`, which kept a visibility list in
  * localStorage. Boards live server-side (`/api/v1/dashboards`) so a layout

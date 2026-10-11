@@ -193,7 +193,7 @@ class ComposeEnvService:
             if not (isinstance(svc, dict) and svc.get('restart')):
                 services_block.setdefault(name, {})['restart'] = 'unless-stopped'
 
-        # Shared service network (plan 86 §C1): an app that offers connection
+        # Shared service network: an app that offers connection
         # properties (Redis, MinIO...) or consumes one through `fromService`
         # joins SHARED_NETWORK so the two can reach each other by container
         # name. `default` is listed too — naming any network on a service
@@ -204,7 +204,7 @@ class ComposeEnvService:
             services_block.setdefault(name, {})['networks'] = {
                 'default': {}, SHARED_NETWORK: {}}
 
-        # Opt-in PgBouncer beside a PostgreSQL engine (plan 86 §D1): a whole
+        # Opt-in PgBouncer beside a PostgreSQL engine: a whole
         # extra service, reachable from apps over the shared network only.
         from app.services import pooler_service
         pooler = pooler_service.sidecar(app, services)

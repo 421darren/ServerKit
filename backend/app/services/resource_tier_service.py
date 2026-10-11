@@ -30,8 +30,8 @@ import psutil
 
 logger = logging.getLogger(__name__)
 
-# Specs and the tier label are stable enough to cache for an hour (ttl_cached,
-# plan 77 F2); headroom is recomputed on every call because it is the number
+# Specs and the tier label are stable enough to cache for an hour
+# (ttl_cached); headroom is recomputed on every call because it is the number
 # that moves. _probe_count lets get_resource_tier report whether this response
 # came from cache without a second bookkeeping dict.
 _TIER_TTL_SECONDS = 3600
@@ -146,7 +146,7 @@ class ResourceTierService:
         """Volume to measure free space on — where images and backups land.
 
         Delegates to host_inventory_service so this and capacity_service can no
-        longer answer the same question differently (plan 74).
+        longer answer the same question differently.
         """
         from app.services import host_inventory_service
         return host_inventory_service.data_path()

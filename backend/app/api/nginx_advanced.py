@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.services.nginx_advanced_service import NginxAdvancedService
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 nginx_advanced_bp = Blueprint('nginx_advanced', __name__)
 
@@ -43,7 +44,7 @@ def preview_diff():
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json() or {}
+    data = json_object()
     domain = data.get('domain')
     new_config = data.get('config', '')
     if not domain:

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo, useRef  } from 'react';
+import { useCallback, useState, useEffect, useMemo, useRef, useId  } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
     Search, BookOpen, Container, Globe, BarChart3,
@@ -239,7 +239,7 @@ const Templates = () => {
     const [filtersOpen, setFiltersOpen] = useState(false);
 
     // Deploying targets a fleet ServerKit Cloud operates under the managed
-    // profile (plan 25): the catalog stays browsable, the Deploy control goes.
+    // profile: the catalog stays browsable, the Deploy control goes.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();
     const deployManaged = isControlHeld('templates-deploy');
 
@@ -690,6 +690,7 @@ const CapacityNote = ({ capacity, loading }) => {
 };
 
 const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const navigate = useNavigate();
     const isRepo = (template.kind || 'compose') === 'repo';
@@ -936,7 +937,7 @@ const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
                             <span className="sk-formdrawer__label">{t('app.templates.configuration', 'Settings')}</span>
                             {visibleVars.map(variable => (
                                 <div key={variable.name} className="form-group">
-                                    <label>
+                                    <label htmlFor={`${fieldId}-var-${variable.name}`}>
                                         {variable.name}
                                         {variable.required && ' *'}
                                     </label>
@@ -946,7 +947,7 @@ const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
                                             onValueChange={(v) => setVariables({...variables, [variable.name]: v})}
                                             required={variable.required}
                                         >
-                                            <SelectTrigger aria-label={variable.name}>
+                                            <SelectTrigger id={`${fieldId}-var-${variable.name}`} aria-label={variable.name}>
                                                 <SelectValue placeholder={t('app.templates.select', 'Select…')} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -959,6 +960,7 @@ const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
                                         // Host ports are only checked against this panel's
                                         // host; on a remote server just the range applies.
                                         <PortField
+                                            id={`${fieldId}-var-${variable.name}`}
                                             value={variables[variable.name] || ''}
                                             onChange={(port) => setVariables({...variables, [variable.name]: port === '' ? '' : String(port)})}
                                             host={isLocalTarget}
@@ -967,6 +969,7 @@ const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
                                         />
                                     ) : variable.type === 'password' ? (
                                         <Input
+                                            id={`${fieldId}-var-${variable.name}`}
                                             type="password"
                                             value={variables[variable.name] || ''}
                                             onChange={(e) => setVariables({...variables, [variable.name]: e.target.value})}
@@ -975,6 +978,7 @@ const InstallModal = ({ template, onClose, onSuccess, renderIcon }) => {
                                         />
                                     ) : (
                                         <Input
+                                            id={`${fieldId}-var-${variable.name}`}
                                             type="text"
                                             value={variables[variable.name] || ''}
                                             onChange={(e) => setVariables({...variables, [variable.name]: e.target.value})}

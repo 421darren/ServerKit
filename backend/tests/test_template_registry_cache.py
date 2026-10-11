@@ -66,7 +66,7 @@ def _serve(monkeypatch, payload=None, fail=False):
             raise RuntimeError("connection refused")
         return _FakeResponse(payload or {"templates": []})
 
-    monkeypatch.setattr("app.services.template_service.requests.get", fake_get)
+    monkeypatch.setattr("app.services.template_catalog.requests.get", fake_get)
     return calls
 
 
@@ -121,7 +121,7 @@ def test_first_enabled_repo_wins_among_remotes(monkeypatch):
     def fake_get(url, **kwargs):
         return _FakeResponse(_index("shared-id"))
 
-    monkeypatch.setattr("app.services.template_service.requests.get", fake_get)
+    monkeypatch.setattr("app.services.template_catalog.requests.get", fake_get)
 
     by_id = {t["id"]: t for t in TemplateService.list_all_templates()}
     assert by_id["shared-id"]["repo_url"] == "https://a.test/t"

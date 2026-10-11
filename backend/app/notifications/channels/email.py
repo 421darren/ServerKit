@@ -52,7 +52,7 @@ class EmailAdapter(ChannelAdapter):
             return DeliveryResult.skipped('no email target')
 
         # A hard-bouncing / complained address is suppressed until unmuted
-        # (plan 33 Phase 4, roadmap #24). Fed by the inbound bounce webhook.
+        # (roadmap #24). Fed by the inbound bounce webhook.
         from app.services.bounce_service import BounceService
         if BounceService.is_muted(to_addr):
             return DeliveryResult.skipped('address muted (bouncing)')

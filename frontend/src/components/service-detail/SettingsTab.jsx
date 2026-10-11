@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
     SlidersHorizontal,
@@ -45,6 +45,7 @@ import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Grouped left sub-nav for the service Settings tab — mirrors the WordPress
 // detail page's settings layout: a group label per section with
@@ -344,7 +345,7 @@ const SettingsTab = ({ app, deployConfig, domains, primaryDomain, onUpdate }) =>
                     </div>
                 )}
 
-                {/* Cache — opt-in nginx micro-cache (task #21, plan 86 §B3):
+                {/* Cache — opt-in nginx micro-cache:
                     short-TTL page cache with auth/admin/cart bypasses, stale
                     serving, and a per-site purge. */}
                 {section === 'cache' && (
@@ -354,8 +355,8 @@ const SettingsTab = ({ app, deployConfig, domains, primaryDomain, onUpdate }) =>
                     </div>
                 )}
 
-                {/* Health & Rollout (Docker only) — the deploy health gate
-                    (plan 87): where a new release is asked, and for how long. */}
+                {/* Health & Rollout (Docker only) — the deploy health gate:
+where a new release is asked, and for how long. */}
                 {section === 'health' && (
                     <div className="svc-settings__section">
                         <h3 className="svc-settings__section-title">{t('app.settingsTab.healthRollout', 'Health and rollout')}</h3>
@@ -466,6 +467,7 @@ const SettingsTab = ({ app, deployConfig, domains, primaryDomain, onUpdate }) =>
 // show current primary domain, SSL health, attach a new domain, and request a
 // certificate from Let&apos;s Encrypt.
 const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const toast = useToast();
     const [health, setHealth] = useState(null);
@@ -597,7 +599,7 @@ const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
                 {issued && health.expires_at && (
                     <InfoItem
                         label={t('app.settingsTab.expires', 'Expires')}
-                        value={`${new Date(health.expires_at).toLocaleDateString()}${typeof health.days_remaining === 'number' ? ` (${health.days_remaining}d)` : ''}`}
+                        value={`${formatDate(health.expires_at)}${typeof health.days_remaining === 'number' ? ` (${health.days_remaining}d)` : ''}`}
                     />
                 )}
                 {issued && health.issuer && (
@@ -651,8 +653,9 @@ const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
                                 <CheckItem ok label={t('app.settingsTab.domainConfigured', 'Domain {{primaryDomain}} configured', { primaryDomain: primaryDomain })} />
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.settingsTab.adminEmail', 'Admin email')}</Label>
+                                <Label htmlFor={`${fieldId}-email`}>{t('app.settingsTab.adminEmail', 'Admin email')}</Label>
                                 <Input
+                                    id={`${fieldId}-email`}
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}

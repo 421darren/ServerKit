@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app.middleware.rbac import admin_required
 from app.services.log_service import LogService
+from app.api._request import json_object
+from app.exceptions import ValidationError
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -61,7 +63,12 @@ def get_journal_logs():
     unit = request.args.get('unit')
     lines = request.args.get('lines', 100, type=int)
     since = request.args.get('since')
-    priority = request.args.get('priority')
+    priority = request.args.get('priority') or None
+    # journalctl levels 0 (emerg) .. 7 (debug); anything else is a client error,
+    # not something to hand to a privileged journalctl.
+    if priority is not None and priority not in {str(n) for n in range(8)}:
+        raise ValidationError('priority must be a journal level from 0 to 7',
+                              code='validation.priority')
 
     result = LogService.get_journalctl_logs(unit, lines, since, priority)
     return jsonify(result), 200 if result['success'] else 400
@@ -71,7 +78,7 @@ def get_journal_logs():
 @admin_required
 def clear_log():
     """Clear/truncate a log file."""
-    data = request.get_json()
+    data = json_object()
     filepath = data.get('path') if data else None
 
     if not filepath:

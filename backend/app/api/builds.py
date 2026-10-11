@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app build routes gate via the app-grant
+# Bucket: PER-APP. Per-app build routes gate via the app-grant
 # family (can_access_app / can_edit_app). See docs/WORKSPACE_SCOPING.md.
 """
 Build and Deployment API Endpoints
@@ -18,6 +18,7 @@ from app.services.build_service import BuildService
 from app.services.deployment_service import DeploymentService
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 builds_bp = Blueprint('builds', __name__)
 
@@ -53,7 +54,7 @@ def configure_build(app_id):
     if not app:
         raise not_found('service')
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -140,7 +141,7 @@ def trigger_build(app_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     no_cache = data.get('no_cache', False)
 
     result = BuildService.build(app_id, no_cache=no_cache)
@@ -201,7 +202,7 @@ def clear_build_cache(app_id):
 def deploy_app(app_id):
     """Deploy an application (build + deploy).
 
-    Every deploy is a job (plan 51 D7): by default this enqueues an `app_deploy`
+    Every deploy is a job: by default this enqueues an `app_deploy`
     DeploymentJob and returns 202 + {deploy_job_id} so the UI can open the live
     Deploy Console. `?wait=true` preserves the old synchronous contract for
     CLI/tests (runs inline, returns the deployment result body).
@@ -216,7 +217,7 @@ def deploy_app(app_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     no_cache = data.get('no_cache', False)
     version_tag = data.get('version_tag')
     wait = request.args.get('wait', 'false').lower() == 'true'
@@ -331,7 +332,7 @@ def rollback(app_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     target_version = data.get('version')  # Optional - if not provided, rolls back to previous
 
     result = DeploymentService.rollback(

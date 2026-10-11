@@ -1,4 +1,4 @@
-"""An app's attachment to a service it uses (plan 86 §C2/§C4).
+"""An app's attachment to a service it uses.
 
 One row per (app, kind): the app's storage bucket on a Garage instance, or
 the cache / queue it uses (env references only). ``details_json``

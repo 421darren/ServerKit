@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/useAuth.js';
 import ServerRestorePointsTab from '../components/serverdetail/ServerRestorePointsTab';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Live host metrics cadence while the server is online.
 const METRICS_POLL_MS = 10000;
@@ -324,7 +325,7 @@ const ServerDetail = () => {
                                 <>
                                     <span className="dotsep">·</span>
                                     <span className="server-detail-header__meta-item">
-                                        {t('app.serverDetail.lastSeen', 'last seen')} {new Date(server.last_seen).toLocaleString()}
+                                        {t('app.serverDetail.lastSeen', 'last seen')} {formatDateTime(server.last_seen)}
                                     </span>
                                 </>
                             )}

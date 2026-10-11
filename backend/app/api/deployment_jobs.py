@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). App-linked job reads gate on the app-grant
+# Bucket: PER-APP. App-linked job reads gate on the app-grant
 # seam (can_access_app); retries require can_operate_app. App-less jobs
 # (template installs, simulated deploys) are requester-or-admin only. The
 # job list is admin-only globally and app-access-gated when app_id is given.
@@ -13,6 +13,7 @@ from app.models.deployment_job import DeploymentJob, DeploymentJobLog
 from app.services.deployment_job_service import DeploymentJobService
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 deployment_jobs_bp = Blueprint('deployment_jobs', __name__)
 
@@ -51,7 +52,7 @@ def _job_payload(job, user, include_plan=False, include_logs=False):
 @deployment_jobs_bp.route('/simulate', methods=['GET'])
 @jwt_required()
 def get_simulate_info():
-    """Simulated-deploy availability + scenario catalog (plan 51.5 dev tool).
+    """Simulated-deploy availability + scenario catalog (dev tool).
 
     404 when the DEMO_DEPLOYS_ENABLED gate is off (production default), so the
     surface simply doesn't exist outside dev.
@@ -78,7 +79,7 @@ def simulate_deployment():
     from flask_jwt_extended import get_jwt_identity
     from app.services.demo_deploy_service import DemoDeployService
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     wait = request.args.get('wait', 'false').lower() == 'true'
     result = DemoDeployService.create(
         scenario=data.get('scenario') or '',
@@ -152,8 +153,8 @@ def get_deployment_job(job_id):
 @deployment_jobs_bp.route('/<job_id>/retry', methods=['POST'])
 @jwt_required()
 def retry_deployment_job(job_id):
-    """Retry a failed deployment job by cloning it and enqueuing a fresh run
-    (plan 51 D8). Only failed jobs may be retried."""
+    """Retry a failed deployment job by cloning it and enqueuing a fresh run.
+Only failed jobs may be retried."""
     job = DeploymentJob.query.get(job_id)
     if not job:
         raise not_found('deployment')

@@ -99,7 +99,7 @@ const getRegistryCatalogEntry = (entry) => ({
     firstParty: isFirstParty(entry.author, entry),
     trust: entry.trust || 'unreviewed',
     review: entry.review || null,
-    // Release-signature state from the index (plan 55): `signed` means the
+    // Release-signature state from the index: `signed` means the
     // entry carries an ed25519 signature the panel verifies at install;
     // `publisherTrusted` means the named key is pinned by this panel.
     signed: Boolean(entry.signature),
@@ -147,7 +147,7 @@ const TrustBadge = ({ entry }) => {
     return null;
 };
 
-// Release-signature badge (plan 55). Shown on the registry detail modal next
+// Release-signature badge. Shown on the registry detail modal next
 // to TrustBadge: 'signed · verified' means the index pins an ed25519 signature
 // whose publisher key this panel trusts (verified cryptographically at
 // install); unsigned entries get the honest unsigned treatment.
@@ -249,7 +249,7 @@ const Marketplace = () => {
     // dialog (confirm retries with acknowledge_risk: true). Shape:
     // { slug, reason } where reason is 'unreviewed' (proactive gate or 409),
     // 'unverified' (409: entry has no pinned checksum), or 'untrusted_key'
-    // (signed by a publisher key this panel doesn't pin — plan 55).
+    // (signed by a publisher key this panel doesn't pin).
     const [riskTarget, setRiskTarget] = useState(null);
     // Plugin pending uninstall — drives the keep-vs-purge data-policy dialog.
     const [uninstallTarget, setUninstallTarget] = useState(null);
@@ -260,7 +260,7 @@ const Marketplace = () => {
     // Plugin whose config is being edited (#49) — drives the config dialog.
     const [configTarget, setConfigTarget] = useState(null);
     // Plugin whose declared-vs-observed permissions and pending Python
-    // dependencies are being read (plan 55 tasks 6+7) — drives the read-only
+    // dependencies are being read (tasks 6+7) — drives the read-only
     // permissions dialog.
     const [permissionsTarget, setPermissionsTarget] = useState(null);
 
@@ -369,8 +369,8 @@ const Marketplace = () => {
             // (the backend 409 path above covers the race/stale cases).
             setRiskTarget({ slug: entry.installKey, reason: 'unreviewed' });
         } else if (entry.signed && !entry.publisherTrusted) {
-            // Signed by a publisher key this panel doesn't pin — consent first
-            // (plan 55); the backend 409 path is the authoritative backstop.
+            // Signed by a publisher key this panel doesn't pin — consent first;
+            // the backend 409 path is the authoritative backstop.
             setRiskTarget({ slug: entry.installKey, reason: 'untrusted_key' });
         } else {
             handleRegistryInstall(entry.installKey);

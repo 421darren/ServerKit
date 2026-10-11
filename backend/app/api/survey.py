@@ -1,4 +1,4 @@
-"""Server survey API — read-only "flights" over a paired agent (plan 27).
+"""Server survey API — read-only "flights" over a paired agent.
 
 Mounted at /api/v1/servers (see app/__init__.py). All routes are admin-only: a
 survey enumerates what's running on a host, and the catalog index is the honest
@@ -10,6 +10,7 @@ from app.middleware.rbac import admin_required, get_current_user
 from app.models.server import Server
 from app.services import survey_service
 from app.exceptions import not_found
+from app.api._request import json_object
 
 survey_bp = Blueprint('survey', __name__)
 
@@ -42,7 +43,7 @@ def run_survey(server_id):
 @survey_bp.route('/<server_id>/management-mode', methods=['POST'])
 @admin_required
 def set_management_mode(server_id):
-    """Switch a server between 'managed' and 'observed' (plan 27, Decision 1/4).
+    """Switch a server between 'managed' and 'observed' (Decision 1/4).
 
     An operator confirms mode changes; detection only ever SUGGESTS. Existing
     managed boxes are never auto-downgraded — this is the explicit, audited flip.
@@ -54,7 +55,7 @@ def set_management_mode(server_id):
     if server is None:
         raise not_found('server')
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     mode = (data.get('mode') or '').strip().lower()
     if mode not in Server.MANAGEMENT_MODES:
         return jsonify({'error': f'mode must be one of {list(Server.MANAGEMENT_MODES)}'}), 400
@@ -62,7 +63,7 @@ def set_management_mode(server_id):
     previous = server.management_mode or 'managed'
     server.management_mode = mode
 
-    # Optional break-glass toggle (plan 31 #10, Decision 6): permit agent:update
+    # Optional break-glass toggle: permit agent:update
     # while observing. Only meaningful for observed boxes but always storable.
     details = {'from': previous, 'to': mode}
     if 'allow_agent_update_observed' in data:
@@ -92,7 +93,7 @@ def set_management_mode(server_id):
 @survey_bp.route('/<server_id>/observed-status', methods=['GET'])
 @admin_required
 def observed_status(server_id):
-    """Observe-mode status for a server (plan 31 #10/#11).
+    """Observe-mode status for a server.
 
     Returns the current mode, the agent:update break-glass flag, and how many
     commands the Observe guard has blocked — the "blocked N commands" counter.

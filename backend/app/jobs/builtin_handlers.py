@@ -61,19 +61,6 @@ def check_auto_sync_schedules():
             logger.error(f'Auto-sync check failed for site {site.id}: {e}')
 
 
-def check_workflow_schedules():
-    """Retired no-op (plan 45 Phase 4).
-
-    The React-Flow Workflow Builder and its execution engine were removed in
-    favour of the Automations extension (tramo), whose own in-process scheduler
-    drives ``cron-trigger`` nodes inside the managed engine. The legacy
-    ``workflows`` tables are kept for read-only export, so this scheduled handler
-    is retained as a no-op (avoids an orphaned-handler error for any persisted
-    ``workflow-schedules`` schedule row) but no longer executes anything.
-    """
-    return
-
-
 # How often the per-site WordPress health poller runs (seconds).
 HEALTH_CHECK_INTERVAL = 300
 # Retention for recorded health-check samples (days) — bounds unbounded growth
@@ -192,7 +179,7 @@ def check_update_schedules():
 
     # Resolve the extension's update service only when scheduled WP sites
     # actually exist — with serverkit-wordpress uninstalled there is nothing
-    # to run, and the bridge would raise (plan 52 Phase 5 graceful absence).
+    # to run, and the bridge would raise (graceful absence).
     from app.services.wordpress_bridge import wp_update_service
     try:
         WpUpdateService = wp_update_service()
@@ -390,15 +377,15 @@ def run_telemetry_retention():
 
 
 def run_disk_alert():
-    """Notify admins when the panel host's disk crosses 85% / 95%
-    (plan 85 §D3). On by default; ``storage.disk_alert_percent=0`` disables."""
+    """Notify admins when the panel host's disk crosses 85% / 95%.
+On by default; ``storage.disk_alert_percent=0`` disables."""
     from app.services import disk_alert_service
     level = disk_alert_service.check()
     return {'level': level} if level else None
 
 
 def run_request_metrics():
-    """Roll new access-log lines into per-app request metrics (plan 86 §A2).
+    """Roll new access-log lines into per-app request metrics.
 
     A builtin tick, so its once-a-minute successes get the 24 h tick retention
     rather than the full job retention."""
@@ -407,15 +394,15 @@ def run_request_metrics():
 
 
 def run_slot_standby_sweep():
-    """Stop warm standby slots whose time is up (plan 87 §B). Stopped, not
+    """Stop warm standby slots whose time is up. Stopped, not
     removed: a switch back to one is a start + health gate away."""
     from app.services.slot_deploy_service import SlotDeployService
     return SlotDeployService.sweep_standby() or None
 
 
 def run_crash_loop_check():
-    """Count container restarts and open/resolve crash-loop incidents
-    (plan 86 §E1). A builtin tick: successes keep the 24 h tick retention."""
+    """Count container restarts and open/resolve crash-loop incidents.
+A builtin tick: successes keep the 24 h tick retention."""
     from app.services.crash_loop_service import CrashLoopService
     return CrashLoopService.sweep()
 
@@ -586,7 +573,6 @@ _BUILTINS = [
     ('builtin.auto_sync',           check_auto_sync_schedules, 'auto-sync',          60,    60),
     ('builtin.snapshot_retention',  run_snapshot_retention,    'snapshot-retention', 3600,  120),
     ('builtin.restore_point_retention', run_restore_point_retention, 'restore-point-retention', 3600, 180),
-    ('builtin.workflow_schedules',  check_workflow_schedules,  'workflow-schedules', 60,    60),
     ('builtin.health_check',        run_health_checks,         'health-check',       300,   30),
     # 30s tick, not the monitor interval: the sweep only polls monitors whose own
     # interval has elapsed, so this bounds how late a 30s check can fire.
@@ -678,7 +664,7 @@ def seed_builtin_schedules():
         FLEET_DOCTOR_SCHEDULE_NAME, FLEET_DOCTOR_JOB_KIND,
         interval_seconds=86400, startup_delay_seconds=2400,
     )
-    # Weekly setup-health nag (plan 22) — handler registered by
+    # Weekly setup-health nag — handler registered by
     # SetupHealthService.register_jobs() at boot.
     from app.services.setup_health_service import NAG_JOB_KIND, NAG_SCHEDULE_NAME
     ScheduledJobService.ensure(

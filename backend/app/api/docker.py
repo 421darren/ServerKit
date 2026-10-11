@@ -5,6 +5,7 @@ from app.services.docker_service import DockerService
 from app.middleware.rbac import admin_required
 from app import db, paths
 from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 docker_bp = Blueprint('docker', __name__)
 
@@ -65,7 +66,7 @@ def get_container(container_id):
 @admin_required
 def create_container():
     """Create a new container."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'image' not in data:
         return jsonify({'error': 'image is required'}), 400
@@ -88,7 +89,7 @@ def create_container():
 @admin_required
 def run_container():
     """Run a new container (create and start)."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'image' not in data:
         return jsonify({'error': 'image is required'}), 400
@@ -136,7 +137,7 @@ def stop_container(container_id):
     blocked = _reject_if_protected(container_id)
     if blocked:
         return blocked
-    data = request.get_json() or {}
+    data = json_object()
     timeout = data.get('timeout', 10)
     result = DockerService.stop_container(container_id, timeout)
     return jsonify(result), 200 if result['success'] else 400
@@ -149,7 +150,7 @@ def restart_container(container_id):
     blocked = _reject_if_protected(container_id)
     if blocked:
         return blocked
-    data = request.get_json() or {}
+    data = json_object()
     timeout = data.get('timeout', 10)
     result = DockerService.restart_container(container_id, timeout)
     return jsonify(result), 200 if result['success'] else 400
@@ -163,7 +164,7 @@ def remove_container(container_id):
     if blocked:
         return blocked
 
-    data = request.get_json() or {}
+    data = json_object()
     force = data.get('force', False)
     volumes = data.get('volumes', False)
     result = DockerService.remove_container(container_id, force, volumes)
@@ -187,7 +188,7 @@ def get_container_logs(container_id):
 @jwt_required()
 def get_containers_stats():
     """Get resource stats for multiple containers."""
-    data = request.get_json() or {}
+    data = json_object()
     container_ids = data.get('ids') or data.get('container_ids') or []
 
     if not isinstance(container_ids, list):
@@ -211,7 +212,7 @@ def get_container_stats(container_id):
 @admin_required
 def exec_container(container_id):
     """Execute a command in a container."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'command' not in data:
         return jsonify({'error': 'command is required'}), 400
@@ -234,7 +235,7 @@ def list_images():
 @admin_required
 def pull_image():
     """Pull an image from registry."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'image' not in data:
         return jsonify({'error': 'image is required'}), 400
@@ -250,7 +251,7 @@ def pull_image():
 @admin_required
 def remove_image(image_id):
     """Remove an image."""
-    data = request.get_json() or {}
+    data = json_object()
     force = data.get('force', False)
     result = DockerService.remove_image(image_id, force)
     return jsonify(result), 200 if result['success'] else 400
@@ -260,7 +261,7 @@ def remove_image(image_id):
 @admin_required
 def build_image():
     """Build an image from Dockerfile."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data or 'tag' not in data:
         return jsonify({'error': 'path and tag are required'}), 400
@@ -278,7 +279,7 @@ def build_image():
 @admin_required
 def tag_image():
     """Tag an image."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'source' not in data or 'target' not in data:
         return jsonify({'error': 'source and target are required'}), 400
@@ -301,7 +302,7 @@ def list_networks():
 @admin_required
 def create_network():
     """Create a network."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'name' not in data:
         return jsonify({'error': 'name is required'}), 400
@@ -335,7 +336,7 @@ def list_volumes():
 @admin_required
 def create_volume():
     """Create a volume."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'name' not in data:
         return jsonify({'error': 'name is required'}), 400
@@ -351,7 +352,7 @@ def create_volume():
 @admin_required
 def remove_volume(volume_name):
     """Remove a volume."""
-    data = request.get_json() or {}
+    data = json_object()
     force = data.get('force', False)
     result = DockerService.remove_volume(volume_name, force)
     return jsonify(result), 200 if result['success'] else 400
@@ -371,7 +372,7 @@ def compose_list():
 @admin_required
 def compose_up():
     """Start Docker Compose services."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -388,7 +389,7 @@ def compose_up():
 @admin_required
 def compose_down():
     """Stop Docker Compose services."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -405,7 +406,7 @@ def compose_down():
 @admin_required
 def compose_ps():
     """List Docker Compose services."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -418,7 +419,7 @@ def compose_ps():
 @admin_required
 def compose_logs():
     """Get Docker Compose logs."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -435,7 +436,7 @@ def compose_logs():
 @admin_required
 def compose_restart():
     """Restart Docker Compose services."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -463,7 +464,7 @@ def docker_cleanup():
     - Images in use
     """
 
-    data = request.get_json() or {}
+    data = json_object()
     include_volumes = data.get('volumes', False)
 
     results = {
@@ -623,7 +624,7 @@ def cleanup_all_apps():
 @admin_required
 def compose_pull():
     """Pull Docker Compose images."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -636,7 +637,7 @@ def compose_pull():
 @admin_required
 def compose_validate():
     """Validate a Docker Compose file."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -649,7 +650,7 @@ def compose_validate():
 @admin_required
 def compose_config():
     """Get parsed Docker Compose configuration."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data:
         return jsonify({'error': 'path is required'}), 400
@@ -664,7 +665,7 @@ def compose_config():
 @admin_required
 def prune_system():
     """Remove unused Docker resources."""
-    data = request.get_json() or {}
+    data = json_object()
     result = DockerService.prune_system(
         data.get('all', False),
         data.get('volumes', False)
@@ -678,7 +679,7 @@ def prune_system():
 @admin_required
 def create_docker_app():
     """Create a Docker-based application."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 
 /**
- * One repo picker for every git provider (plan 79 G1).
+ * One repo picker for every git provider.
  *
  * Four near-identical components used to exist — GitHub, GitLab, Gitea and
  * Bitbucket — differing in which API functions they called, one URL shape, and

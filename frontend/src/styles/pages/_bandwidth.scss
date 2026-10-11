@@ -83,7 +83,7 @@
     }
 }
 
-// Service detail Overview: Attached services card (plan 86 §C4).
+// Service detail Overview: Attached services card.
 // Component: service-detail/AttachmentsCard.
 .attachments {
     &__list {
@@ -151,7 +151,7 @@
     }
 }
 
-// Service detail Overview: Connection pooling card (plan 86 §D1).
+// Service detail Overview: Connection pooling card.
 // Component: service-detail/PoolerCard.
 .pooler {
     &__hint,
@@ -164,7 +164,7 @@
     &__tradeoff { color: var(--text-faint); }
 }
 
-// Service detail Overview: bottleneck hints (plan 86 §A5).
+// Service detail Overview: bottleneck hints.
 // Component: service-detail/HintsCard.
 .hints {
     &__window {
@@ -217,7 +217,7 @@
     }
 }
 
-// Service detail Overview: A/B slot deploys (plan 87 §F).
+// Service detail Overview: A/B slot deploys.
 // Component: service-detail/SlotsCard.
 .slots-card {
     &__slots {
@@ -288,7 +288,7 @@
     }
 }
 
-// Settings: the compose data-split preview (plan 87 §C).
+// Settings: the compose data-split preview.
 // Component: apps/SlotDeploysPanel.
 .slot-split {
     &__downtime {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useAuth } from '../../contexts/useAuth.js';
 import { useTheme } from '../../contexts/useTheme.js';
 import api from '../../services/api';
@@ -34,6 +34,7 @@ function formatPercent(value) {
 
 const SystemTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const register = useSettingFocus();
     const { isAdmin } = useAuth();
     const { whiteLabel } = useTheme();
@@ -262,13 +263,13 @@ const SystemTab = () => {
                 )}
                 {timezonesError && <ErrorState compact error={timezonesError} onRetry={loadTimezones} />}
                 <div className="form-group">
-                    <label>{t('app.systemTab.changeTimezone', 'Change time zone')}</label>
+                    <label htmlFor={`${fieldId}-timezone`}>{t('app.systemTab.changeTimezone', 'Change time zone')}</label>
                     <div className="timezone-selector">
                         <Select
                             value={selectedTimezone || '__none__'}
                             onValueChange={(val) => setSelectedTimezone(val === '__none__' ? '' : val)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-timezone`}>
                                 <SelectValue placeholder={t('app.systemTab.selectTimezone', 'Select time zone…')} />
                             </SelectTrigger>
                             <SelectContent>

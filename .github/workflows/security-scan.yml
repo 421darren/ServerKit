@@ -12,7 +12,7 @@ on:
       - 'scripts/security/**'
       - '.github/workflows/security-scan.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'backend/**'
       - 'builtin-extensions/**'

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo  } from 'react';
+import { useCallback, useState, useEffect, useMemo, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '@/hooks/useConfirm';
@@ -91,6 +91,7 @@ const FIREWALL_VIEWS = [
 
 const FirewallTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [status, setStatus] = useState(null);
     const [rules, setRules] = useState([]);
     const [blockedIPs, setBlockedIPs] = useState([]);
@@ -694,8 +695,9 @@ const FirewallTab = () => {
             {/* Block IP Modal */}
             <Modal open={showBlockIPModal} onClose={() => setShowBlockIPModal(false)} title={t('app.firewallTab.blockIpAddress', 'Block IP address')}>
                 <div className="form-group">
-                    <Label>{t('common.labels.ipAddress', 'IP address')}</Label>
+                    <Label htmlFor={`${fieldId}-block-ip`}>{t('common.labels.ipAddress', 'IP address')}</Label>
                     <Input
+                        id={`${fieldId}-block-ip`}
                         type="text"
                         value={blockIP}
                         onChange={(e) => setBlockIP(e.target.value)}
@@ -725,9 +727,9 @@ const FirewallTab = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('app.firewallTab.protocol', 'Protocol')}</Label>
+                        <Label htmlFor={`${fieldId}-protocol`}>{t('app.firewallTab.protocol', 'Protocol')}</Label>
                         <Select value={newPort.protocol} onValueChange={(value) => setNewPort({ ...newPort, protocol: value })}>
-                            <SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-protocol`}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -748,9 +750,9 @@ const FirewallTab = () => {
             {/* Install Firewall Modal */}
             <Modal open={showInstallModal} onClose={() => setShowInstallModal(false)} title={t('app.firewallTab.installFirewall', 'Install firewall')}>
                 <div className="form-group">
-                    <Label>{t('app.firewallTab.selectFirewall', 'Select firewall')}</Label>
+                    <Label htmlFor={`${fieldId}-firewall`}>{t('app.firewallTab.selectFirewall', 'Select firewall')}</Label>
                     <Select value={selectedFirewall} onValueChange={setSelectedFirewall}>
-                        <SelectTrigger>
+                        <SelectTrigger id={`${fieldId}-firewall`}>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

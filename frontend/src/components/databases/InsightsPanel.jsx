@@ -17,8 +17,8 @@ function formatMs(ms) {
         : `${formatNumber(ms, { maximumFractionDigits: 1 })} ms`;
 }
 
-// Top queries + connection / cache-hit gauges for a Docker database container
-// (plan 86 §A3). Read-only, except the one switch PostgreSQL needs before it
+// Top queries + connection / cache-hit gauges for a Docker database container.
+// Read-only, except the one switch PostgreSQL needs before it
 // records statements: pg_stat_statements, applied through the config tuner
 // (restart included, rollback available there).
 export default function InsightsPanel({ conn, engine, isAdmin }) {

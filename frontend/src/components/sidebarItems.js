@@ -23,7 +23,7 @@ export const SIDEBAR_CATEGORIES = ['overview', 'infrastructure', 'operations', '
 // probe caught it.
 //
 // Keys resolve at RENDER, not at import: a label translated at module load
-// would translate once and never follow a locale switch (plan 79 §E).
+// would translate once and never follow a locale switch.
 export const SIDEBAR_CATEGORY_LABELS = {
     overview: { labelKey: 'nav.category.overview', label: 'Overview' },
     infrastructure: { labelKey: 'nav.category.infrastructure', label: 'Infrastructure' },
@@ -105,8 +105,7 @@ export const SIDEBAR_ITEMS = [
         category: 'infrastructure',
         icon: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
     },
-    // WordPress is the standalone serverkit-wordpress extension (plan 52
-    // Phase 5 — registry-installed, offered in the setup wizard);
+    // WordPress is the standalone serverkit-wordpress extension (registry-installed, offered in the setup wizard);
     // its sidebar item is contributed by the extension manifest (nav), so it
     // disappears cleanly when the extension is uninstalled.
     // Automations (tramo) is the standalone serverkit-tramo extension (own repo,
@@ -287,7 +286,7 @@ export const SIDEBAR_PRESETS = {
         hiddenItems: ['workflow', 'databases', 'docker', 'git', 'email', 'cron', ...ADVANCED_ITEM_IDS]
     }
     // Note: no 'wordpress' literal — its nav item is contributed by the
-    // serverkit-wordpress extension manifest (plan 52 Phase 4), so presets
+    // serverkit-wordpress extension manifest, so presets
     // don't hardcode an extension's id; uninstalled = absent.
 };
 
@@ -365,7 +364,7 @@ export function applyWorkspaceNavPermissions(items, workspace, user) {
 }
 
 // ---------------------------------------------------------------------------
-// Managed profile (ServerKit Cloud, plan 25)
+// Managed profile (ServerKit Cloud)
 //
 // The one table mapping a held managed capability to the sidebar ids it
 // removes, the route prefixes whose pages render the managed card, and the

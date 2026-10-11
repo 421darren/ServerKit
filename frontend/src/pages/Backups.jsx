@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import useTabParam from '../hooks/useTabParam';
 import { Upload, Check, AlertTriangle, Archive, Clock, Database, Package, FolderArchive, HardDrive, History, Cloud, RefreshCw, Trash2, Plus, FileArchive, DollarSign } from 'lucide-react';
 import api from '../services/api';
@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import useFocusParam from '../hooks/useFocusParam';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // `backups` is kept as an alias so old /backups/backups links still resolve to
 // the archive, which now answers to `snapshots`.
@@ -130,13 +131,14 @@ const SNAPSHOT_VIEWS = [
 
 const Backups = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm } = useConfirm();
     const [backups, setBackups] = useState([]);
     const [stats, setStats] = useState(null);
     const scheduleStore = useBackupSchedules();
     const { schedules, refresh: reloadSchedules } = scheduleStore;
-    // Backup scheduling held by ServerKit Cloud (plan 25): the page and local
+    // Backup scheduling held by ServerKit Cloud: the page and local
     // restore stay, the scheduling and destination surfaces become the card.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();
     const backupsManaged = isControlHeld('backup-scheduling');
@@ -442,7 +444,7 @@ const Backups = () => {
     };
 
     const formatTimestamp = (timestamp) => {
-        return new Date(timestamp).toLocaleString();
+        return formatDateTime(timestamp);
     };
 
     const formatMoney = (n) => {
@@ -1204,8 +1206,9 @@ const Backups = () => {
                                 {backupForm.type === 'files' && (
                                     <>
                                         <div className="form-group">
-                                            <label>{t('app.backups.backupNameOptional', 'Backup name (optional)')}</label>
+                                            <label htmlFor={`${fieldId}-backup-name`}>{t('app.backups.backupNameOptional', 'Backup name (optional)')}</label>
                                             <Input
+                                                id={`${fieldId}-backup-name`}
                                                 type="text"
                                                 value={backupForm.fileName}
                                                 onChange={(e) => setBackupForm({...backupForm, fileName: e.target.value})}
@@ -1213,8 +1216,9 @@ const Backups = () => {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label>{t('app.backups.fileDirectoryPathsOnePerLine', 'File/Directory Paths (one per line)')}</label>
+                                            <label htmlFor={`${fieldId}-file-paths`}>{t('app.backups.fileDirectoryPathsOnePerLine', 'File/Directory Paths (one per line)')}</label>
                                             <Textarea
+                                                id={`${fieldId}-file-paths`}
                                                 value={backupForm.filePaths}
                                                 onChange={(e) => setBackupForm({...backupForm, filePaths: e.target.value})}
                                                 placeholder={"/etc/nginx/nginx.conf\n/var/www/mysite/config\n/home/user/.env"}
@@ -1243,8 +1247,9 @@ const Backups = () => {
                                         </div>
 
                                         <div className="form-group">
-                                            <label>{t('app.backups.databaseName', 'Database name')}</label>
+                                            <label htmlFor={`${fieldId}-db-name`}>{t('app.backups.databaseName', 'Database name')}</label>
                                             <Input
+                                                id={`${fieldId}-db-name`}
                                                 type="text"
                                                 value={backupForm.dbName}
                                                 onChange={(e) => setBackupForm({...backupForm, dbName: e.target.value})}
@@ -1254,8 +1259,9 @@ const Backups = () => {
 
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <label>{t('common.labels.username', 'Username')}</label>
+                                                <label htmlFor={`${fieldId}-db-user`}>{t('common.labels.username', 'Username')}</label>
                                                 <Input
+                                                    id={`${fieldId}-db-user`}
                                                     type="text"
                                                     value={backupForm.dbUser}
                                                     onChange={(e) => setBackupForm({...backupForm, dbUser: e.target.value})}
@@ -1263,8 +1269,9 @@ const Backups = () => {
                                             </div>
 
                                             <div className="form-group">
-                                                <label>{t('common.labels.password', 'Password')}</label>
+                                                <label htmlFor={`${fieldId}-db-password`}>{t('common.labels.password', 'Password')}</label>
                                                 <Input
+                                                    id={`${fieldId}-db-password`}
                                                     type="password"
                                                     value={backupForm.dbPassword}
                                                     onChange={(e) => setBackupForm({...backupForm, dbPassword: e.target.value})}
@@ -1273,8 +1280,9 @@ const Backups = () => {
                                         </div>
 
                                         <div className="form-group">
-                                            <label>{t('app.backups.host', 'Host')}</label>
+                                            <label htmlFor={`${fieldId}-db-host`}>{t('app.backups.host', 'Host')}</label>
                                             <Input
+                                                id={`${fieldId}-db-host`}
                                                 type="text"
                                                 value={backupForm.dbHost}
                                                 onChange={(e) => setBackupForm({...backupForm, dbHost: e.target.value})}

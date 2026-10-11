@@ -5,6 +5,7 @@ from app.models import AuditLog
 from app.middleware.rbac import admin_required
 from app.services.invitation_service import InvitationService
 from app.services.audit_service import AuditService
+from app.api._request import json_object
 
 invitations_bp = Blueprint('invitations', __name__)
 
@@ -24,7 +25,7 @@ def list_invitations():
 @admin_required
 def create_invitation():
     """Create a new invitation."""
-    data = request.get_json()
+    data = json_object()
     current_user_id = get_jwt_identity()
 
     if not data:

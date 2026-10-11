@@ -45,7 +45,7 @@ export function formatBytes(bytes, options = {}) {
     // Whole-byte values never need decimals.
     const places = exponent === 0 ? 0 : decimals;
 
-    // Plan 79 §C: through the format door rather than toFixed + a regex trim.
+    // Through the format door rather than toFixed + a regex trim.
     // `maximumFractionDigits` drops trailing zeros for free ("1.0" -> "1",
     // "1.50" -> "1.5") AND uses the locale's decimal separator, which the
     // string-trim could not: a Spanish panel showed "1.5 KB" where every other

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Plus, XCircle } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -29,6 +29,7 @@ const DEFAULT_THRESHOLD = {
 // tab: same idea, wider scope. Two lists rather than one because they are two
 // backends — the host's four values are a single config, these are rows.
 export default function FleetThresholdsPanel({ refreshKey = 0 }) {
+    const fieldId = useId();
     const { t } = useTranslation();
     const toast = useToast();
     const [thresholds, setThresholds] = useState([]);
@@ -145,8 +146,9 @@ export default function FleetThresholdsPanel({ refreshKey = 0 }) {
             {adding && (
                 <div className="mon-threshold-form">
                     <div className="form-group">
-                        <Label>{t('app.fleetThresholdsPanel.appliesTo', 'Applies to')}</Label>
+                        <Label htmlFor={`${fieldId}-applies-to`}>{t('app.fleetThresholdsPanel.appliesTo', 'Applies to')}</Label>
                         <ServerPicker
+                            id={`${fieldId}-applies-to`}
                             value={draft.server_id || FLEET_DEFAULT}
                             onChange={(id) => setDraft((p) => ({ ...p, server_id: id === FLEET_DEFAULT ? undefined : id }))}
                             includeLocal={false}

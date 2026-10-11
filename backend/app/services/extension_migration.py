@@ -36,7 +36,7 @@ CONVERTED_BUILTIN_SLUGS = [
 ]
 
 # Extensions deliberately deleted from the product (replaced or retired) — the
-# Workflow Builder was superseded by serverkit-tramo (plan 45). Their leftover
+# Workflow Builder was superseded by serverkit-tramo. Their leftover
 # copy-installed files must be swept from the live tree: update.sh's plugin
 # carry-forward would otherwise preserve them into every fresh deploy, where
 # their dead imports (workflows → reactflow) sink the bundle build. The updater
@@ -79,7 +79,7 @@ def remove_retired_extensions():
 def _gitea_was_used():
     """True if this panel actually runs the self-hosted Gitea the git
     extension manages — the panel-managed application row exists. Gates
-    serverkit-git auto-install after its backend split (plan 52 Phase 6) so
+    serverkit-git auto-install after its backend split so
     only Gitea operators get the extension back automatically; deploys from
     external remotes never depended on it."""
     try:
@@ -106,7 +106,7 @@ def _email_was_configured():
 # Builtins auto-installed on upgrade ONLY when a usage predicate says the panel
 # actually used the feature (D3/#34). Fresh installs and panels that never used
 # the feature just see it in the Marketplace.
-# Empty since the plan 52 Ph2 cutover — every gated slug rides the registry
+# Empty since the registry cutover — every gated slug rides the registry
 # now. The dict (and its predicate wiring) stays: the next core->builtin
 # conversion drops straight in.
 GATED_BUILTIN_SLUGS = {}
@@ -132,7 +132,7 @@ def _scanners_dir_populated():
         return False
 
 
-# Security-suite extractions (plan 47 Ph3b-4 / plan 55 Phase 3). These left
+# Security-suite extractions. These left
 # core for REGISTRY extensions — there is no builtin folder to copy, so
 # upgrade parity means: when the host tool the old core surface managed is
 # actually present, install the extension from the registry once. Fail-soft:
@@ -140,8 +140,8 @@ def _scanners_dir_populated():
 # unmarked so the next boot retries; panels without the host tool just see
 # the extension in the Marketplace.
 REGISTRY_GATED_SLUGS = {
-    # serverkit-email / serverkit-git left the tree (plan 52 Ph2/Ph6
-    # cutover): their gated auto-installs ride the registry now, same
+    # serverkit-email / serverkit-git left the tree: their gated
+    # auto-installs ride the registry now, same
     # predicates as before.
     'serverkit-email': _email_was_configured,
     'serverkit-git': _gitea_was_used,
@@ -153,8 +153,8 @@ REGISTRY_GATED_SLUGS = {
 }
 
 _MARKER_KEY = 'extensions.auto_installed_slugs'
-# Slugs whose now-extracted backend has been re-acquired on an upgraded panel
-# (plan 47 Phase 2). Separate from _MARKER_KEY so the one-shot backend pickup
+# Slugs whose now-extracted backend has been re-acquired on an upgraded panel.
+# Separate from _MARKER_KEY so the one-shot backend pickup
 # runs even for slugs already auto-installed frontend-only in a prior release.
 _BACKEND_ACQUIRED_KEY = 'extensions.backend_acquired_slugs'
 
@@ -331,10 +331,10 @@ def _backend_acquired_slugs():
 
 
 def run_backend_acquisition():
-    """Re-acquire the backend for converted builtins that gained one (plan 47).
+    """Re-acquire the backend for converted builtins that gained one.
 
     Some builtins (ftp, cloud-provision, remote-access, status) first shipped as
-    *frontend-only* extensions whose API was still served by CORE. Plan 47 moves
+    *frontend-only* extensions whose API was still served by CORE. The lean-core split moves
     that backend into the extension and deregisters it from core. On an upgraded
     panel that already installed such an extension frontend-only, the installed
     row has ``has_backend=False`` and no backend on disk — so without this pass
@@ -355,7 +355,7 @@ def run_backend_acquisition():
     changed = False
     # Gated slugs join the sweep: acquisition only ever fires for a slug the
     # panel already INSTALLED whose builtin now ships a backend it lacks on
-    # disk (serverkit-git gained one in the plan 52 Phase 6 split), so the
+    # disk (serverkit-git gained one in its split), so the
     # usage gate has already been answered by the install itself.
     for slug in list(CONVERTED_BUILTIN_SLUGS) + list(GATED_BUILTIN_SLUGS):
         if slug in done:
@@ -379,7 +379,7 @@ def run_backend_acquisition():
             plugin_service.install_from_path(
                 entry['path'], user_id=row.installed_by, force=True,
                 source_type='builtin')
-            logger.info(f'Acquired extracted backend for {slug} (plan 47)')
+            logger.info(f'Acquired extracted backend for {slug}')
             done.add(slug)
             changed = True
         except Exception as e:

@@ -1,4 +1,4 @@
-"""Resolve manifest env references at injection time (plan 17, Phase 3).
+"""Resolve manifest env references at injection time.
 
 `fromSecret` -> a vault secret's value; `fromService` -> a sibling service's
 connection property. The resolved value never lands in the env-var row — it is
@@ -32,7 +32,7 @@ class EnvReferenceResolver:
             return cls._resolve_server(app, ref.get('property'))
         return None, f'unknown reference kind: {kind}'
 
-    # -- fromServer (appliance tier, plan 35) -------------------------------
+    # -- fromServer (appliance tier) -------------------------------
 
     @classmethod
     def _resolve_server(cls, app, prop: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
@@ -111,7 +111,7 @@ class EnvReferenceResolver:
         if sibling is not None:
             # An installed engine / connection-declaring template offers real
             # connection properties (redis:// url, S3 endpoint...) reachable
-            # over the shared network (plan 86 §C1); a plain app keeps the
+            # over the shared network; a plain app keeps the
             # generic host/port/url.
             from app.services.service_connection_service import ServiceConnectionService
             if ServiceConnectionService.is_connectable(sibling):

@@ -13,7 +13,7 @@ from app.models.json_column_mixin import JsonColumnMixin
 from app.models.mixins import TimestampMixin, SerializableMixin
 
 # DatabaseSnapshot + SyncJob were relocated to app/models/db_snapshot.py
-# (plan 52 Phase 1 — generic snapshot/sync machinery no longer owned by the WP
+# (generic snapshot/sync machinery no longer owned by the WP
 # model file). Re-exported here so existing
 # `from app.models.wordpress_site import DatabaseSnapshot` (and SyncJob) callers
 # keep working, and so WordPressSite.to_dict can reference DatabaseSnapshot.

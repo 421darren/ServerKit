@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import api from '../services/api';
 import { useToast } from '../contexts/useToast.js';
 import { useAuth } from '../contexts/useAuth.js';
@@ -30,6 +30,8 @@ import {
     Unlink,
 } from 'lucide-react';
 import { toastError } from '@/utils/errorMessage';
+import { averageUptime, formatUptimePercent } from '@/utils/uptime';
+import { formatDateTime } from '@/utils/intl';
 
 // pill → ds Pill kind · tone → .status-dot modifier · dot → .comp-dots square
 const STATUS_META = {
@@ -84,12 +86,7 @@ function normalizeSlug(value) {
 
 function formatDate(value) {
     if (!value) return 'Never';
-    return new Date(value).toLocaleString();
-}
-
-function formatUptime(value) {
-    if (typeof value !== 'number') return '100.00%';
-    return `${value.toFixed(2)}%`;
+    return formatDateTime(value);
 }
 
 function getPublicStatusUrl(page) {
@@ -107,6 +104,7 @@ function getOverallStatus(components) {
 
 const StatusPages = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { user } = useAuth();
     const [pages, setPages] = useState([]);
@@ -421,11 +419,7 @@ const StatusPages = () => {
                             </div>
                             <div className="sk-spec-card">
                                 <div className="sk-spec-card__label">{t('app.statusPages.30DayUptime', '30 day uptime')}</div>
-                                <div className="sk-spec-card__value">{formatUptime(
-                                    components.length
-                                        ? components.reduce((total, component) => total + (component.uptime_30d || 100), 0) / components.length
-                                        : 100
-                                )}</div>
+                                <div className="sk-spec-card__value">{formatUptimePercent(averageUptime(components))}</div>
                             </div>
                         </div>
 
@@ -477,7 +471,7 @@ const StatusPages = () => {
                                                         </div>
                                                         <div className="component-row__stats">
                                                             <Pill kind={meta.pill}>{meta.label}</Pill>
-                                                            <span>{formatUptime(component.uptime_30d)} uptime</span>
+                                                            <span>{formatUptimePercent(component.uptime_30d)} uptime</span>
                                                             <span>{component.last_response_time ? `${component.last_response_time}ms` : t('app.statusPages.noResponse', 'No response')}</span>
                                                             <span>{formatDate(component.last_check_at)}</span>
                                                         </div>
@@ -632,12 +626,12 @@ const StatusPages = () => {
                 )}
             >
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
-                    <Input value={pageForm.name} onChange={(e) => handlePageNameChange(e.target.value)} autoFocus />
+                    <label htmlFor={`${fieldId}-page-name`}>{t('common.labels.name', 'Name')}</label>
+                    <Input id={`${fieldId}-page-name`} value={pageForm.name} onChange={(e) => handlePageNameChange(e.target.value)} autoFocus />
                 </div>
                 <div className="form-group">
-                    <label>{t('app.statusPages.slug', 'Slug')}</label>
-                    <Input
+                    <label htmlFor={`${fieldId}-page-slug`}>{t('app.statusPages.slug', 'Slug')}</label>
+                    <Input id={`${fieldId}-page-slug`}
                         value={pageForm.slug}
                         onChange={(e) => setPageForm({ ...pageForm, slug: normalizeSlug(e.target.value) })}
                         placeholder="my-services"
@@ -645,8 +639,8 @@ const StatusPages = () => {
                     <span className="form-help">/status/{pageForm.slug || 'my-services'}</span>
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
-                    <Textarea
+                    <label htmlFor={`${fieldId}-page-description`}>{t('common.labels.description', 'Description')}</label>
+                    <Textarea id={`${fieldId}-page-description`}
                         value={pageForm.description}
                         onChange={(e) => setPageForm({ ...pageForm, description: e.target.value })}
                         rows={3}
@@ -705,12 +699,12 @@ const StatusPages = () => {
             >
                 <div className="status-modal-grid">
                     <div className="form-group">
-                        <label>{t('common.labels.name', 'Name')}</label>
-                        <Input value={compForm.name} onChange={(e) => setCompForm({ ...compForm, name: e.target.value })} autoFocus />
+                        <label htmlFor={`${fieldId}-comp-name`}>{t('common.labels.name', 'Name')}</label>
+                        <Input id={`${fieldId}-comp-name`} value={compForm.name} onChange={(e) => setCompForm({ ...compForm, name: e.target.value })} autoFocus />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.statusPages.group', 'Group')}</label>
-                        <Input value={compForm.group} onChange={(e) => setCompForm({ ...compForm, group: e.target.value })} />
+                        <label htmlFor={`${fieldId}-comp-group`}>{t('app.statusPages.group', 'Group')}</label>
+                        <Input id={`${fieldId}-comp-group`} value={compForm.group} onChange={(e) => setCompForm({ ...compForm, group: e.target.value })} />
                     </div>
                     <div className="form-group">
                         <label htmlFor="status-comp-check-type">{t('app.statusPages.checkType', 'Check type')}</label>
@@ -728,16 +722,16 @@ const StatusPages = () => {
                         </Select>
                     </div>
                     <div className="form-group">
-                        <label>{t('common.labels.target', 'Target')}</label>
-                        <Input
+                        <label htmlFor={`${fieldId}-comp-target`}>{t('common.labels.target', 'Target')}</label>
+                        <Input id={`${fieldId}-comp-target`}
                             value={compForm.check_target}
                             onChange={(e) => setCompForm({ ...compForm, check_target: e.target.value })}
                             placeholder={CHECK_TARGET_PLACEHOLDERS[compForm.check_type]}
                         />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.statusPages.interval', 'Interval')}</label>
-                        <Input
+                        <label htmlFor={`${fieldId}-comp-interval`}>{t('app.statusPages.interval', 'Interval')}</label>
+                        <Input id={`${fieldId}-comp-interval`}
                             type="number"
                             min="30"
                             value={compForm.check_interval}
@@ -745,8 +739,8 @@ const StatusPages = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.statusPages.timeout', 'Timeout')}</label>
-                        <Input
+                        <label htmlFor={`${fieldId}-comp-timeout`}>{t('app.statusPages.timeout', 'Timeout')}</label>
+                        <Input id={`${fieldId}-comp-timeout`}
                             type="number"
                             min="1"
                             value={compForm.check_timeout}
@@ -772,8 +766,8 @@ const StatusPages = () => {
                 )}
             >
                 <div className="form-group">
-                    <label>{t('common.labels.title', 'Title')}</label>
-                    <Input value={incidentForm.title} onChange={(e) => setIncidentForm({ ...incidentForm, title: e.target.value })} autoFocus />
+                    <label htmlFor={`${fieldId}-incident-title`}>{t('common.labels.title', 'Title')}</label>
+                    <Input id={`${fieldId}-incident-title`} value={incidentForm.title} onChange={(e) => setIncidentForm({ ...incidentForm, title: e.target.value })} autoFocus />
                 </div>
                 <div className="status-modal-grid">
                     <div className="form-group">
@@ -806,8 +800,8 @@ const StatusPages = () => {
                     </div>
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
-                    <Textarea
+                    <label htmlFor={`${fieldId}-incident-body`}>{t('common.labels.description', 'Description')}</label>
+                    <Textarea id={`${fieldId}-incident-body`}
                         value={incidentForm.body}
                         onChange={(e) => setIncidentForm({ ...incidentForm, body: e.target.value })}
                         rows={4}

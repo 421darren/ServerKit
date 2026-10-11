@@ -1,4 +1,4 @@
-// Runnable actions for the command palette (plan 41, Phase 3). Typing `>` filters
+// Runnable actions for the command palette. Typing `>` filters
 // results to this list. v1 ships only safe, non-destructive verbs — openers and
 // navigation-with-intent — never blind destructive/exec commands (those belong to
 // entity rows with confirm dialogs; see the plan's "Deliberately deferred").

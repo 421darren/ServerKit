@@ -231,7 +231,7 @@ def app_access_tier(user, application):
     - otherwise                       -> None
 
     The highest tier wins. This is the single seam behind require_app_member and
-    the membership visibility model (plan 19 Decision 2).
+    the membership visibility model.
     """
     if user.is_admin or application.user_id == user.id:
         return 'owner'

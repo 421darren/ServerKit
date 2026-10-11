@@ -12,6 +12,7 @@ from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
 from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 marketplace_bp = Blueprint('marketplace', __name__)
 
@@ -55,7 +56,7 @@ def install_registry(slug):
     if entry is not None and entry.get('trust') == 'unreviewed' \
             and not registry_service._show_unreviewed():
         return jsonify({'error': 'Extension not found in the registry'}), 404
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     trust = (entry or {}).get('trust', 'unreviewed')
     acknowledged = body.get('acknowledge_risk') is True
     # Consent gate (shared with the update path — audits M2/M3):

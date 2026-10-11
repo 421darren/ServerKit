@@ -1,4 +1,4 @@
-"""Reconcile-on-connect (plan 22 Phase 3).
+"""Reconcile-on-connect.
 
 When the operator finally connects a DNS provider / sets a server IP / picks a
 base domain, the sites they already created are still pointing at nothing. This

@@ -1,4 +1,4 @@
-// Plan 79 §C — the one locale-aware formatting door.
+// The one locale-aware formatting door.
 //
 // Before this, five util files formatted things for humans and none of them
 // took a locale, while 93 files called `toLocaleDateString()` with no

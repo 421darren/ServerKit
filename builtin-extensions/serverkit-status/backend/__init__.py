@@ -1,6 +1,6 @@
 """ServerKit Status Pages extension backend package.
 
-Extracted from core (plan 47): the status-pages blueprint (public status/badge
+Extracted from core: the status-pages blueprint (public status/badge
 routes + authenticated management API) and its service ship here so a fresh panel
 that never publishes a status page loads none of it. Mounted under
 ``/api/v1/status`` via the manifest's ``url_prefix``; the public /status/<slug>

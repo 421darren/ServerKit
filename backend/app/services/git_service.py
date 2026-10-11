@@ -43,7 +43,6 @@ class GitService:
     @staticmethod
     def _generate_secret() -> str:
         """Generate a random webhook secret."""
-        import secrets
         return secrets.token_hex(32)
 
     @classmethod
@@ -101,7 +100,7 @@ class GitService:
     def _git_out(app_path, *args, timeout=None):
         """stdout of a read-only ``git -C <app_path> <args>``, or ``None``.
 
-        ``None`` means the command did not succeed — not "empty output" (§A).
+        ``None`` means the command did not succeed — not "empty output".
         ``get_commit_info`` alone had five copies of
         ``subprocess.run(...); x = result.stdout.strip() if result.returncode
         == 0 else None``, which is this function written out by hand each time.
@@ -342,8 +341,11 @@ class GitService:
         if not app_config:
             return False
 
-        # Simple token verification
-        if token != app_config.get('webhook_token'):
+        # Constant-time, and never a match when either side is missing —
+        # `None != None` let a tokenless request through for a tokenless app.
+        expected = app_config.get('webhook_token')
+        if not (isinstance(token, str) and isinstance(expected, str) and token and expected
+                and hmac.compare_digest(token.encode(), expected.encode())):
             return False
 
         # If signature provided, verify based on provider
@@ -464,7 +466,7 @@ class GitService:
             }
 
         # Emit a panel event so Automations (tramo) workflows can trigger on a
-        # git push through the events bridge (plan 45 Ph4, ported from the
+        # git push through the events bridge (ported from the
         # retired Workflow Builder's 'git_push').
         try:
             from app.services.event_service import EventService
@@ -481,7 +483,7 @@ class GitService:
         result = cls.deploy(app_id, trigger='webhook')
 
         # Push-to-reconfigure: re-read serverkit.yaml at the new commit and
-        # reconcile (plan 17 #17). Best-effort — never affects the deploy result.
+        # reconcile. Best-effort — never affects the deploy result.
         try:
             from app.services.manifest_sync_service import ManifestSyncService
             commit = (payload.get('after')
@@ -635,8 +637,8 @@ class GitService:
 
     # ------------------------------------------------------------------
     # The Gitea self-host half (install/lifecycle/config + repo browsing
-    # via GiteaAPIService) moved to the serverkit-git extension (plan 52
-    # Phase 6). Everything above IS the deploy pipeline and stays core:
+    # via GiteaAPIService) moved to the serverkit-git extension.
+    # Everything above IS the deploy pipeline and stays core:
     # apps.py / buildpacks.py / deploy.py / deployment_service.py /
     # manifest_apply_service.py import it, extension installed or not.
     # NginxService.create/remove/get_gitea_config remain core helpers the

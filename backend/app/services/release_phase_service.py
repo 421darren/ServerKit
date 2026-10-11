@@ -1,4 +1,4 @@
-"""Pre-switch phases of a slot deploy: DB snapshot and release command (plan 87 §D).
+"""Pre-switch phases of a slot deploy: DB snapshot and release command.
 
 Both slots talk to the same database, so anything that changes it runs
 exactly once, BEFORE the switch, while the old release still serves:

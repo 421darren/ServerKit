@@ -80,28 +80,6 @@ class NonceService:
             self._nonces[key] = expiry
             return True
 
-    def is_replay(self, server_id: str, nonce: str) -> bool:
-        """
-        Check if a nonce would be considered a replay (without recording).
-
-        Args:
-            server_id: The server ID associated with the nonce
-            nonce: The nonce value to check
-
-        Returns:
-            bool: True if this would be a replay, False otherwise
-        """
-        if not nonce:
-            return True
-
-        key = (server_id, nonce)
-        now = time.time()
-
-        with self._lock:
-            if key in self._nonces:
-                return self._nonces[key] > now
-            return False
-
     def _cleanup_loop(self):
         """Background thread to clean up expired nonces."""
         while not self._stop_cleanup.is_set():

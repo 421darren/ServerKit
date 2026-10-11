@@ -39,7 +39,7 @@ import {
     routesForPlacement,
 } from './routes/routeManifest';
 
-// /apps/* is the legacy URL space for what is now "Services" (§1 unification).
+// /apps/* is the legacy URL space for what is now "Services".
 // The list route already redirects; this preserves deep links to a single app
 // (and its active tab) by forwarding to the matching /services/* path.
 function LegacyAppRedirect() {
@@ -250,7 +250,7 @@ function App() {
     return (
         <Router basename={TUNNEL_BASE || undefined}>
             {/* Outermost: a toast raised while the theme or workspace is still
-                initialising must already be translatable (plan 79 B1). */}
+                initialising must already be translatable. */}
             <LocaleProvider>
             <WorkspaceProvider>
                 <ThemeProvider>

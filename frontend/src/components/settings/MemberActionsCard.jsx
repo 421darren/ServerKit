@@ -3,7 +3,7 @@ import api from '../../services/api';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
-// Admin control for the member-action escape hatch (plan 19 Phase 5 / plan 29 #13).
+// Admin control for the member-action escape hatch.
 // Curated, parameterized actions a workspace member may run for an app they can
 // reach (no free text ever reaches a shell; every run is audit-logged). On by
 // default — this surface just makes the flag visible so an operator can turn the

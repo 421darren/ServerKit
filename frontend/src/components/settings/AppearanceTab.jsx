@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useId } from 'react';
 import { useTheme } from '../../contexts/useTheme.js';
 import { useAuth } from '../../contexts/useAuth.js';
 import { useToast } from '../../contexts/useToast.js';
@@ -27,6 +27,7 @@ const ACCENT_PRESETS = [
 ];
 
 const AppearanceTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const {
         theme, setTheme, accentColor, setAccentColor, hasCustomAccent, resetAccentColor,
@@ -161,9 +162,10 @@ const AppearanceTab = () => {
                     ))}
                 </div>
                 <div className="accent-custom">
-                    <label className="accent-custom-label">{t('app.appearanceTab.customColor', 'Custom color')}</label>
+                    <label className="accent-custom-label" htmlFor={`${fieldId}-accent`}>{t('app.appearanceTab.customColor', 'Custom color')}</label>
                     <div className="accent-custom-row">
                         <input
+                            id={`${fieldId}-accent`}
                             type="color"
                             className="accent-custom-input"
                             value={accentColor}

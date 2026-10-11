@@ -24,6 +24,7 @@ import {
     TrashIcon,
 } from './serverDetailShared';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // CloudflaredTab — manage Cloudflare named tunnels via the agent.
 //
@@ -331,7 +332,7 @@ const CloudflaredTab = ({ serverId, serverStatus }) => {
                 return Number.isNaN(time) ? null : time;
             },
             cellClassName: 'sk-cell-dim',
-            render: (t) => (t.created_at ? new Date(t.created_at).toLocaleString() : '—'),
+            render: (t) => (t.created_at ? formatDateTime(t.created_at) : '—'),
         },
         {
             key: 'actions',

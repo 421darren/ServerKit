@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import func
 
+from app.exceptions import ApplicationError
 from app import db
 from app.queue_bus.broker import AbstractBroker
 from app.queue_bus.models import QueueGroup, Queue, QueueMessage
@@ -11,12 +12,13 @@ from app.queue_bus.models import QueueGroup, Queue, QueueMessage
 logger = logging.getLogger(__name__)
 
 
-class QueueBusError(Exception):
-    """Domain error for queue operations."""
+class QueueBusError(ApplicationError):
+    """Domain error for queue operations; the global handler renders it."""
+
+    code = 'queue_bus'
 
     def __init__(self, message, status_code=400):
         super().__init__(message)
-        self.message = message
         self.status_code = status_code
 
 
@@ -215,6 +217,24 @@ class SQLAlchemyBroker(AbstractBroker):
 
         db.session.commit()
         return message.to_dict()
+
+    def recover_in_flight(self):
+        # Only safe at boot: the panel is one process, so anything still
+        # in flight belonged to a process that is gone and will never
+        # complete it. Redeliver it, or dead-letter it if out of attempts.
+        stranded = QueueMessage.query.filter(
+            QueueMessage.status == QueueMessage.STATUS_IN_FLIGHT).all()
+        for message in stranded:
+            message.invisible_until = None
+            if message.attempts >= message.max_attempts:
+                message.status = QueueMessage.STATUS_DEAD_LETTER
+                message.error_message = (message.error_message or '') + (
+                    f'[{datetime.utcnow().isoformat()}] interrupted by a restart\n')
+            else:
+                message.status = QueueMessage.STATUS_PENDING
+                message.visible_after = datetime.utcnow()
+        db.session.commit()
+        return len(stranded)
 
     def requeue(self, group_slug, queue_slug, message_id):
         message = self._get_message_or_raise(group_slug, queue_slug, message_id)

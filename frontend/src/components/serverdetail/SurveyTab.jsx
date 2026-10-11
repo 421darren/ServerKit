@@ -19,8 +19,9 @@ import {
     Network,
 } from 'lucide-react';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate, formatDateTime } from '@/utils/intl';
 
-// Survey tab (plan 27/28) — the read-only "Server Map" for a paired agent.
+// Survey tab — the read-only "Server Map" for a paired agent.
 //
 // A survey is a strictly read-only "flight": the agent runs a declarative probe
 // catalog and returns what's running on the box; the panel normalizes it into a
@@ -180,7 +181,7 @@ const SurveyTab = ({ serverId, serverStatus, server }) => {
             >
                 <div className="survey-tab__toolbar-info">
                     {takenAt ? (
-                        <span className="survey-tab__muted">{t('app.surveyTab.lastFlight', 'Last flight')} {new Date(takenAt).toLocaleString()}</span>
+                        <span className="survey-tab__muted">{t('app.surveyTab.lastFlight', 'Last flight')} {formatDateTime(takenAt)}</span>
                     ) : (
                         <span className="survey-tab__muted">{t('app.surveyTab.noFlightsYetRunOneTo', 'No flights yet. Run one to map this server.')}</span>
                     )}
@@ -294,7 +295,7 @@ const SurveyTab = ({ serverId, serverStatus, server }) => {
                         render={(c) => (
                             <>
                                 <span className="survey-tab__mono">{c.domain}</span>
-                                {c.expires_at ? <span className="survey-tab__muted"> {t('app.surveyTab.expires', 'expires')} {new Date(c.expires_at).toLocaleDateString()}</span> : null}
+                                {c.expires_at ? <span className="survey-tab__muted"> {t('app.surveyTab.expires', 'expires')} {formatDate(c.expires_at)}</span> : null}
                             </>
                         )}
                     />

@@ -130,7 +130,7 @@ python3 -m venv --copies "$VENV_BUILD_DIR"
 source "$VENV_BUILD_DIR/bin/activate"
 pip install --upgrade pip --quiet
 pip install -r "$BUILD_DIR/backend/requirements.txt" --quiet
-pip install gunicorn gevent gevent-websocket --quiet
+pip install gunicorn --quiet
 
 # Make the venv relocatable: rewrite absolute paths in activate scripts and
 # shebangs so the venv works at $TARGET_VENV_PATH on the target server.

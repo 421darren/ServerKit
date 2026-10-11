@@ -1029,6 +1029,48 @@ EOF
 fi
 
 # --------------------------------------------------------------------------
+# T20c — a missing checksums.txt used to be "skipping verification" and the
+# unverified tarball replaced the running panel. It must refuse unless the
+# operator opts out explicitly (SERVERKIT_ALLOW_UNVERIFIED=1).
+# --------------------------------------------------------------------------
+t="$WORK/t20c"; mkdir -p "$t/bin"
+printf 'fake-release-bytes\n' > "$t/tarball"
+cat > "$t/bin/curl" <<EOF
+#!/usr/bin/env bash
+out=""; url=""
+while [ \$# -gt 0 ]; do
+    case "\$1" in -o) out="\$2"; shift 2 ;; -*) shift ;; *) url="\$1"; shift ;; esac
+done
+case "\$url" in
+    *checksums.txt) exit 22 ;;
+    *)              cp "$t/tarball" "\$out" ;;
+esac
+EOF
+chmod +x "$t/bin/curl"
+_t20c() {
+    (
+        set -Eeuo pipefail
+        export PATH="$t/bin:$PATH"
+        SERVERKIT_OFFLINE_TARBALL=""; SERVERKIT_MIRROR_URL="http://mirror.invalid"
+        SERVERKIT_ALLOW_UNVERIFIED="${1:-0}"
+        download_release v9.9.9
+    ) 2>"$t/stderr.txt"
+}
+if out="$(_t20c 0)"; then
+    bad "download_release accepted a release with no checksums.txt: [$out]"
+elif grep -q 'refusing an unverified release' "$t/stderr.txt"; then
+    ok "download_release refuses a release whose checksums.txt is missing"
+else
+    bad "download_release failed without saying why: $(cat "$t/stderr.txt")"
+fi
+if out="$(_t20c 1)" && [ -f "$out" ] && grep -q 'UNVERIFIED' "$t/stderr.txt"; then
+    ok "SERVERKIT_ALLOW_UNVERIFIED=1 installs it, loudly"
+    rm -rf "$(dirname "$out")"
+else
+    bad "SERVERKIT_ALLOW_UNVERIFIED=1 did not allow the unverified release"
+fi
+
+# --------------------------------------------------------------------------
 # T20b — deploy_release removes its download and unpack dirs. It used to leave
 # the ~70 MB tarball's mktemp dir behind on every update (a 25 GB box had 11
 # of them, 644 MB), and a failed download stranded its dir as well. An

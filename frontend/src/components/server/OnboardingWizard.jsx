@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, Circle, XCircle, RotateCw, Clock, ChevronDown } 
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatTime } from '@/utils/intl';
 
 // Onboarding status cadence while non-terminal.
 const ONBOARDING_POLL_MS = 3000;
@@ -68,7 +69,7 @@ function formatLogTime(iso) {
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    return d.toLocaleTimeString([], { hour12: false });
+    return formatTime(d, { parts: { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false } });
 }
 
 /**

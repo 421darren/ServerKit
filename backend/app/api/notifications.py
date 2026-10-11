@@ -12,7 +12,7 @@ from app.services.settings_service import SettingsService
 from app.services.bounce_service import BounceService
 from app.notifications.service import NotificationBusService
 from app.notifications.providers import EmailProviderService, SUPPORTED as EMAIL_PROVIDERS
-from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 # Header carrying the provider's HMAC-SHA256 of the raw request body, formatted
 # as ``sha256=<hexdigest>`` (GitHub-style). The shared secret is
@@ -64,7 +64,7 @@ def get_config():
 @admin_required
 def update_channel_config(channel):
     """Update configuration for a specific notification channel."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -179,7 +179,7 @@ def get_user_preferences():
 def update_user_preferences():
     """Update current user's notification preferences."""
     current_user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -225,11 +225,8 @@ def update_user_preferences():
         if 'end' in qh:
             prefs.quiet_hours_end = qh['end']
 
-    try:
-        db.session.commit()
-        return jsonify({'success': True, 'preferences': prefs.to_dict()}), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)  # rolls the session back itself
+    db.session.commit()
+    return jsonify({'success': True, 'preferences': prefs.to_dict()}), 200
 
 
 @notifications_bp.route('/preferences/test', methods=['POST'])
@@ -406,7 +403,7 @@ def list_chat_connections():
 def add_chat_connection():
     """Create a chat/webhook connection (destination + secret encrypted)."""
     from app.services.chat_webhook_service import ChatWebhookService
-    data = request.get_json() or {}
+    data = json_object()
     data['created_by'] = int(get_jwt_identity())
     try:
         conn = ChatWebhookService.add(data)
@@ -486,7 +483,7 @@ def list_email_providers():
 @admin_required
 def add_email_provider():
     """Add an email provider, then validate its credentials."""
-    data = request.get_json() or {}
+    data = json_object()
     try:
         provider = EmailProviderService.add_provider(data, user_id=int(get_jwt_identity()))
     except ValueError as exc:
@@ -507,8 +504,8 @@ def test_email_provider(provider_id):
 @admin_required
 def update_email_provider(provider_id):
     """Update a provider's usage flags (uses_notifications / uses_relay /
-    relay_priority) — §6 unification. uses_relay applies only to SMTP."""
-    row = EmailProviderService.update_usage(provider_id, request.get_json() or {})
+    relay_priority). uses_relay applies only to SMTP."""
+    row = EmailProviderService.update_usage(provider_id, json_object())
     if row is None:
         return jsonify({'error': 'Provider not found'}), 404
     return jsonify({'success': True, 'provider': row.to_dict()}), 200

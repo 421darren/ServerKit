@@ -2,7 +2,7 @@ import { statusColor } from '@/components/ds/status';
 import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/utils/time';
 /**
- * The 13 core dashboard widget renderers (plan 62).
+ * The 13 core dashboard widget renderers.
  *
  * Every renderer is presentational — all fetching lives in ./useWidgetData.
  * Every renderer handles three states: loading, empty and error. Nothing here
@@ -30,6 +30,7 @@ import { Gauge, Pill, serviceStatusKind, statusKind, alertStatusKind } from '@/c
 import { getWidgetType } from './registry';
 import { useTranslation } from 'react-i18next';
 import { t } from '../../../i18n/t';
+import { formatTime } from '@/utils/intl';
 import {
     aggregate,
     chartDomain,
@@ -228,7 +229,7 @@ function WidgetChart({
                     <div className={`skw-chart__tip${flip ? ' skw-chart__tip--flip' : ''}`} style={{ left: `${hoverPct}%` }}>
                         {stampAt && (
                             <div className="skw-chart__tip-when">
-                                {new Date(stampAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {formatTime(stampAt, { parts: { hour: '2-digit', minute: '2-digit' } })}
                             </div>
                         )}
                         {hovered.map((point, i) => (

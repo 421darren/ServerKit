@@ -1,5 +1,5 @@
 import { statusKind } from '@/components/ds/status';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Network, Plus, Trash2, Globe, Lock, ShieldCheck, ExternalLink,
@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Tunnel / service status → status-pill tone.
 const pillKind = (status) => statusKind(status);
@@ -37,6 +38,7 @@ const EMPTY_FORM = {
 
 const RemoteAccess = ({ serverId }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const [tunnels, setTunnels] = useState([]);
     const [services, setServices] = useState({}); // tunnelId -> [service]
@@ -264,7 +266,7 @@ const RemoteAccess = ({ serverId }) => {
                                             <span className="ra-dot">·</span>
                                             <span>
                                                 {tunnel.last_handshake_at
-                                                    ? t('app.remoteAccess.handshakeAt', 'handshake {{time}}', { time: new Date(tunnel.last_handshake_at).toLocaleString() })
+                                                    ? t('app.remoteAccess.handshakeAt', 'handshake {{time}}', { time: formatDateTime(tunnel.last_handshake_at) })
                                                     : t('app.remoteAccess.noHandshakeYetShort', 'no handshake yet')}
                                             </span>
                                         </div>
@@ -374,9 +376,10 @@ const RemoteAccess = ({ serverId }) => {
                     {!wizardTunnel && (
                         <>
                             <div className="ra-service-field">
-                                <Label>{t('app.remoteAccess.privateHostWhereTheServiceRuns', 'Private host (where the service runs)')}</Label>
+                                <Label htmlFor={`${fieldId}-private-host`}>{t('app.remoteAccess.privateHostWhereTheServiceRuns', 'Private host (where the service runs)')}</Label>
                                 {serverId ? (
                                     <Input
+                                        id={`${fieldId}-private-host`}
                                         value={currentServer?.name || serverId}
                                         disabled
                                     />
@@ -384,6 +387,7 @@ const RemoteAccess = ({ serverId }) => {
                                     // Tunnel endpoints are agent servers; the panel host
                                     // has no server row, so "Local" is not offered.
                                     <ServerPicker
+                                        id={`${fieldId}-private-host`}
                                         value={form.privateServerId}
                                         onChange={(id) => setField('privateServerId', id)}
                                         capability="wireguard"
@@ -393,8 +397,9 @@ const RemoteAccess = ({ serverId }) => {
                                 )}
                             </div>
                             <div className="ra-service-field">
-                                <Label>{t('app.remoteAccess.edgeServerPublicIpFrontsThe', 'Edge server (public IP, fronts the tunnel)')}</Label>
+                                <Label htmlFor={`${fieldId}-edge-server`}>{t('app.remoteAccess.edgeServerPublicIpFrontsThe', 'Edge server (public IP, fronts the tunnel)')}</Label>
                                 <ServerPicker
+                                    id={`${fieldId}-edge-server`}
                                     value={form.edgeServerId}
                                     onChange={(id) => setField('edgeServerId', id)}
                                     capability="wireguard"
@@ -439,32 +444,34 @@ const RemoteAccess = ({ serverId }) => {
 
                     <div className="ra-service-option">
                         <div>
-                            <Label>{t('app.remoteAccess.httpsLetSEncrypt', 'HTTPS (Let\'s Encrypt)')}</Label>
+                            <Label htmlFor={`${fieldId}-ssl`}>{t('app.remoteAccess.httpsLetSEncrypt', 'HTTPS (Let\'s Encrypt)')}</Label>
                             <p className="ra-service-hint">{t('app.remoteAccess.obtainACertificateOnTheEdge', 'Obtain a certificate on the edge.')}</p>
                         </div>
-                        <Switch checked={form.ssl} onCheckedChange={(v) => setField('ssl', v)} />
+                        <Switch id={`${fieldId}-ssl`} checked={form.ssl} onCheckedChange={(v) => setField('ssl', v)} />
                     </div>
 
                     <div className="ra-service-option">
                         <div>
-                            <Label>{t('app.remoteAccess.requireLoginBasicAuth', 'Require login (basic auth)')}</Label>
+                            <Label htmlFor={`${fieldId}-require-auth`}>{t('app.remoteAccess.requireLoginBasicAuth', 'Require login (basic auth)')}</Label>
                             <p className="ra-service-hint">{t('app.remoteAccess.putAUsernamePasswordInFront', 'Put a username/password in front of the service.')}</p>
                         </div>
-                        <Switch checked={form.requireAuth} onCheckedChange={(v) => setField('requireAuth', v)} />
+                        <Switch id={`${fieldId}-require-auth`} checked={form.requireAuth} onCheckedChange={(v) => setField('requireAuth', v)} />
                     </div>
 
                     {form.requireAuth && (
                         <div className="ra-service-credentials">
                             <div className="ra-service-field">
-                                <Label>{t('common.labels.username', 'Username')}</Label>
+                                <Label htmlFor={`${fieldId}-auth-username`}>{t('common.labels.username', 'Username')}</Label>
                                 <Input
+                                    id={`${fieldId}-auth-username`}
                                     value={form.authUsername}
                                     onChange={(e) => setField('authUsername', e.target.value)}
                                 />
                             </div>
                             <div className="ra-service-field">
-                                <Label>{t('common.labels.password', 'Password')}</Label>
+                                <Label htmlFor={`${fieldId}-auth-password`}>{t('common.labels.password', 'Password')}</Label>
                                 <Input
+                                    id={`${fieldId}-auth-password`}
                                     type="password"
                                     value={form.authPassword}
                                     onChange={(e) => setField('authPassword', e.target.value)}

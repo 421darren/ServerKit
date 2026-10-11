@@ -38,7 +38,7 @@ class ChatAdapter(ChannelAdapter):
 
     def deliver(self, delivery, notification):
         target = (delivery.target or '').strip()
-        # Org-level chat/webhook connections (plan 24 Phase 4) address their
+        # Org-level chat/webhook connections address their
         # destination as ``conn:<id>`` — resolve + deliver via the connection
         # service (encrypted creds, HMAC signing, per-connection category).
         if target.startswith('conn:'):

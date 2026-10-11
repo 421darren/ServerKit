@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId  } from 'react';
 import api from '../../services/api';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { useAuth } from '../../contexts/useAuth.js';
 import { useTranslation } from 'react-i18next';
 
 const SiteSettingsTab = ({ onDevModeChange }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const register = useSettingFocus();
     const { refreshSetupStatus } = useAuth();
@@ -399,9 +400,10 @@ const SiteSettingsTab = ({ onDevModeChange }) => {
                 <div className="form-group">
                     <div className="settings-row">
                         <div className="settings-label">
-                            <Label>{t('app.siteSettingsTab.enablePublicRegistration', 'Enable public registration')}</Label>
+                            <Label htmlFor={`${fieldId}-registration`}>{t('app.siteSettingsTab.enablePublicRegistration', 'Enable public registration')}</Label>
                         </div>
                         <Switch
+                            id={`${fieldId}-registration`}
                             checked={settings.registration_enabled}
                             onCheckedChange={() => handleToggleSetting('registration_enabled', 'User registration')}
                             disabled={saving}
@@ -598,9 +600,10 @@ const SiteSettingsTab = ({ onDevModeChange }) => {
                 <div className="form-group">
                     <div className="settings-row">
                         <div className="settings-label">
-                            <Label>{t('app.siteSettingsTab.enableDeveloperMode', 'Enable developer mode')}</Label>
+                            <Label htmlFor={`${fieldId}-dev-mode`}>{t('app.siteSettingsTab.enableDeveloperMode', 'Enable developer mode')}</Label>
                         </div>
                         <Switch
+                            id={`${fieldId}-dev-mode`}
                             checked={settings.dev_mode}
                             onCheckedChange={() => handleToggleSetting('dev_mode', 'Developer mode')}
                             disabled={saving}

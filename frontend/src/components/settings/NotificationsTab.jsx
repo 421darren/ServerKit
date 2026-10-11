@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useAuth } from '../../contexts/useAuth.js';
 import api from '../../services/api';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 const NotificationsTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { isAdmin, user } = useAuth();
     const register = useSettingFocus();
     const [loading, setLoading] = useState(true);
@@ -178,8 +179,8 @@ const NotificationsTab = () => {
                 <div {...register('notifications-email', 'settings-card')}>
                     <h3>{t('app.notificationsTab.emailSettings', 'Email settings')}</h3>
                     <div className="form-group">
-                        <Label>{t('app.notificationsTab.notificationEmailOptional', 'Notification email (optional)')}</Label>
-                        <Input
+                        <Label htmlFor={`${fieldId}-pref-email`}>{t('app.notificationsTab.notificationEmailOptional', 'Notification email (optional)')}</Label>
+                        <Input id={`${fieldId}-pref-email`}
                             type="email"
                             value={userPrefs.email || ''}
                             onChange={(e) => setUserPrefs({...userPrefs, email: e.target.value})}
@@ -194,8 +195,8 @@ const NotificationsTab = () => {
                 <div {...register('notifications-discord-webhook', 'settings-card')}>
                     <h3>{t('app.notificationsTab.personalDiscordWebhook', 'Personal Discord webhook')}</h3>
                     <div className="form-group">
-                        <Label>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
-                        <Input
+                        <Label htmlFor={`${fieldId}-pref-discord`}>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
+                        <Input id={`${fieldId}-pref-discord`}
                             type="text"
                             value={userPrefs.discord_webhook || ''}
                             onChange={(e) => setUserPrefs({...userPrefs, discord_webhook: e.target.value})}
@@ -210,8 +211,8 @@ const NotificationsTab = () => {
                 <div {...register('notifications-telegram', 'settings-card')}>
                     <h3>{t('app.notificationsTab.personalTelegram', 'Personal Telegram')}</h3>
                     <div className="form-group">
-                        <Label>{t('app.notificationsTab.yourChatId', 'Your chat ID')}</Label>
-                        <Input
+                        <Label htmlFor={`${fieldId}-pref-telegram`}>{t('app.notificationsTab.yourChatId', 'Your chat ID')}</Label>
+                        <Input id={`${fieldId}-pref-telegram`}
                             type="text"
                             value={userPrefs.telegram_chat_id || ''}
                             onChange={(e) => setUserPrefs({...userPrefs, telegram_chat_id: e.target.value})}
@@ -285,8 +286,8 @@ const NotificationsTab = () => {
                 {userPrefs.quiet_hours?.enabled && (
                     <div className="form-row">
                         <div className="form-group">
-                            <Label>{t('app.notificationsTab.startTime', 'Start time')}</Label>
-                            <Input
+                            <Label htmlFor={`${fieldId}-quiet-start`}>{t('app.notificationsTab.startTime', 'Start time')}</Label>
+                            <Input id={`${fieldId}-quiet-start`}
                                 type="time"
                                 value={userPrefs.quiet_hours?.start || '22:00'}
                                 onChange={(e) => setUserPrefs({
@@ -296,8 +297,8 @@ const NotificationsTab = () => {
                             />
                         </div>
                         <div className="form-group">
-                            <Label>{t('app.notificationsTab.endTime', 'End time')}</Label>
-                            <Input
+                            <Label htmlFor={`${fieldId}-quiet-end`}>{t('app.notificationsTab.endTime', 'End time')}</Label>
+                            <Input id={`${fieldId}-quiet-end`}
                                 type="time"
                                 value={userPrefs.quiet_hours?.end || '08:00'}
                                 onChange={(e) => setUserPrefs({
@@ -434,8 +435,8 @@ const NotificationsTab = () => {
                                 {channel.id === 'discord' && (
                                     <>
                                         <div className="form-group">
-                                            <Label>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-discord-webhook`}>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
+                                            <Input id={`${fieldId}-discord-webhook`}
                                                 type="text"
                                                 value={config.discord.webhook_url || ''}
                                                 onChange={(e) => updateChannelConfig('discord', 'webhook_url', e.target.value)}
@@ -445,8 +446,8 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.botUsername', 'Bot username')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-discord-username`}>{t('app.notificationsTab.botUsername', 'Bot username')}</Label>
+                                                <Input id={`${fieldId}-discord-username`}
                                                     type="text"
                                                     value={config.discord.username || 'ServerKit'}
                                                     onChange={(e) => updateChannelConfig('discord', 'username', e.target.value)}
@@ -454,8 +455,8 @@ const NotificationsTab = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.avatarUrlOptional', 'Avatar URL (optional)')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-discord-avatar`}>{t('app.notificationsTab.avatarUrlOptional', 'Avatar URL (optional)')}</Label>
+                                                <Input id={`${fieldId}-discord-avatar`}
                                                     type="text"
                                                     value={config.discord.avatar_url || ''}
                                                     onChange={(e) => updateChannelConfig('discord', 'avatar_url', e.target.value)}
@@ -469,8 +470,8 @@ const NotificationsTab = () => {
                                 {channel.id === 'slack' && (
                                     <>
                                         <div className="form-group">
-                                            <Label>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-slack-webhook`}>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
+                                            <Input id={`${fieldId}-slack-webhook`}
                                                 type="text"
                                                 value={config.slack.webhook_url || ''}
                                                 onChange={(e) => updateChannelConfig('slack', 'webhook_url', e.target.value)}
@@ -480,8 +481,8 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.channelOptional', 'Channel (optional)')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-slack-channel`}>{t('app.notificationsTab.channelOptional', 'Channel (optional)')}</Label>
+                                                <Input id={`${fieldId}-slack-channel`}
                                                     type="text"
                                                     value={config.slack.channel || ''}
                                                     onChange={(e) => updateChannelConfig('slack', 'channel', e.target.value)}
@@ -489,8 +490,8 @@ const NotificationsTab = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <Label>{t('common.labels.username', 'Username')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-slack-username`}>{t('common.labels.username', 'Username')}</Label>
+                                                <Input id={`${fieldId}-slack-username`}
                                                     type="text"
                                                     value={config.slack.username || 'ServerKit'}
                                                     onChange={(e) => updateChannelConfig('slack', 'username', e.target.value)}
@@ -504,8 +505,8 @@ const NotificationsTab = () => {
                                 {channel.id === 'telegram' && (
                                     <>
                                         <div className="form-group">
-                                            <Label>{t('app.notificationsTab.botToken', 'Bot token')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-telegram-token`}>{t('app.notificationsTab.botToken', 'Bot token')}</Label>
+                                            <Input id={`${fieldId}-telegram-token`}
                                                 type="password"
                                                 value={config.telegram.bot_token || ''}
                                                 onChange={(e) => updateChannelConfig('telegram', 'bot_token', e.target.value)}
@@ -514,8 +515,8 @@ const NotificationsTab = () => {
                                             <span className="form-help">{t('app.notificationsTab.getABotTokenFromBotfather', 'Get a bot token from @BotFather on Telegram.')}</span>
                                         </div>
                                         <div className="form-group">
-                                            <Label>{t('app.notificationsTab.chatId', 'Chat ID')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-telegram-chat`}>{t('app.notificationsTab.chatId', 'Chat ID')}</Label>
+                                            <Input id={`${fieldId}-telegram-chat`}
                                                 type="text"
                                                 value={config.telegram.chat_id || ''}
                                                 onChange={(e) => updateChannelConfig('telegram', 'chat_id', e.target.value)}
@@ -530,8 +531,8 @@ const NotificationsTab = () => {
                                     <>
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.smtpHost', 'SMTP host')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-smtp-host`}>{t('app.notificationsTab.smtpHost', 'SMTP host')}</Label>
+                                                <Input id={`${fieldId}-smtp-host`}
                                                     type="text"
                                                     value={config.email.smtp_host || ''}
                                                     onChange={(e) => updateChannelConfig('email', 'smtp_host', e.target.value)}
@@ -552,8 +553,8 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.smtpUsername', 'SMTP username')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-smtp-user`}>{t('app.notificationsTab.smtpUsername', 'SMTP username')}</Label>
+                                                <Input id={`${fieldId}-smtp-user`}
                                                     type="text"
                                                     value={config.email.smtp_user || ''}
                                                     onChange={(e) => updateChannelConfig('email', 'smtp_user', e.target.value)}
@@ -561,8 +562,8 @@ const NotificationsTab = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.smtpPassword', 'SMTP password')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-smtp-password`}>{t('app.notificationsTab.smtpPassword', 'SMTP password')}</Label>
+                                                <Input id={`${fieldId}-smtp-password`}
                                                     type="password"
                                                     value={config.email.smtp_password || ''}
                                                     onChange={(e) => updateChannelConfig('email', 'smtp_password', e.target.value)}
@@ -572,8 +573,8 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.fromEmail', 'From email')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-from-email`}>{t('app.notificationsTab.fromEmail', 'From email')}</Label>
+                                                <Input id={`${fieldId}-from-email`}
                                                     type="email"
                                                     value={config.email.from_email || ''}
                                                     onChange={(e) => updateChannelConfig('email', 'from_email', e.target.value)}
@@ -581,8 +582,8 @@ const NotificationsTab = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <Label>{t('app.notificationsTab.fromName', 'From name')}</Label>
-                                                <Input
+                                                <Label htmlFor={`${fieldId}-from-name`}>{t('app.notificationsTab.fromName', 'From name')}</Label>
+                                                <Input id={`${fieldId}-from-name`}
                                                     type="text"
                                                     value={config.email.from_name || 'ServerKit'}
                                                     onChange={(e) => updateChannelConfig('email', 'from_name', e.target.value)}
@@ -591,8 +592,8 @@ const NotificationsTab = () => {
                                             </div>
                                         </div>
                                         <div className="form-group">
-                                            <Label>{t('app.notificationsTab.recipientEmailsCommaSeparated', 'Recipient emails (comma-separated)')}</Label>
-                                            <Input
+                                            <Label htmlFor={`${fieldId}-to-emails`}>{t('app.notificationsTab.recipientEmailsCommaSeparated', 'Recipient emails (comma-separated)')}</Label>
+                                            <Input id={`${fieldId}-to-emails`}
                                                 type="text"
                                                 value={(config.email.to_emails || []).join(', ')}
                                                 onChange={(e) => updateChannelConfig('email', 'to_emails', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
@@ -601,11 +602,11 @@ const NotificationsTab = () => {
                                         </div>
                                         <div className="form-group">
                                             <div className="settings-notification-option">
-                                                <Switch disabled={saving} aria-label={t('app.notificationsTab.useTls', 'Use TLS')}
+                                                <Switch id={`${fieldId}-smtp-tls`} disabled={saving} aria-label={t('app.notificationsTab.useTls', 'Use TLS')}
                                                     checked={config.email.smtp_tls !== false}
                                                     onCheckedChange={(checked) => updateChannelConfig('email', 'smtp_tls', checked)}
                                                 />
-                                                <Label>{t('app.notificationsTab.useTls', 'Use TLS')}</Label>
+                                                <Label htmlFor={`${fieldId}-smtp-tls`}>{t('app.notificationsTab.useTls', 'Use TLS')}</Label>
                                             </div>
                                         </div>
                                     </>
@@ -613,8 +614,8 @@ const NotificationsTab = () => {
 
                                 {channel.id === 'generic_webhook' && (
                                     <div className="form-group">
-                                        <Label>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
-                                        <Input
+                                        <Label htmlFor={`${fieldId}-generic-webhook`}>{t('app.notificationsTab.webhookUrl', 'Webhook URL')}</Label>
+                                        <Input id={`${fieldId}-generic-webhook`}
                                             type="text"
                                             value={config.generic_webhook.url || ''}
                                             onChange={(e) => updateChannelConfig('generic_webhook', 'url', e.target.value)}

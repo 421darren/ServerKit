@@ -5,6 +5,7 @@ import SystemStatusCard from './SystemStatusCard';
 import { formatBytes } from '@/utils/formatBytes';
 import { InfoList, InfoItem } from '../InfoList';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 import {
     KpiTile,
     KpiGauge,
@@ -131,7 +132,7 @@ const ServerOverviewTab = ({ server, metrics, systemInfo, onRefreshServer }) => 
                         <InfoItem label={<><FolderTinyIcon /> {t('app.serverOverviewTab.group', 'Group')}</>} value={server.group_name || 'Ungrouped'} />
                         <InfoItem
                             label={<><ClockIcon /> {t('app.serverOverviewTab.lastSeen', 'Last seen')}</>}
-                            value={server.last_seen ? new Date(server.last_seen).toLocaleString() : 'Never'}
+                            value={server.last_seen ? formatDateTime(server.last_seen) : 'Never'}
                         />
                     </InfoList>
                 </div>

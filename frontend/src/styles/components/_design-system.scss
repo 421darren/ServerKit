@@ -219,7 +219,7 @@ $sk-tones: ('accent', 'green', 'cyan', 'amber', 'red', 'violet');
 }
 
 // ------------------------------------------------------------
-// KpiBand — the one responsive grid wrapper for MetricCard tiles (plan 20).
+// KpiBand — the one responsive grid wrapper for MetricCard tiles.
 // `--kpi-cols` is set inline by the component; tiles collapse to fewer columns
 // as the viewport narrows so every summary strip shares one collapse behaviour.
 // ------------------------------------------------------------
@@ -417,6 +417,7 @@ $sk-tones: ('accent', 'green', 'cyan', 'amber', 'red', 'violet');
     tbody td:last-child { padding-inline-end: $space-4; }
     tbody tr { transition: background 0.12s; }
     tbody tr.is-clickable { cursor: pointer; }
+    tbody tr.is-clickable:focus-visible { outline: 2px solid var(--accent-dim); outline-offset: -2px; }
     tbody tr:hover { background: var(--surface-2); }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr.is-selected { background: var(--accent-bg-soft); &:hover { background: var(--accent-bg); } }
@@ -1133,6 +1134,7 @@ $sk-tones: ('accent', 'green', 'cyan', 'amber', 'red', 'violet');
         transition: border-color 0.14s, transform 0.14s;
 
         &:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+        &:focus-visible { outline: 2px solid var(--accent-dim); outline-offset: 2px; }
         &.is-selected { border-color: var(--accent-dim); background: var(--accent-bg-soft); }
     }
 }

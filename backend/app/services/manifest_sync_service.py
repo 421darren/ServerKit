@@ -1,4 +1,4 @@
-"""Push-to-reconfigure — re-read serverkit.yaml on every deploy (plan 17, Phase 4).
+"""Push-to-reconfigure — re-read serverkit.yaml on every deploy.
 
 Both webhook receivers call ``resync_for_app`` after a deploy. If the manifest
 hash is unchanged it is a no-op (today's behavior). If it changed, services with

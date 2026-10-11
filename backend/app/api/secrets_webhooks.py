@@ -8,7 +8,7 @@ from app.middleware.rbac import get_current_user, require_workspace_access, requ
 from app.services.secret_vault_service import SecretService, SecretVaultService
 from app.services.webhook_gateway_service import WebhookGatewayService
 from app.services.workspace_service import WorkspaceService
-from app.models import User, Workspace
+from app.models import Workspace
 
 bp = Blueprint('secrets_webhooks', __name__)
 
@@ -30,8 +30,6 @@ def _resolve_ws():
     ?workspace_id) to a workspace id, or None for an unscoped view — mirrors the
     servers/apps scoping (#33). Lenient: a stale/unknown context degrades to
     None rather than erroring."""
-    from app.models import User
-    from app.services.workspace_service import WorkspaceService
     user = get_current_user()
     return WorkspaceService.resolve_workspace_id(user, _resolve_ws_value())
 

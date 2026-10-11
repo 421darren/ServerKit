@@ -166,15 +166,10 @@ def run_checked(cmd: Union[List[str], str], *, privileged: bool = False,
                 timeout: Optional[int] = 60, input: Optional[str] = None,
                 cwd: Optional[str] = None, env: Optional[dict] = None,
                 merge_stderr: bool = False, **kwargs) -> dict:
-    """Run a command and get a result, not a ``CompletedProcess`` (plan 75 §G1).
+    """Run a command and get a result, not a ``CompletedProcess``.
 
-    The result-shaped door. Around ``backend/app``'s raw ``subprocess`` calls
-    sit 220 copies of ``capture_output=True, text=True``, 56 hand-rolled
-    ``except subprocess.TimeoutExpired`` handlers, 19 hand-rolled
-    ``except FileNotFoundError`` handlers, and 1,164 literal
-    ``{'success': False, 'error': ...}`` constructions. Each of those is a
-    place where an exec failure can be — and per plan 74 has been — converted
-    into a false fact about the operator's server.
+    Use this instead of raw ``subprocess``: hand-rolled exec handling is
+    where a failure to run gets reported as a fact about the server.
 
     Returns::
 
@@ -271,17 +266,118 @@ def _never_ran(error: str) -> dict:
             'returncode': None, 'error': error}
 
 
+_PANEL_SECRET_ENV = frozenset({
+    'SECRET_KEY', 'JWT_SECRET_KEY', 'DATABASE_URL', 'TEST_DATABASE_URL',
+    'PROMETHEUS_TOKEN',
+})
+
+
+def app_process_env(extra: Optional[dict] = None) -> dict:
+    """The environment for code the panel runs on an app's behalf — build
+    commands, deploy and template scripts — without the panel's own secrets.
+
+    Those scripts come from repositories and registries, not from the panel,
+    and ``os.environ.copy()`` handed them the JWT signing key, the session
+    key, the database URL and every SERVERKIT_* credential.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if k not in _PANEL_SECRET_ENV
+           and not k.startswith('SERVERKIT_')
+           and not k.endswith('_CLIENT_SECRET')}
+    if extra:
+        env.update(extra)
+    return env
+
+
+_CHUNK = 1024 * 1024
+
+
+def _streamed(cmd: List[str], pump, *, env: Optional[dict], timeout: Optional[int],
+              **popen_kwargs) -> dict:
+    """Run *cmd* while *pump(proc)* moves bytes through its pipes.
+
+    A ``gzip.open()`` handle can't be passed as ``stdin=``/``stdout=``: the
+    child gets the underlying fd and reads or writes the compressed bytes
+    raw. So the bytes are pumped through Python instead. stderr goes to a
+    temp file so a chatty child can't fill a pipe and deadlock the pump.
+    """
+    import tempfile
+    try:
+        with tempfile.TemporaryFile() as err:
+            proc = subprocess.Popen(cmd, stderr=err, env=env, **popen_kwargs)
+            try:
+                pump(proc)
+            except BrokenPipeError:
+                pass  # the child exited early; its exit code says why
+            except BaseException:
+                proc.kill()
+                proc.wait()
+                raise
+            try:
+                proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                return _never_ran(f'timed out after {timeout}s')
+            err.seek(0)
+            stderr = err.read().decode('utf-8', 'replace')
+    except FileNotFoundError as exc:
+        return _never_ran(f'{cmd[0]} not found: {exc}')
+    except OSError as exc:
+        return _never_ran(str(exc))
+    return {
+        'success': proc.returncode == 0,
+        'output': '',
+        'stderr': stderr,
+        'returncode': proc.returncode,
+        'error': (stderr.strip() or f'command failed (exit {proc.returncode})')
+                 if proc.returncode != 0 else None,
+    }
+
+
+def run_to_gzip(cmd: List[str], dest: str, *, env: Optional[dict] = None,
+                timeout: Optional[int] = None) -> dict:
+    """Run *cmd* and gzip its stdout into *dest*; *dest* is removed on failure."""
+    import gzip
+
+    def pump(proc):
+        with gzip.open(dest, 'wb') as out:
+            shutil.copyfileobj(proc.stdout, out, _CHUNK)
+        proc.stdout.close()
+
+    result = _streamed(cmd, pump, env=env, timeout=timeout, stdout=subprocess.PIPE)
+    if not result['success'] and os.path.exists(dest):
+        os.remove(dest)
+    return result
+
+
+def run_from_gzip(cmd: List[str], src: str, *, env: Optional[dict] = None,
+                  timeout: Optional[int] = None) -> dict:
+    """Run *cmd* with the decompressed contents of *src* on its stdin."""
+    import gzip
+
+    def pump(proc):
+        try:
+            with gzip.open(src, 'rb') as data:
+                shutil.copyfileobj(data, proc.stdin, _CHUNK)
+        finally:
+            proc.stdin.close()
+
+    return _streamed(cmd, pump, env=env, timeout=timeout,
+                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+
+
 def write_privileged_file(path: str, content: str, *, append: bool = False,
                           mode: Optional[str] = None,
                           owner: Optional[str] = None) -> dict:
-    """Write *content* to *path* with privilege escalation. One door (plan 75 §G2).
+    """Write *content* to *path* with privilege escalation. One door.
 
     The write-a-root-owned-file sequence was pasted at 15+ call sites in **two
     competing forms**: ``run_privileged(['tee', path], input=content)`` and a
     raw ``subprocess.run(['sudo', 'tee', path], ...)``. The second form is the
     drift this plan exists to remove — it hardcodes ``sudo`` instead of asking
     :func:`_needs_sudo`, so it fails on a panel already running as root (no
-    sudo binary in a minimal container) exactly the way plan 74's outage did.
+    sudo binary in a minimal container) exactly the way a past outage did.
 
     Returns a result dict rather than a ``CompletedProcess`` because every one
     of those call sites immediately converted one into the other:
@@ -290,7 +386,7 @@ def write_privileged_file(path: str, content: str, *, append: bool = False,
 
     ``success`` is never True on a write that did not demonstrably happen — a
     ``FileNotFoundError`` (no ``tee``) or a timeout reports the failure instead
-    of being swallowed into a cheerful return (§A, probe honesty).
+    of being swallowed into a cheerful return (probe honesty).
 
     *mode* and *owner* are applied after the write (``chmod`` / ``chown``); a
     failure there is reported, because a config written with the wrong
@@ -341,13 +437,13 @@ _COMMAND_SEARCH_DIRS = ('/usr/local/sbin', '/usr/local/bin', '/usr/sbin',
 
 
 def unit_is_active(unit: str, *, timeout: int = 10) -> Optional[bool]:
-    """Tri-state systemd unit probe: ``True``, ``False``, or ``None`` (§G6).
+    """Tri-state systemd unit probe: ``True``, ``False``, or ``None``.
 
     ``None`` means *could not determine* — no systemctl, no systemd, a probe
     that timed out — and is deliberately not ``False``. The five hand-rolled
     copies of this ``systemctl is-active`` call all collapsed those cases into
     "not running", which is how a working service gets reported as down on a
-    host the panel simply could not ask (plan 74's outage, one layer up).
+    host the panel simply could not ask (the same outage, one layer up).
 
     Callers that genuinely want two states write ``unit_is_active(u) is True``
     and are then saying so out loud.
@@ -540,7 +636,7 @@ class ServiceControl:
         The translation was re-implemented per service with subtly divergent
         failure shapes ('error' vs 'message' carrying stderr); keep the key
         and fallback parametrized so converting a site is parity, not a
-        contract change (plan 75 §F5).
+        contract change.
         """
         if proc.returncode == 0:
             return {'success': True, 'message': ok_message}

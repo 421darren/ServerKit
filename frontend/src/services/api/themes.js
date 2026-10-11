@@ -1,4 +1,4 @@
-// Themes platform API methods (plan 60).
+// Themes platform API methods.
 // A theme is data (a validated token map), so these are plain JSON calls — no
 // zip upload, no checksum dance.
 

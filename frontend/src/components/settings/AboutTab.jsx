@@ -33,7 +33,7 @@ const AboutTab = () => {
     const [updateError, setUpdateError] = useState(null);
     const cancelledRef = useRef(false);
     const register = useSettingFocus();
-    // Updates held by ServerKit Cloud (plan 25): the self-update surface is
+    // Updates held by ServerKit Cloud: the self-update surface is
     // the managed card in miniature. The panel still updates itself — the
     // card says so.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();

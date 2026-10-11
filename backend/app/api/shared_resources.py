@@ -15,6 +15,7 @@ from app.services.resource_grant_service import ResourceGrantService
 from app.services.shared_resource_service import SharedResourceService
 from app.models.shared_resource import SharedVariableGroup
 from app.utils.sensitive_data_filter import mask_sensitive
+from app.api._request import json_object
 
 shared_resources_bp = Blueprint('shared_resources', __name__)
 
@@ -204,7 +205,7 @@ def list_tags():
 @shared_resources_bp.route('/tags', methods=['POST'])
 @jwt_required()
 def add_tag():
-    data = request.get_json() or {}
+    data = json_object()
     missing = _require(data, 'resource_type', 'resource_id', 'tag')
     if missing:
         return _bad(f'{missing} is required')
@@ -224,7 +225,7 @@ def add_tag():
 @jwt_required()
 def remove_tag():
     # Accept either body or query params for convenience.
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     resource_type = data.get('resource_type') or request.args.get('resource_type')
     resource_id = data.get('resource_id')
     if resource_id is None:
@@ -268,7 +269,7 @@ def list_groups():
 @shared_resources_bp.route('/variable-groups', methods=['POST'])
 @jwt_required()
 def create_group():
-    data = request.get_json() or {}
+    data = json_object()
     missing = _require(data, 'scope_type', 'scope_id', 'name')
     if missing:
         return _bad(f'{missing} is required')
@@ -302,7 +303,7 @@ def update_group(group_id):
     group, denied = _get_scoped_group(group_id, write=True)
     if denied:
         return denied
-    data = request.get_json() or {}
+    data = json_object()
     try:
         group = SharedResourceService.update_group(
             group.id, name=data.get('name'), description=data.get('description')
@@ -333,7 +334,7 @@ def add_variable(group_id):
     group, denied = _get_scoped_group(group_id, write=True)
     if denied:
         return denied
-    data = request.get_json() or {}
+    data = json_object()
     if data.get('key') in (None, ''):
         return _bad('key is required')
     try:
@@ -360,7 +361,7 @@ def update_variable(group_id, variable_id):
     existing = SharedVariable.query.get(variable_id)
     if not existing or existing.group_id != group.id:
         return _bad('variable not found', 404)
-    data = request.get_json() or {}
+    data = json_object()
     _kwargs = {'value': data.get('value'), 'is_secret': data.get('is_secret')}
     if 'target_service' in data:
         # Only forward when the client sent it, so it's preserved otherwise.
@@ -391,7 +392,7 @@ def delete_variable(group_id, variable_id):
 @shared_resources_bp.route('/variable-groups/<int:group_id>/attach', methods=['POST'])
 @jwt_required()
 def attach_group(group_id):
-    data = request.get_json() or {}
+    data = json_object()
     missing = _require(data, 'resource_type', 'resource_id')
     if missing:
         return _bad(f'{missing} is required')
@@ -412,7 +413,7 @@ def attach_group(group_id):
 @shared_resources_bp.route('/variable-groups/<int:group_id>/detach', methods=['POST'])
 @jwt_required()
 def detach_group(group_id):
-    data = request.get_json() or {}
+    data = json_object()
     missing = _require(data, 'resource_type', 'resource_id')
     if missing:
         return _bad(f'{missing} is required')

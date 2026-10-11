@@ -1,5 +1,5 @@
 import { TOKEN_EXPIRY_OPTIONS } from './serverDetailData';
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -29,6 +29,7 @@ import {
     TagIcon,
 } from './serverDetailShared';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Radix Select items cannot carry an empty value; this stands for "no group".
 const NO_GROUP = '__none';
@@ -61,6 +62,7 @@ const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
 
 const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { confirm: confirmSettings } = useConfirm();
     const [formData, setFormData] = useState({
         name: server.name || '',
@@ -180,8 +182,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>{t('app.serverSettingsTab.serverName', 'Server name')}</label>
+                            <label htmlFor={`${fieldId}-name`}>{t('app.serverSettingsTab.serverName', 'Server name')}</label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 name="name"
                                 value={formData.name}
@@ -191,8 +194,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         </div>
 
                         <div className="form-group">
-                            <label>{t('common.labels.description', 'Description')}</label>
+                            <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
                             <Textarea
+                                id={`${fieldId}-description`}
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
@@ -202,8 +206,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
+                                <label htmlFor={`${fieldId}-hostname`}>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
                                 <Input
+                                    id={`${fieldId}-hostname`}
                                     type="text"
                                     name="hostname"
                                     value={formData.hostname}
@@ -211,8 +216,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('common.labels.ipAddress', 'IP address')}</label>
+                                <label htmlFor={`${fieldId}-ip`}>{t('common.labels.ipAddress', 'IP address')}</label>
                                 <Input
+                                    id={`${fieldId}-ip`}
                                     type="text"
                                     name="ip_address"
                                     value={formData.ip_address}
@@ -272,7 +278,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             {connectionInfo.connected_since && (
                                 <InfoItem
                                     label={t('app.serverSettingsTab.connectedSince', 'Connected since')}
-                                    value={new Date(connectionInfo.connected_since).toLocaleString()}
+                                    value={formatDateTime(connectionInfo.connected_since)}
                                 />
                             )}
                         </InfoList>
@@ -343,7 +349,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             <KeyIcon /> {rotatingKey ? t('app.serverSettingsTab.rotating', 'Rotating…') : t('app.serverSettingsTab.rotateApiKey', 'Rotate API key')}
                         </Button>
                         {server.api_key_last_rotated && (
-                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {new Date(server.api_key_last_rotated).toLocaleString()}</span>
+                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {formatDateTime(server.api_key_last_rotated)}</span>
                         )}
                     </div>
 
@@ -467,7 +473,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${result.regi
                         <div className="token-status">
                             <span className="token-status-dot active" />
                             <span>
-                                {t('app.serverSettingsTab.activeExpires', 'Active, expires')} {new Date(result.registration_expires).toLocaleString()}
+                                {t('app.serverSettingsTab.activeExpires', 'Active, expires')} {formatDateTime(result.registration_expires)}
                             </span>
                         </div>
 

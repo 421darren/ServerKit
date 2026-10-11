@@ -1,4 +1,4 @@
-// Unified entity omnisearch (plan 41, Phase 4).
+// Unified entity omnisearch.
 export async function search(q) {
     const response = await this.request(`/search?q=${encodeURIComponent(q)}`);
     return normalizeSearchResponse(response);

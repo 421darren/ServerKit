@@ -1,4 +1,4 @@
-"""Generic run-scoped log rows (plan 77 E1).
+"""Generic run-scoped log rows.
 
 ``DeploymentJobLog`` predates this table and stays the store for the deploy
 kind; every OTHER run kind (unified jobs, sandbox runs, site imports,

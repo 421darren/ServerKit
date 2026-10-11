@@ -11,6 +11,8 @@ from pathlib import Path
 import threading
 import time
 
+from flask import current_app
+
 logger = logging.getLogger(__name__)
 
 from .notification_service import NotificationService
@@ -197,7 +199,8 @@ class MonitoringService:
             msg.attach(MIMEText(body, 'plain'))
 
             # Send email
-            with smtplib.SMTP(email_config['smtp_host'], email_config['smtp_port']) as server:
+            with smtplib.SMTP(email_config['smtp_host'], email_config['smtp_port'],
+                              timeout=30) as server:
                 server.starttls()
                 if email_config.get('smtp_user') and email_config.get('smtp_password'):
                     server.login(email_config['smtp_user'], email_config['smtp_password'])
@@ -295,7 +298,7 @@ class MonitoringService:
             )
 
         # Emit panel events so Automations (tramo) workflows can trigger on a
-        # high-CPU/memory alert through the events bridge (plan 45 Ph4, ported
+        # high-CPU/memory alert through the events bridge (ported
         # from the retired Workflow Builder's 'high_cpu'/'high_memory').
         try:
             from app.services.event_service import EventService
@@ -370,7 +373,7 @@ class MonitoringService:
             return {'success': False, 'error': str(e)}
 
     @classmethod
-    def start_monitoring(cls) -> Dict:
+    def start_monitoring(cls, app=None) -> Dict:
         """Start background monitoring."""
         if cls._monitoring_thread and cls._monitoring_thread.is_alive():
             return {'success': False, 'error': 'Monitoring already running'}
@@ -380,10 +383,18 @@ class MonitoringService:
         cls.save_config(config)
 
         cls._stop_monitoring = False
-        cls._monitoring_thread = threading.Thread(target=cls._monitor_loop, daemon=True)
+        cls._monitoring_thread = threading.Thread(
+            target=cls._monitor_loop, args=(app or current_app._get_current_object(),),
+            daemon=True)
         cls._monitoring_thread.start()
 
         return {'success': True, 'message': 'Monitoring started'}
+
+    @classmethod
+    def resume_if_enabled(cls, app) -> None:
+        """Restart the loop at boot when the operator left monitoring on."""
+        if cls.get_config().get('enabled'):
+            cls.start_monitoring(app)
 
     @classmethod
     def stop_monitoring(cls) -> Dict:
@@ -397,7 +408,7 @@ class MonitoringService:
         return {'success': True, 'message': 'Monitoring stopped'}
 
     @classmethod
-    def _monitor_loop(cls) -> None:
+    def _monitor_loop(cls, app) -> None:
         """Background monitoring loop."""
         while not cls._stop_monitoring:
             config = cls.get_config()
@@ -405,10 +416,11 @@ class MonitoringService:
                 break
 
             try:
-                alerts = cls.check_thresholds()
-                cls.process_alerts(alerts)
+                with app.app_context():
+                    alerts = cls.check_thresholds()
+                    cls.process_alerts(alerts)
             except Exception:
-                pass
+                logger.exception('Monitoring check failed')
 
             time.sleep(config.get('check_interval', 60))
 

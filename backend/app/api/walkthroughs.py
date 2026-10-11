@@ -1,6 +1,6 @@
 """Self-scoped guided walkthrough progress API."""
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 
 from app.middleware.rbac import admin_required, get_current_user, require_role, viewer_required
 from app.services.walkthrough_definition_service import (
@@ -11,6 +11,7 @@ from app.services.walkthrough_service import (
     WalkthroughService,
     WalkthroughStateError,
 )
+from app.api._request import json_object
 
 
 walkthroughs_bp = Blueprint('walkthroughs', __name__)
@@ -27,7 +28,7 @@ def get_walkthrough_state():
 @require_role('admin', 'developer', 'viewer')
 def update_walkthrough_state():
     user = get_current_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         state = WalkthroughService.save_state(user.id, data.get('state', data))
     except WalkthroughStateError as exc:
@@ -46,7 +47,7 @@ def get_walkthrough_definitions():
 @walkthroughs_bp.route('/definitions', methods=['PUT'])
 @admin_required
 def update_walkthrough_definitions():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         definitions = WalkthroughDefinitionService.save_definitions(
             data.get('definitions', data),

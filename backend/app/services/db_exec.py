@@ -1,4 +1,4 @@
-"""One SQL-exec dispatcher (plan 75 §G5).
+"""One SQL-exec dispatcher.
 
 `engine × host` dispatch — mysql/postgres crossed with native/docker — was
 written three times: `db_config_tuner_service`, `db_process_service`, and
@@ -29,7 +29,7 @@ from typing import Optional
 from app.services.database_service import DatabaseService
 
 # The names the rest of the codebase spells these engines with. Kept here so an
-# unknown engine is *reported*, never silently routed to mysql (§A).
+# unknown engine is *reported*, never silently routed to mysql.
 MYSQL_ALIASES = ('mysql', 'mariadb')
 POSTGRES_ALIASES = ('postgresql', 'postgres', 'pgsql')
 

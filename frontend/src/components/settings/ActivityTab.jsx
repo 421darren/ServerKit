@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId  } from 'react';
 import api from '../../services/api';
 import ContributionGraph from './ContributionGraph';
 import EmptyState from '../EmptyState';
@@ -9,8 +9,10 @@ import { DataTableFooter } from '@/components/ds';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 const ActivityTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const register = useSettingFocus();
     const [summary, setSummary] = useState(null);
@@ -96,10 +98,10 @@ const ActivityTab = () => {
     function formatDate(dateString) {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleString('en-US', {
+        return formatDateTime(date, { parts: {
             month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
-        });
+        } });
     }
 
     function getActionClass(action) {
@@ -211,12 +213,12 @@ const ActivityTab = () => {
 
                 <div className="filters-bar">
                     <div className="filter-group">
-                        <label><Filter size={12} /> {t('app.activityTab.actionType', 'Action type')}</label>
+                        <label htmlFor={`${fieldId}-action`}><Filter size={12} /> {t('app.activityTab.actionType', 'Action type')}</label>
                         <Select
                             value={filters.action || '__all__'}
                             onValueChange={(val) => handleFilterChange('action', val === '__all__' ? '' : val)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-action`}>
                                 <SelectValue placeholder={t('app.activityTab.allActions', 'All actions')} />
                             </SelectTrigger>
                             <SelectContent>
@@ -228,12 +230,12 @@ const ActivityTab = () => {
                         </Select>
                     </div>
                     <div className="filter-group">
-                        <label><UserIcon size={12} /> {t('common.labels.user', 'User')}</label>
+                        <label htmlFor={`${fieldId}-user`}><UserIcon size={12} /> {t('common.labels.user', 'User')}</label>
                         <Select
                             value={filters.user_id || '__all__'}
                             onValueChange={(val) => handleFilterChange('user_id', val === '__all__' ? '' : val)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-user`}>
                                 <SelectValue placeholder={t('app.activityTab.allUsers', 'All users')} />
                             </SelectTrigger>
                             <SelectContent>

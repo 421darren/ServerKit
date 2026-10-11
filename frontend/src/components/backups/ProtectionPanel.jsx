@@ -20,6 +20,7 @@ import BackupDetailDrawer from './BackupDetailDrawer';
 import RestoreDrawer from './RestoreDrawer';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 function sameLocalDay(iso, date) {
     if (!iso) return false;
@@ -47,7 +48,7 @@ export default function ProtectionPanel({ targetType, targetId, targetName, show
     const [detailRun, setDetailRun] = useState(null);
     const [restoreRun, setRestoreRun] = useState(null);
     // Restore scopes this target type supports, from the target-types API
-    // (extension-provided types declare their own — plan 52 D4). Null until
+    // (extension-provided types declare their own). Null until
     // loaded; RestoreDrawer falls back to its built-in defaults then.
     const [restoreScopes, setRestoreScopes] = useState(null);
     const reloadTimers = useRef([]);
@@ -242,7 +243,7 @@ export default function ProtectionPanel({ targetType, targetId, targetName, show
                                     className="backup-history-card__chip"
                                     onClick={() => setDayFilter(null)}
                                 >
-                                    {dayFilter.toLocaleDateString()} <X size={12} />
+                                    {formatDate(dayFilter)} <X size={12} />
                                 </Button>
                             )}
                             <div className="backup-history-card__toggle">

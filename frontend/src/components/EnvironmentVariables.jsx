@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
 import {
     Copy, Download, Eye, EyeOff, History, Pencil, Plus, Trash2, Upload, Variable,
 } from 'lucide-react';
@@ -25,6 +25,7 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // What a masked value renders as. Unchanged from the list this table replaces:
 // every env var is stored as a secret, so every value is dots until the row's
@@ -73,6 +74,7 @@ const EVERY_SERVICE = '__all';
 
 const EnvironmentVariables = ({ appId }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const showError = toast.error;
     const { confirm } = useConfirm();
@@ -634,8 +636,9 @@ const EnvironmentVariables = ({ appId }) => {
             <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.environmentVariables.addEnvironmentVariable', 'Add environment variable')}>
                 <form onSubmit={handleAdd}>
                     <div className="form-group">
-                        <Label>{t('common.labels.key', 'Key')}</Label>
+                        <Label htmlFor={`${fieldId}-key`}>{t('common.labels.key', 'Key')}</Label>
                         <Input
+                            id={`${fieldId}-key`}
                             type="text"
                             value={newKey}
                             onChange={(e) => setNewKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
@@ -645,8 +648,9 @@ const EnvironmentVariables = ({ appId }) => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('common.labels.value', 'Value')}</Label>
+                        <Label htmlFor={`${fieldId}-value`}>{t('common.labels.value', 'Value')}</Label>
                         <Input
+                            id={`${fieldId}-value`}
                             type="text"
                             value={newValue}
                             onChange={(e) => setNewValue(e.target.value)}
@@ -654,8 +658,9 @@ const EnvironmentVariables = ({ appId }) => {
                         />
                     </div>
                     <div className="form-group">
-                        <Label>{t('common.labels.description', 'Description')} <span className="env-optional">(optional)</span></Label>
+                        <Label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')} <span className="env-optional">(optional)</span></Label>
                         <Input
+                            id={`${fieldId}-description`}
                             type="text"
                             value={newDescription}
                             onChange={(e) => setNewDescription(e.target.value)}
@@ -768,7 +773,7 @@ const EnvironmentVariables = ({ appId }) => {
                                 headerKey: 'app.environmentVariables.changedAt', header: 'Changed At',
                                 sortable: true,
                                 sortValue: (h) => new Date(h.changed_at).getTime(),
-                                render: (h) => new Date(h.changed_at).toLocaleString(),
+                                render: (h) => formatDateTime(h.changed_at),
                             },
                         ]}
                         data={history.map((h, idx) => ({ ...h, __idx: idx }))}

@@ -1,11 +1,11 @@
-# Bucket: PER-APP (plan 29 #9, #11). The per-app deployment read gates on app
+# Bucket: PER-APP. The per-app deployment read gates on app
 # visibility (require_app_member); webhook reads are scoped to the linked app's
 # visibility (an unlinked webhook stays panel-wide viewer-visible). Webhook
 # mutations and the Gitea host lifecycle stay admin-only.
 """Git webhook + deployment API — the deploy-pipeline half.
 
 The Gitea self-host surface (lifecycle + repo browsing) moved to the
-serverkit-git extension (plan 52 Phase 6), which mounts it back at this same
+serverkit-git extension, which mounts it back at this same
 /api/v1/git prefix when installed."""
 
 from flask import Blueprint, request, jsonify
@@ -18,6 +18,7 @@ from ..models import Application, GitWebhook
 from ..services.webhook_service import WebhookService
 from ..services.git_deploy_service import GitDeployService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 git_bp = Blueprint('git', __name__)
 
@@ -25,7 +26,7 @@ git_bp = Blueprint('git', __name__)
 def _webhook_visible_to(user, webhook):
     """A webhook with no app linkage is a panel-wide viewer-visible resource; an
     app-linked webhook is visible only to callers who can reach that app
-    (owner/admin/grant/workspace member — plan 29 #11)."""
+    (owner/admin/grant/workspace member)."""
     if not getattr(webhook, 'app_id', None):
         return True
     # Deliberately unfiltered: this gate falls through to "panel-wide visible"
@@ -44,7 +45,7 @@ def _webhook_visible_to(user, webhook):
 @git_bp.route('/webhooks', methods=['GET'])
 @viewer_required
 def list_webhooks():
-    """List webhooks the caller can see (plan 29 #11): every unlinked webhook
+    """List webhooks the caller can see: every unlinked webhook
     plus any app-linked webhook whose app they can reach."""
     user = get_current_user()
     result = WebhookService.list_webhooks()
@@ -64,7 +65,7 @@ def list_webhooks():
 @admin_required
 def create_webhook():
     """Create a new webhook."""
-    data = request.get_json() or {}
+    data = json_object()
 
     result = WebhookService.create_webhook(
         name=data.get('name'),
@@ -105,7 +106,7 @@ def get_webhook(webhook_id):
 @admin_required
 def update_webhook(webhook_id):
     """Update a webhook."""
-    data = request.get_json() or {}
+    data = json_object()
 
     result = WebhookService.update_webhook(webhook_id, data)
 
@@ -236,7 +237,7 @@ def get_deployment(deployment_id):
 @admin_required
 def manual_deploy(app_id):
     """Trigger a manual deployment for an application."""
-    data = request.get_json() or {}
+    data = json_object()
     branch = data.get('branch')
 
     result = GitDeployService.manual_deploy(app_id, branch=branch)
@@ -250,7 +251,7 @@ def manual_deploy(app_id):
 @admin_required
 def rollback_deployment(app_id):
     """Rollback to a previous deployment version."""
-    data = request.get_json() or {}
+    data = json_object()
     target_version = data.get('targetVersion')
 
     result = GitDeployService.rollback(app_id, target_version=target_version)

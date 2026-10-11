@@ -143,7 +143,7 @@ export async function updatePluginConfig(pluginId, config) {
 }
 
 // Declared vs actually-observed permission use for one installed extension
-// (plan 55, admin-only):
+// (admin-only):
 //   { slug, permissions: [ { permission, declared, observable, used, uses,
 //                            first_used_at, last_used_at, denied? } ],
 //     unused_observable, undeclared_attempts, observable_count,
@@ -160,7 +160,7 @@ export async function getPluginPermissions(pluginId) {
 }
 
 // Python dependencies an install declined to pip-install for one extension
-// (plan 55, admin-only):
+// (admin-only):
 //   { slug, pending, pip_enabled, env_var, path, content, packages, truncated }
 // `pending: true` means the packages were NOT installed and the requirements
 // file is sitting next to the extension. Read-only — there is no install route

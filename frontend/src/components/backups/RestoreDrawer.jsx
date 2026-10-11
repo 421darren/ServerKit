@@ -35,7 +35,7 @@ const BASE_SCOPE_OPTIONS = [
     { value: 'files', labelKey: 'app.restoreDrawer.filesOnly', label: 'Files only' },
 ];
 
-// Labels for provider-declared restore scopes (plan 52 D4): extension backup
+// Labels for provider-declared restore scopes: extension backup
 // kinds tell the panel which scopes they support via /backups/target-types,
 // so the drawer no longer hardcodes which type owns which scope.
 const SCOPE_LABELS = {

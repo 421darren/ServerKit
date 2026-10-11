@@ -6,8 +6,7 @@ from app.models.json_column_mixin import JsonColumnMixin
 
 
 class ServerSurvey(JsonColumnMixin, db.Model):
-    """One read-only survey snapshot ("flight") of a paired server (plan 27,
-    Decision 3: snapshots, not live state).
+    """One read-only survey snapshot ("flight") of a paired server (snapshots, not live state).
 
     The agent flies the probe catalog and returns a structured Server Map; the
     panel normalizes it and stores it here as a versioned, immutable snapshot.

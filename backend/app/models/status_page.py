@@ -110,11 +110,12 @@ class StatusComponent(db.Model):
     last_check_at = db.Column(db.DateTime)
     last_response_time = db.Column(db.Integer)  # ms
 
-    # Uptime data
-    uptime_24h = db.Column(db.Float, default=100.0)
-    uptime_7d = db.Column(db.Float, default=100.0)
-    uptime_30d = db.Column(db.Float, default=100.0)
-    uptime_90d = db.Column(db.Float, default=100.0)
+    # Uptime per window, filled from recorded checks. None until a window
+    # has a sample: a new monitor has no record, not a perfect one.
+    uptime_24h = db.Column(db.Float)
+    uptime_7d = db.Column(db.Float)
+    uptime_30d = db.Column(db.Float)
+    uptime_90d = db.Column(db.Float)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

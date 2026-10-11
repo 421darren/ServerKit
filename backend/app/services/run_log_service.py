@@ -7,7 +7,7 @@ truthful in-memory tail of the last output for failure reporting, records per-st
 timings, sanitizes ANSI/`\\r` noise, caps the persisted row count, and matches a
 plain-language hint against the failure output.
 
-Design contract (plan 51, D4/D5/D6/D10):
+Design contract:
 
 - ``stream.log(level, message, step_index=None, data=None)`` — NEVER raises.
 - ``stream.set_step(index, name)`` — flush, update the job row, emit a status.
@@ -27,6 +27,7 @@ never breaks logging.
 """
 
 import json
+import logging
 import re
 import time
 from collections import deque
@@ -35,6 +36,17 @@ from typing import Any, Callable, List, Optional
 
 from app import db
 from app.models.deployment_job import DeploymentJob, DeploymentJobLog
+
+logger = logging.getLogger(__name__)
+_reported = set()
+
+
+def _report_once(key: str, message: str) -> None:
+    # Live emits run per flush; a broken socket path would flood the log.
+    # Once per kind is enough to make "live logs stopped" findable.
+    if key not in _reported:
+        _reported.add(key)
+        logger.warning(message, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +83,7 @@ def sanitize(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Failure hints (D6 / §5.3): first match wins, evaluated against the failure tail
+# Failure hints: first match wins, evaluated against the failure tail
 # at close time. One sentence, action-first, never jokey.
 # ---------------------------------------------------------------------------
 HINTS: List = [
@@ -116,7 +128,7 @@ def _make_default_emit_log(run_kind: str) -> Callable:
             from app.sockets import emit_run_log
             emit_run_log(run_kind, run_id, lines)
         except Exception:
-            pass
+            _report_once(f'log:{run_kind}', f'Live {run_kind} log emit failed')
     return _emit
 
 
@@ -126,14 +138,14 @@ def _make_default_emit_status(run_kind: str) -> Callable:
             from app.sockets import emit_run_status
             emit_run_status(run_kind, run_id, status)
         except Exception:
-            pass
+            _report_once(f'status:{run_kind}', f'Live {run_kind} status emit failed')
     return _emit
 
 
 class RunLogStream:
     """Batched, crash-proof log writer for one run.
 
-    Generalized (plan 77 E1) over any model implementing the small RunLike
+    Generalized over any model implementing the small RunLike
     protocol: an ``id``, a ``__run_kind__`` class attribute, a ``to_dict()``
     for status emits, and — optionally — ``get_result``/``set_result`` (for
     close-time enrichment) and ``current_step``/``current_step_name`` (for
@@ -339,7 +351,7 @@ class RunLogStream:
             try:
                 self._emit_log(self.job.id, lines)
             except Exception:
-                pass
+                _report_once(f'emit:{type(self).__name__}', 'Run log emitter raised')
         except Exception:
             # Buffered-drop on flush failure (D10): one telemetry event, then
             # continue. A stuck deployment is worse than a missing log line.

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useId } from 'react';
 import { useTheme } from '../../contexts/useTheme.js';
 import { Star, X, Layers, Image, Type, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ const WHITELABEL_MODES = [
 
 const WhiteLabelTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { whiteLabel, setWhiteLabel } = useTheme();
     const logoInputRef = useRef(null);
     const register = useSettingFocus();
@@ -32,11 +33,12 @@ const WhiteLabelTab = () => {
 
                 <div className="settings-row">
                     <div className="settings-label">
-                        <Label>{t('app.whiteLabelTab.enableCustomBranding', 'Enable custom branding')}</Label>
+                        <Label htmlFor={`${fieldId}-enabled`}>{t('app.whiteLabelTab.enableCustomBranding', 'Enable custom branding')}</Label>
                         <span className="settings-hint">{t('app.whiteLabelTab.replacesTheSidebarLogoNameAnd', 'Replaces the sidebar logo, name, and GitHub star link.')}</span>
                     </div>
                     <div className="settings-control">
                         <Switch
+                            id={`${fieldId}-enabled`}
                             checked={whiteLabel.enabled}
                             onCheckedChange={(checked) => setWhiteLabel({ enabled: checked })}
                         />
@@ -62,8 +64,9 @@ const WhiteLabelTab = () => {
                         <div className="whitelabel-fields">
                             {whiteLabel.mode !== 'image_full' && (
                                 <div className="form-group">
-                                    <Label>{t('app.whiteLabelTab.brandName', 'Brand name')}</Label>
+                                    <Label htmlFor={`${fieldId}-brand-name`}>{t('app.whiteLabelTab.brandName', 'Brand name')}</Label>
                                     <Input
+                                        id={`${fieldId}-brand-name`}
                                         type="text"
                                         value={whiteLabel.brandName}
                                         onChange={(e) => setWhiteLabel({ brandName: e.target.value })}
@@ -75,7 +78,7 @@ const WhiteLabelTab = () => {
 
                             {whiteLabel.mode !== 'text_only' && (
                                 <div className="form-group">
-                                    <Label>{t('app.whiteLabelTab.logoImage', 'Logo image')}</Label>
+                                    <Label htmlFor={`${fieldId}-logo`}>{t('app.whiteLabelTab.logoImage', 'Logo image')}</Label>
                                     <div className="whitelabel-upload" onClick={() => logoInputRef.current?.click()}>
                                         {whiteLabel.logoData ? (
                                             <div className="whitelabel-logo-preview">
@@ -96,6 +99,7 @@ const WhiteLabelTab = () => {
                                             </div>
                                         )}
                                         <input
+                                            id={`${fieldId}-logo`}
                                             ref={logoInputRef}
                                             type="file"
                                             accept="image/png,image/jpeg,image/svg+xml,image/webp"

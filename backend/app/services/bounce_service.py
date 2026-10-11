@@ -1,4 +1,4 @@
-"""Bounce / complaint suppression service (plan 33 Phase 4, roadmap #24).
+"""Bounce / complaint suppression service (roadmap #24).
 
 Turns an inbound provider webhook (SendGrid / Postmark / SES / Mailgun / a
 generic shape) into ``EmailBounceState`` rows. Provider payloads are normalized

@@ -437,23 +437,34 @@ class LogService:
             process = subprocess.Popen(
                 privileged_cmd(['tail', '-f', '-n', '0', filepath]),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
                 text=True
             )
-
-            while True:
-                if stop_event and stop_event.is_set():
-                    process.terminate()
-                    break
-
-                line = process.stdout.readline()
-                if line:
-                    callback({'line': line.strip(), 'filepath': filepath})
-                elif process.poll() is not None:
-                    break
-
         except Exception as e:
             callback({'error': str(e)})
+            return
+
+        # readline() blocks until the log grows, so a stop checked between
+        # lines never fired on a quiet log and `tail -f` ran forever. Killing
+        # the process from a watcher closes stdout, which ends the read.
+        if stop_event is not None:
+            def _stop_when_asked():
+                stop_event.wait()
+                process.terminate()
+            threading.Thread(target=_stop_when_asked, daemon=True).start()
+        try:
+            for line in process.stdout:
+                callback({'line': line.strip(), 'filepath': filepath})
+        except Exception as e:
+            callback({'error': str(e)})
+        finally:
+            if process.poll() is None:
+                process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
 
     @staticmethod
     def _format_size(size: int) -> str:

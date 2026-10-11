@@ -598,6 +598,14 @@ cmd_branch() {
     echo ""
 }
 
+update_usage() {
+    echo "Usage: serverkit update [options]"
+    echo "  --branch <name>     Switch to specific branch (e.g., dev)"
+    echo "  --release [vX.Y.Z]  Update from release tarball"
+    echo "  --force             Force update even if already latest"
+    echo "  --dry-run           Show what would change without applying"
+}
+
 cmd_update() {
     local update_args=()
 
@@ -632,8 +640,16 @@ cmd_update() {
                 update_args+=("--dry-run")
                 shift
                 ;;
+            --help|-h)
+                update_usage
+                return 0
+                ;;
             *)
-                shift
+                # An unknown flag used to be dropped and the update ran
+                # anyway — `update --help` updated the box.
+                print_error "Unknown option for update: $1"
+                update_usage
+                exit 1
                 ;;
         esac
     done
@@ -666,7 +682,12 @@ cmd_uninstall() {
             --keep-data)              keep_data=1; shift ;;
             --yes|-y)                 assume_yes=1; shift ;;
             --dry-run|-n)             dry_run=1; shift ;;
-            *) shift ;;
+            --help|-h)
+                echo "Usage: serverkit uninstall [--purge|--delete-volumes] [--keep-data] [--yes] [--dry-run]"
+                return 0 ;;
+            *)
+                print_error "Unknown option for uninstall: $1"
+                exit 1 ;;
         esac
     done
 
@@ -810,8 +831,13 @@ cmd_cleanup_apps() {
                 KEEP_DB="--keep-db"
                 shift
                 ;;
+            --help|-h)
+                run_cli cleanup-apps --help
+                return 0
+                ;;
             *)
-                shift
+                print_error "Unknown option for cleanup-apps: $1"
+                exit 1
                 ;;
         esac
     done

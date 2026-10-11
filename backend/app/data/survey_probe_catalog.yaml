@@ -1,4 +1,4 @@
-# ServerKit survey probe catalog (plan 27, Decision 2).
+# ServerKit survey probe catalog.
 #
 # A VERSIONED, declarative list of every location/service the read-only survey
 # ("flight") looks at on a paired Linux box, and how to read it. The panel ships

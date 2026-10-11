@@ -3,26 +3,17 @@
 Environments are children of a project; access is derived from the parent
 project's workspace, mirroring projects.py.
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.project_service import ProjectService
 from app.services.workspace_service import WorkspaceService
 from app.middleware.rbac import get_current_user
 from app.exceptions import permission_denied
+from app.api._access import visible_workspace_ids
+from app.api._request import json_object
 
 environments_bp = Blueprint('environments', __name__)
-
-
-def _accessible_workspace_ids(user):
-    ws_id = WorkspaceService.resolve_workspace_id(
-        user, request.headers.get('X-Workspace-Id') or request.args.get('workspace_id'))
-    if ws_id is not None:
-        return [ws_id]
-    if user.is_admin:
-        from app.models.workspace import Workspace
-        return [w.id for w in Workspace.query.all()]
-    return [w.id for w in WorkspaceService.list_workspaces(user_id=user.id)]
 
 
 def _project_for_write(user, project_id):
@@ -31,7 +22,7 @@ def _project_for_write(user, project_id):
     project = ProjectService.get_project(project_id)
     if not project:
         return None, (jsonify({'error': 'Project not found'}), 404)
-    if not user.is_admin and project.workspace_id not in set(_accessible_workspace_ids(user)):
+    if not user.is_admin and project.workspace_id not in set(visible_workspace_ids(user)):
         raise permission_denied()
     if not WorkspaceService.can_write_in_workspace(user, project.workspace_id):
         return None, (jsonify({'error': 'You have read-only access to this workspace'}), 403)
@@ -44,7 +35,7 @@ def _project_for_write(user, project_id):
 def create_environment():
     """Create an environment under a project. Body: {project_id, name, is_default?}."""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     project_id = data.get('project_id')
     if not project_id:
         return jsonify({'error': 'project_id is required'}), 400
@@ -77,7 +68,7 @@ def update_environment(environment_id):
     if err:
         return err
 
-    data = request.get_json() or {}
+    data = json_object()
     updated = ProjectService.update_environment(
         environment_id, name=data.get('name'), is_default=data.get('is_default'))
     return jsonify({'message': 'Environment updated', 'environment': updated.to_dict(include_counts=True)}), 200
@@ -107,7 +98,7 @@ def delete_environment(environment_id):
 def reorder_environments():
     """Reorder a project's environments. Body: {project_id, ordered_ids:[...]}"""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     project_id = data.get('project_id')
     ordered_ids = data.get('ordered_ids')
     if not project_id:

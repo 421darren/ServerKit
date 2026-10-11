@@ -17,7 +17,7 @@ const TTL_MAX = 300;
 // asset rule applies to (NginxService._with_immutable_assets).
 const PROXIED_TYPES = ['docker', 'flask', 'django', 'python', 'remote'];
 
-// Micro-cache panel (task #21, plan 86 §B3) — opt-in nginx page cache per
+// Micro-cache panel — opt-in nginx page cache per
 // site. The backend rewrites the site's vhost with the cache directives plus
 // hard bypasses for anything personalized (logged-in cookies, carts,
 // admin/login paths, non-GET requests, query strings). Stale copies are served

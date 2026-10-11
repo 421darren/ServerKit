@@ -1,5 +1,5 @@
-// useServerStream — the ONE join/listen/cleanup dance for socket rooms
-// (plan 77 E4). Components used to hand-roll connect + join_room + on(event)
+// useServerStream — the ONE join/listen/cleanup dance for socket rooms.
+// Components used to hand-roll connect + join_room + on(event)
 // + off/leave in slightly different ways (some forgot to re-join after a
 // reconnect, which silently kills the stream server-side). Both shapes live
 // here:

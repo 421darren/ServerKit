@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { serviceStatusVariant, serviceStatusDotClass, statusLabel } from '@/components/ds/status';
 
-// One vocabulary (plan 77 D3): variant, dot color and label all derive from
+// One vocabulary: variant, dot color and label all derive from
 // ds/status.js — service-scoped, so "running" stays the healthy green.
 
 export default function StatusBadge({ status, label, className = '' }) {

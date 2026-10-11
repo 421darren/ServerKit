@@ -3,6 +3,7 @@ import { ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { scrollBehavior } from '@/utils/reducedMotion';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatTime } from '@/utils/intl';
 
 // How many slices the severity map is divided into. Enough to resolve a single
 // error in a long log without rendering a node per line.
@@ -202,8 +203,8 @@ export default function LogPane({
                                 )}
                                 {!isShut && section.rows.map(({ ln, i }) => {
                                     const ts = timestamps && ln.ts
-                                        ? new Date(ln.ts).toLocaleTimeString()
-                                        : (timestamps && ln.created_at ? new Date(ln.created_at).toLocaleTimeString() : '');
+                                        ? formatTime(ln.ts)
+                                        : (timestamps && ln.created_at ? formatTime(ln.created_at) : '');
                                     return (
                                         <div
                                             key={ln.id ?? `i${i}`}

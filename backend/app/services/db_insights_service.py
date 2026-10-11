@@ -1,4 +1,4 @@
-"""Read-only database visibility: top queries and health gauges (plan 86 §A3).
+"""Read-only database visibility: top queries and health gauges.
 
 For the Database Explorer's Insights tab, per server or container, with the
 same target shape as :mod:`db_process_service`:

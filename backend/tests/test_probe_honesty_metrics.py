@@ -102,7 +102,7 @@ def test_current_metrics_load_is_none_when_getloadavg_fails():
         percent=40.0, used=1, total=2, free=1)
 
     with patch('app.services.monitoring_service.psutil', psutil_mock), \
-            patch('os.getloadavg', side_effect=OSError('not supported')):
+            patch('os.getloadavg', side_effect=OSError('not supported'), create=True):
         metrics = MonitoringService.get_current_metrics()
 
     assert metrics['load_average'] == {'1min': None, '5min': None, '15min': None}

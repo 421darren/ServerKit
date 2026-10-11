@@ -116,7 +116,7 @@ const EMPTY = {
     // tool-result renderers. Consumed by the core AIAssistant via
     // useContributions().ai.
     ai: { suggested_prompts: [], tool_renderers: [] },
-    // Runtime-frontend descriptor map { slug: { entry, hashes } } (plan 25).
+    // Runtime-frontend descriptor map { slug: { entry, hashes } }.
     // Present only for installed extensions shipping a prebuilt ESM bundle;
     // empty for baked builtins and when the kill switch is off.
     frontends: {},
@@ -265,7 +265,7 @@ export function refreshContributions() {
             // routes render with their components already available (fail-soft:
             // a bundle that can't load records an error state, never throws).
             // Pass the panel's SDK version so the loader can refuse a bundle
-            // built against an incompatible SDK before fetching it (plan 32 #1).
+            // built against an incompatible SDK before fetching it.
             await loadRuntimeFrontends(
                 merged.frontends, merged.panel_sdk_version || merged.sdk_version);
             if (requestGeneration !== generation) return cachedValue || EMPTY;

@@ -37,8 +37,6 @@ psutil==5.9.7
 # against async_mode='threading' (browser: "Invalid frame header").
 gunicorn==23.0.0
 simple-websocket==1.1.0
-gevent==25.4.2
-gevent-websocket==0.10.1
 
 # Environment variables
 python-dotenv==1.2.2
@@ -85,7 +83,6 @@ tzlocal>=5.0
 
 # OpenAPI documentation
 apispec==6.4.0
-apispec-webframeworks==1.2.0
 marshmallow==3.26.2
 
 # AI assistant (core primitive — powered by Prompture)

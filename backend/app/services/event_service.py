@@ -49,7 +49,7 @@ EVENT_CATALOG = [
     {'type': 'domain.deleted', 'category': 'Domains', 'description': 'A domain was deleted'},
     {'type': 'api_key.created', 'category': 'API', 'description': 'An API key was created'},
     {'type': 'api_key.revoked', 'category': 'API', 'description': 'An API key was revoked'},
-    # Ported from the retired Workflow Builder event bus (plan 45 Phase 4) so
+    # Ported from the retired Workflow Builder event bus so
     # Automations (tramo) workflows can trigger on them via the events bridge.
     {'type': 'health.check_failed', 'category': 'Monitoring', 'description': 'An environment health check failed'},
     {'type': 'git.push', 'category': 'Deployments', 'description': 'A git push was received for an app'},
@@ -57,7 +57,7 @@ EVENT_CATALOG = [
     {'type': 'monitor.high_memory', 'category': 'Monitoring', 'description': 'A server crossed its high-memory alert threshold'},
 ]
 
-# Extension-registered event types (plan 52 D4 hook inversion). Extensions add
+# Extension-registered event types (hook inversion). Extensions add
 # their own catalog entries at load via register_event_types() — e.g. the
 # WordPress extension contributes the wordpress.* lifecycle events. The core
 # catalog above keeps only core events; an absent extension's types simply
@@ -112,7 +112,7 @@ def unregister_event_types(source):
     return len(doomed)
 
 
-# In-process listeners (plan 86 §B4): the extension-to-core event path. An
+# In-process listeners: the extension-to-core event path. An
 # extension's core_hooks registers a callable for an event type; every emit of
 # that type calls it with the payload, best-effort, whether or not any webhook
 # subscription exists. event type -> [(fn, source slug)].

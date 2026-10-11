@@ -21,8 +21,8 @@ export async function getDeploymentJobLogs(jobId, afterId = null) {
     return this.request(`/deployment-jobs/${jobId}/logs${suffix}`);
 }
 
-// Retry a failed deployment job — clones it and enqueues a fresh run (plan 51
-// D8). Returns { job_id, job } for the new job so the console can swap to it.
+// Retry a failed deployment job — clones it and enqueues a fresh run. Returns
+// { job_id, job } for the new job so the console can swap to it.
 export async function retryDeploymentJob(jobId) {
     return this.request(`/deployment-jobs/${jobId}/retry`, { method: 'POST' });
 }
@@ -34,7 +34,7 @@ export async function submitRecipeHandoff(jobId, stepId, value) {
     );
 }
 
-// Simulated deployments (plan 51.5 dev tool). The GET 404s when the backend
+// Simulated deployments (dev tool). The GET 404s when the backend
 // gate (DEMO_DEPLOYS_ENABLED) is off — callers treat that as "hidden".
 export async function getDeploySimulateInfo() {
     return this.request('/deployment-jobs/simulate');

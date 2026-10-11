@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Gauge } from '../ds';
 import { useClipboard } from '@/hooks/useClipboard';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 export const SecurityAlertItem = ({ alert, onAcknowledge, onResolve }) => {
     const { t } = useTranslation();
@@ -20,7 +21,7 @@ export const SecurityAlertItem = ({ alert, onAcknowledge, onResolve }) => {
                     <span className="notification__title">{title}</span>
                     <span className={`severity-badge ${sev}`}>{sev}</span>
                     <span className="notification__time">
-                        {alert.created_at ? new Date(alert.created_at).toLocaleString() : ''}
+                        {alert.created_at ? formatDateTime(alert.created_at) : ''}
                     </span>
                 </div>
                 <p className="notification__message">

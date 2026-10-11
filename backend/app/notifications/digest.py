@@ -1,4 +1,4 @@
-"""Notification digest rollups — per-user cadence (plan 24 Phase 3).
+"""Notification digest rollups — per-user cadence.
 
 Instead of one email per event, a user can opt into a *digest*: the bus routes
 digestable deliveries (and quiet-hours catch-ups) onto the

@@ -4,7 +4,7 @@ import { Lightbulb } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 
-// "Where is it slow?" (plan 86 §A5): rule-based hints from the app's request
+// "Where is it slow?": rule-based hints from the app's request
 // metrics, its container CPU and its database. Each names the component that
 // fits the signal and that component's failure mode; nothing is ever added
 // for you. Renders nothing when there is no hint.

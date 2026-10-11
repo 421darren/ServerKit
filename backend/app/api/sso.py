@@ -12,7 +12,9 @@ from app.services.settings_service import SettingsService
 from app.services.audit_service import AuditService
 from app.middleware.rbac import admin_required, get_current_user
 from app.middleware.session_auth import issue_session_tokens
-from app.error_reporting import record_unexpected, unexpected_response
+from app.error_reporting import record_unexpected
+from app.exceptions import NotFoundError
+from app.api._request import json_object
 
 sso_bp = Blueprint('sso', __name__)
 
@@ -55,7 +57,7 @@ def callback(provider):
     if provider not in VALID_PROVIDERS or provider == 'saml':
         return jsonify({'error': f'Invalid OAuth provider: {provider}'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -108,28 +110,32 @@ def saml_callback():
 @sso_bp.route('/saml/metadata', methods=['GET'])
 def saml_metadata():
     """Return SP metadata XML."""
+    from onelogin.saml2.auth import OneLogin_Saml2_Auth
+    from onelogin.saml2.errors import OneLogin_Saml2_Error
+    cfg = sso_service.get_provider_config('saml')
+    request_data = {
+        'https': request.scheme == 'https',
+        'http_host': request.host,
+        'script_name': request.path,
+        'acs_url': request.url_root.rstrip('/') + '/api/v1/sso/saml/callback',
+        'sp_entity_id': request.host_url.rstrip('/'),
+    }
+    settings = sso_service.get_saml_settings(cfg, request_data)
+    saml_req = {
+        'https': 'on' if request_data.get('https') else 'off',
+        'http_host': request_data.get('http_host', ''),
+        'script_name': request_data.get('script_name', ''),
+    }
     try:
-        from onelogin.saml2.auth import OneLogin_Saml2_Auth
-        cfg = sso_service.get_provider_config('saml')
-        request_data = {
-            'https': request.scheme == 'https',
-            'http_host': request.host,
-            'script_name': request.path,
-            'acs_url': request.url_root.rstrip('/') + '/api/v1/sso/saml/callback',
-            'sp_entity_id': request.host_url.rstrip('/'),
-        }
-        settings = sso_service.get_saml_settings(cfg, request_data)
-        saml_req = {
-            'https': 'on' if request_data.get('https') else 'off',
-            'http_host': request_data.get('http_host', ''),
-            'script_name': request_data.get('script_name', ''),
-        }
         auth = OneLogin_Saml2_Auth(saml_req, settings)
-        metadata = auth.get_settings().get_sp_metadata()
-        from flask import Response
-        return Response(metadata, mimetype='application/xml')
-    except Exception as e:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(e)
+    except OneLogin_Saml2_Error as exc:
+        # An unconfigured IdP is not a crash: this route is public and gets
+        # probed, and each hit used to land in the error log.
+        raise NotFoundError('SAML is not configured',
+                            code='sso.saml_not_configured') from exc
+    metadata = auth.get_settings().get_sp_metadata()
+    from flask import Response
+    return Response(metadata, mimetype='application/xml')
 
 
 # ------------------------------------------------------------------
@@ -153,7 +159,7 @@ def link_provider(provider):
         return jsonify({'error': f'Invalid provider: {provider}'}), 400
 
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -227,7 +233,7 @@ def update_provider_config(provider):
     if provider not in VALID_PROVIDERS:
         return jsonify({'error': f'Invalid provider: {provider}'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     prefix = f'sso_{provider}_'
     updated = []
 
@@ -263,7 +269,7 @@ def update_general_settings():
     """Update general SSO settings (auto_provision, force_sso, etc.)."""
     user = get_current_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     general_keys = ['sso_auto_provision', 'sso_default_role', 'sso_force_sso', 'sso_allowed_domains']
     updated = []
 

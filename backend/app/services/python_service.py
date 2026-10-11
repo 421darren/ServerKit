@@ -4,7 +4,7 @@ import json
 import secrets
 from pathlib import Path
 
-from app.utils.system import ServiceControl, run_checked
+from app.utils.system import ServiceControl, app_process_env, run_checked
 
 
 class PythonService:
@@ -73,7 +73,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             python_path = shutil.which(f'python{version}')
             if python_path:
                 try:
-                    result = run_checked([python_path, '--version'], timeout=None)
+                    result = run_checked([python_path, '--version'])
                     if result['success']:
                         full_version = result['output'].strip().replace('Python ', '')
                         versions.append({
@@ -99,7 +99,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
         python_path = shutil.which('python3')
         if python_path:
             try:
-                result = run_checked([python_path, '--version'], timeout=None)
+                result = run_checked([python_path, '--version'])
                 if result['success']:
                     return result['output'].strip().replace('Python ', '')
             except Exception:
@@ -176,7 +176,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             return []
 
         try:
-            result = run_checked([pip_path, 'list', '--format=json'], timeout=None)
+            result = run_checked([pip_path, 'list', '--format=json'])
             if result['success']:
                 return json.loads(result['output'])
             return []
@@ -193,7 +193,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             return {'success': False, 'error': 'Virtual environment not found'}
 
         try:
-            result = run_checked([pip_path, 'freeze'], timeout=None)
+            result = run_checked([pip_path, 'freeze'])
             if result['success']:
                 req_file = os.path.join(app_path, 'requirements.txt')
                 with open(req_file, 'w') as f:
@@ -524,7 +524,7 @@ application = get_wsgi_application()
 
         try:
             # Prepare environment
-            env = os.environ.copy()
+            env = app_process_env()
             env['PATH'] = f"{os.path.join(venv_path, 'bin')}:{env.get('PATH', '')}"
             env['VIRTUAL_ENV'] = venv_path
 

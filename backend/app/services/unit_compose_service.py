@@ -1,4 +1,4 @@
-"""Render a multi-container UNIT as one docker-compose project (plan 35, #8).
+"""Render a multi-container UNIT as one docker-compose project.
 
 A unit is ONE manifest service with a ``containers:`` map. It becomes ONE
 Application and ONE compose file: the project's implicit default network is the

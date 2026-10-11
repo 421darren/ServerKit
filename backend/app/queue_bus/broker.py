@@ -66,6 +66,10 @@ class AbstractBroker(ABC):
         """Mark a message failed. If requeue is False, retry or dead-letter based on attempts."""
 
     @abstractmethod
+    def recover_in_flight(self):
+        """Release every in-flight message at boot. Returns how many moved."""
+
+    @abstractmethod
     def requeue(self, group_slug, queue_slug, message_id):
         """Move a failed/dead-letter message back to pending."""
 

@@ -13,7 +13,7 @@ const TIMEOUT_DEFAULT = 120;
 const TIMEOUT_MIN = 5;
 const TIMEOUT_MAX = 1800;
 
-// Health gate settings (plan 87 §A4). A deploy waits for the new release to
+// Health gate settings. A deploy waits for the new release to
 // answer its health path before it counts as live; these say where to ask and
 // how long to wait.
 const DeploySafetyPanel = ({ app, onChanged }) => {

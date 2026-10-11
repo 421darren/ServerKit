@@ -1,4 +1,4 @@
-"""Per-app deploy settings (plan 87).
+"""Per-app deploy settings.
 
 Stored as one JSON object on ``Application.deploy_settings``; NULL or a
 missing key means the default below. ``effective(app)`` is what every reader
@@ -7,28 +7,28 @@ uses, so a default changes in one place.
 import json
 
 DEFAULTS = {
-    # Health gate (§A3): how long a new release may take to answer, whether a
+    # Health gate: how long a new release may take to answer, whether a
     # 4xx on the health path still counts as up, and how many answers in a row
     # it takes.
     'healthcheck_timeout': 120,
     'healthcheck_allow_4xx': False,
     'healthcheck_consecutive': 3,
-    # How many deployments' images stay on disk for rollback (§A1).
+    # How many deployments' images stay on disk for rollback.
     'keep_images': 3,
-    # Slot deploys (§B): how long to watch a release after the switch, how
+    # Slot deploys: how long to watch a release after the switch, how
     # long the old slot stays warm, and the operator's word that two copies
     # sharing the app's volumes for a moment is safe.
     'watch_seconds': 60,
     'standby_warm_minutes': 10,
     'slot_volumes_confirmed': False,
-    # Release phase (§D): a command to run once before the switch (overrides
+    # Release phase: a command to run once before the switch (overrides
     # the Procfile's release: line), whether to dump the app's databases
     # first, and the announced-downtime fallback for schema changes that
     # cannot stay backward-compatible for one deploy.
     'release_command': None,
     'snapshot_databases': True,
     'stop_old_before_release': False,
-    # Compose slots (§C), written by the panel, never by the settings API:
+    # Compose slots, written by the panel, never by the settings API:
     # the web service, the port it published before slots, and whether the
     # stateful services have moved to the shared data project.
     'compose_web': None,

@@ -15,7 +15,7 @@ on:
       - 'scripts/sync-builtin-frontends.mjs'
       - '.github/workflows/extensions-ci.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'builtin-extensions/**'
       - 'frontend/src/plugins/**'

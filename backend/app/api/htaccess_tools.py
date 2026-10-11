@@ -7,10 +7,11 @@ Kept out of apps.py on purpose (separate ownership); intended registration:
 
 which exposes POST /api/v1/apps/htaccess-convert.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.htaccess_converter import MAX_INPUT_BYTES, convert
+from app.api._request import json_object
 
 htaccess_tools_bp = Blueprint('htaccess_tools', __name__)
 
@@ -23,7 +24,7 @@ def htaccess_convert():
     Pure text transform (no server state touched), so any authenticated
     user may call it. Body: {'htaccess': '<text>'}.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     text = data.get('htaccess')
     if not isinstance(text, str) or not text.strip():
         return jsonify({'error': 'htaccess text is required'}), 400

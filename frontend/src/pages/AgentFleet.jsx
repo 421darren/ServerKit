@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useId, useState, useEffect  } from 'react';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import {
     Shield,
@@ -38,9 +38,11 @@ const formatPercent = (value, digits) => {
 };
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate, formatDateTime } from '@/utils/intl';
 
 const AgentFleet = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
@@ -231,7 +233,7 @@ const AgentFleet = () => {
             headerKey: 'app.agentFleet.published', header: 'Published',
             sortable: true,
             sortValue: (v) => (v.published_at ? new Date(v.published_at).getTime() : null),
-            render: (v) => new Date(v.published_at).toLocaleDateString(),
+            render: (v) => formatDate(v.published_at),
         },
         {
             key: 'compat',
@@ -304,7 +306,7 @@ const AgentFleet = () => {
             sortable: true,
             sortValue: (r) => (r.started_at ? new Date(r.started_at).getTime() : null),
             cellClassName: 'fleet-queued-description',
-            render: (r) => (r.started_at ? new Date(r.started_at).toLocaleString() : '-'),
+            render: (r) => (r.started_at ? formatDateTime(r.started_at) : '-'),
         },
         {
             key: 'actions',
@@ -368,7 +370,7 @@ const AgentFleet = () => {
             sortable: true,
             sortValue: (cmd) => (cmd.created_at ? new Date(cmd.created_at).getTime() : null),
             cellClassName: 'fleet-queued-description',
-            render: (cmd) => new Date(cmd.created_at).toLocaleString(),
+            render: (cmd) => formatDateTime(cmd.created_at),
         },
         {
             key: 'actions',
@@ -411,7 +413,7 @@ const AgentFleet = () => {
             headerKey: 'app.agentFleet.requested', header: 'Requested',
             sortable: true,
             sortValue: (server) => (server.created_at ? new Date(server.created_at).getTime() : null),
-            render: (server) => new Date(server.created_at).toLocaleString(),
+            render: (server) => formatDateTime(server.created_at),
         },
         {
             key: 'agent',
@@ -636,8 +638,8 @@ const AgentFleet = () => {
                                     {rolloutStrategy === 'staged' && (
                                         <>
                                             <div className="form-group">
-                                                <label>{t('app.agentFleet.batchSize', 'Batch size')}</label>
-                                                <Input
+                                                <label htmlFor={`${fieldId}-batch-size`}>{t('app.agentFleet.batchSize', 'Batch size')}</label>
+                                                <Input id={`${fieldId}-batch-size`}
                                                     type="number"
                                                     value={rolloutBatchSize}
                                                     onChange={e => setRolloutBatchSize(parseInt(e.target.value) || 5)}
@@ -645,8 +647,8 @@ const AgentFleet = () => {
                                                 />
                                             </div>
                                             <div className="form-group">
-                                                <label>{t('app.agentFleet.delayMinutes', 'Delay (minutes)')}</label>
-                                                <Input
+                                                <label htmlFor={`${fieldId}-delay`}>{t('app.agentFleet.delayMinutes', 'Delay (minutes)')}</label>
+                                                <Input id={`${fieldId}-delay`}
                                                     type="number"
                                                     value={rolloutDelay}
                                                     onChange={e => setRolloutDelay(parseInt(e.target.value) || 10)}
@@ -870,7 +872,7 @@ const AgentFleet = () => {
                                         <label className="fleet-caption">{t('app.agentFleet.connectedSince', 'Connected since')}</label>
                                         <p className="fleet-value">
                                             {diagnostics.connection.connected_since
-                                                ? new Date(diagnostics.connection.connected_since).toLocaleString()
+                                                ? formatDateTime(diagnostics.connection.connected_since)
                                                 : t('app.agentFleet.notAvailable', 'N/A')}
                                         </p>
                                     </div>
@@ -921,7 +923,7 @@ const AgentFleet = () => {
                                                     <span>{session.ip_address}</span>
                                                 </div>
                                                 <div className="fleet-note">
-                                                    {new Date(session.connected_at).toLocaleString()}
+                                                    {formatDateTime(session.connected_at)}
                                                     {session.disconnect_reason && (
                                                         <span className="fleet-session-disconnect-reason">({session.disconnect_reason})</span>
                                                     )}

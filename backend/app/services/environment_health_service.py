@@ -102,8 +102,7 @@ class EnvironmentHealthService:
         db.session.commit()
 
         # Emit a panel event on every failing poll so Automations (tramo)
-        # workflows can trigger on it through the events bridge (plan 45 Ph4,
-        # ported from the retired Workflow Builder's 'health_check_failed').
+        # workflows can trigger on it through the events bridge (# ported from the retired Workflow Builder's 'health_check_failed').
         if overall in ('unhealthy', 'degraded'):
             try:
                 from app.services.event_service import EventService

@@ -1,4 +1,4 @@
-// ONE frontend status → tone vocabulary (plan 77 D3).
+// ONE frontend status → tone vocabulary.
 //
 // Every page used to roll its own status→color map, so "running" rendered
 // cyan on some pages and green or amber on others. This module is the single

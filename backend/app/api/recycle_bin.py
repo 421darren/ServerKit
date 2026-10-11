@@ -9,6 +9,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.middleware.rbac import admin_required
 from app.exceptions import NotFoundError
 from app.services import recycle_bin_service
+from app.api._request import json_object
 
 recycle_bin_bp = Blueprint('recycle_bin', __name__)
 
@@ -63,7 +64,7 @@ def purge(kind, record_id):
 @recycle_bin_bp.route('/purge-expired', methods=['POST'])
 @admin_required
 def purge_expired():
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     days = body.get('retention_days', recycle_bin_service.DEFAULT_RETENTION_DAYS)
     try:
         days = max(1, int(days))

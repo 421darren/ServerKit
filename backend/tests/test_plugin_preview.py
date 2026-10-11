@@ -8,7 +8,7 @@ import zipfile
 import pytest
 
 from app.models.plugin import InstalledPlugin
-from app.services import plugin_service
+from app.services import plugin_fetch, plugin_service
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def _make_zip(slug='prevext', version='1.0.0', permissions=None,
     ('https://example.com/x.zip', 'https://example.com/x.zip'),
 ])
 def test_normalize_source_url_shorthand(raw, expected):
-    assert plugin_service._normalize_source_url(raw) == expected
+    assert plugin_fetch._normalize_source_url(raw) == expected
 
 
 # --------------------------------------------------------------------------- #
@@ -167,13 +167,13 @@ def test_preview_install_tamper_rejected(app, plugin_dirs, monkeypatch):
 
 def test_github_api_headers_include_token_when_set(monkeypatch):
     monkeypatch.setenv('SERVERKIT_GITHUB_TOKEN', 'ghp_secret')
-    headers = plugin_service._github_api_headers()
+    headers = plugin_fetch._github_api_headers()
     assert headers['Authorization'] == 'Bearer ghp_secret'
 
 
 def test_github_api_headers_omit_token_when_unset(monkeypatch):
     monkeypatch.delenv('SERVERKIT_GITHUB_TOKEN', raising=False)
-    assert 'Authorization' not in plugin_service._github_api_headers()
+    assert 'Authorization' not in plugin_fetch._github_api_headers()
 
 
 def test_download_token_only_for_github_hosts(monkeypatch):
@@ -189,15 +189,15 @@ def test_download_token_only_for_github_hosts(monkeypatch):
         captured[url] = kwargs.get('headers', {})
         return FakeResp()
 
-    monkeypatch.setattr(plugin_service.requests, 'get', fake_get)
+    monkeypatch.setattr(plugin_fetch.requests, 'get', fake_get)
     # The SSRF guard resolves hosts before fetching; stub DNS to a public IP
     # so this test stays offline (its subject is token scoping, not DNS).
     import socket as _socket
     monkeypatch.setattr(_socket, 'getaddrinfo',
                         lambda host, port, *a, **k: [(2, 1, 6, '', ('93.184.216.34', 0))])
 
-    plugin_service._download_resolved('https://github.com/o/r/releases/download/v1/x.zip')
-    plugin_service._download_resolved('https://evil.example.com/x.zip')
+    plugin_fetch._download_resolved('https://github.com/o/r/releases/download/v1/x.zip')
+    plugin_fetch._download_resolved('https://evil.example.com/x.zip')
 
     gh_headers = captured['https://github.com/o/r/releases/download/v1/x.zip']
     other_headers = captured['https://evil.example.com/x.zip']

@@ -273,7 +273,7 @@ export async function testFTPConnection(host = 'localhost', port = 21, username 
 }
 
 // The Gitea self-host surface (server lifecycle + repo browsing) moved into
-// the serverkit-git extension with the Git page (plan 52 Phase 6) - its own
+// the serverkit-git extension with the Git page - its own
 // client lives there. Core keeps the webhook + deployment endpoints below
 // (they ARE the deploy pipeline) and three fail-soft Gitea aliases the
 // app-creation repo pickers probe; those return 404 when the extension is

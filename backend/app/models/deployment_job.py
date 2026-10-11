@@ -16,10 +16,10 @@ class DeploymentJob(RunLifecycleMixin, JsonColumnMixin, db.Model):
 
     __tablename__ = 'deployment_jobs'
 
-    # Run envelope kind (plan 77 E1): rooms/events key on (run_kind, id).
+    # Run envelope kind: rooms/events key on (run_kind, id).
     __run_kind__ = 'deploy'
 
-    # Stored spelling predates the canonical vocabulary (plan 77 D1);
+    # Stored spelling predates the canonical vocabulary;
     # override until this domain's data migration rewrites 'succeeded'.
     __status_success__ = 'succeeded'
     __error_attr__ = 'error_message'
@@ -34,7 +34,7 @@ class DeploymentJob(RunLifecycleMixin, JsonColumnMixin, db.Model):
     requested_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     trigger = db.Column(db.String(30), default='manual')
 
-    # Links to the release ledgers (§3 unification): the DeploymentJob is the
+    # Links to the release ledgers: the DeploymentJob is the
     # canonical execution record; Deployment / GitDeployment remain the
     # version/release ledgers it produces. All nullable — a template-install job
     # has none of these set.

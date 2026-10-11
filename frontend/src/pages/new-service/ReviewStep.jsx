@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useId } from 'react';
 import {
     ChevronDown, Database, FolderKanban, Globe, Layers3, Lock, Network,
     Settings2, Zap, CheckCircle2,
@@ -22,6 +22,7 @@ import { Button as SharedButton } from '@/components/ui/button';
 // Step 3 — Review & deploy. Only renders cards that have real data; the core
 // fields live in one grid, Advanced keeps the genuinely rare bits.
 const ReviewStep = ({ form }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { activeWorkspaceId, isAllWorkspaces } = useWorkspace();
     const {
@@ -278,20 +279,21 @@ const ReviewStep = ({ form }) => {
                 {sourceMode !== 'local' && (
                     <div className="new-service-page__toggle">
                         <div>
-                            <Label>{t('app.reviewStep.autoDeploy', 'Auto-deploy')}</Label>
+                            <Label htmlFor={`${fieldId}-auto-deploy`}>{t('app.reviewStep.autoDeploy', 'Auto-deploy')}</Label>
                             <span>{sourceMode === 'upload' ? t('app.reviewStep.deployAfterUpload', 'Deploy immediately after upload.') : t('app.reviewStep.webhookDeployForBranch', 'Deploy on push to this branch through the webhook.')}</span>
                         </div>
-                        <Switch checked={autoDeploy} onCheckedChange={setAutoDeploy} />
+                        <Switch id={`${fieldId}-auto-deploy`} checked={autoDeploy} onCheckedChange={setAutoDeploy} />
                     </div>
                 )}
             </div>
 
             <div className="new-service-page__fields-grid">
                 <div className="new-service-page__field">
-                    <Label>
+                    <Label htmlFor={`${fieldId}-project`}>
                         {t('common.labels.project', 'Project')} <span className="new-service-page__optional">(optional)</span>
                     </Label>
                     <ResourcePicker
+                        id={`${fieldId}-project`}
                         value={selectedProjectResource}
                         onChange={handleProjectChange}
                         types={['project']}
@@ -306,8 +308,9 @@ const ReviewStep = ({ form }) => {
                 </div>
                 {selectedProjectId && (
                     <div className="new-service-page__field">
-                        <Label>{t('app.reviewStep.environment', 'Environment')}</Label>
+                        <Label htmlFor={`${fieldId}-environment`}>{t('app.reviewStep.environment', 'Environment')}</Label>
                         <ResourcePicker
+                            id={`${fieldId}-environment`}
                             value={selectedEnvironmentResource}
                             onChange={(resource) => setSelectedEnvironmentId(resource.id)}
                             types={['environment']}

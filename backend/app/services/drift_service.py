@@ -370,7 +370,7 @@ def _nginx_render_expected(app_id):
     # (WafService.apply). Render the expected file through the SAME injector,
     # or every WAF'd app reads as permanently drifted and one "repair" click
     # regenerates the vhost without the include — silently unprotecting the
-    # site while the DB still says enforcing (plan 82 §F.1).
+    # site while the DB still says enforcing.
     config = _with_expected_waf(app.id, config)
 
     path = os.path.join(NginxService.SITES_AVAILABLE, app.name)
@@ -389,18 +389,23 @@ def _with_expected_waf(app_id, config):
     return injected if injected is not None else config
 
 
-# A vhost written before the timed log format (plan 86 §A1) has a bare
+# A vhost written before the timed log format has a bare
 # `access_log <path>;`. That is not drift: the format only changes what the log
 # records, and the next regeneration adopts it. Read such lines as the timed
 # form so an upgrade doesn't flag (and notify about) every existing site.
 _LEGACY_ACCESS_LOG_RE = re.compile(
     r'^(\s*access_log /var/log/nginx/[^\s;]+\.access\.log);$', re.MULTILINE)
+# Older vhosts carry an internal reference after this comment; the comment is
+# all that changed, so it is not drift either.
+_LEGACY_ASSET_COMMENT_RE = re.compile(
+    r'^(\s*# ServerKit: fingerprinted assets never change) \([^)\n]*\)$', re.MULTILINE)
 
 
 def _nginx_read_actual(paths):
     actual = _default_read_actual(paths)
     return {
-        path: (_LEGACY_ACCESS_LOG_RE.sub(r'\1 serverkit_timed;', content)
+        path: (_LEGACY_ASSET_COMMENT_RE.sub(
+                   r'\1', _LEGACY_ACCESS_LOG_RE.sub(r'\1 serverkit_timed;', content))
                if content is not None else None)
         for path, content in actual.items()
     }
@@ -420,7 +425,7 @@ def _nginx_repair(app_id):
 
     # write_app_vhost regenerates from the template, which drops the WAF
     # include; re-wire it for apps with an enforcing policy so a repair
-    # never strips protection the DB still records (plan 82 §F.1).
+    # never strips protection the DB still records.
     from app.services.waf_service import WafService
     WafService.reapply_if_enforcing(app_id)
 

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useOperations } from '@/contexts/OperationsContext';
 import DiskReclaimModal from './DiskReclaimModal';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 
 // The fleet sweep fans out across agents over the network, so it is a job
@@ -21,7 +22,7 @@ const TERMINAL_JOB_STATUSES = ['succeeded', 'failed', 'cancelled'];
 
 function formatRanAt(ranAt) {
     if (!ranAt) return null;
-    return new Date(ranAt).toLocaleString();
+    return formatDateTime(ranAt);
 }
 
 /**

@@ -177,7 +177,7 @@
     .stat-strip__value { font-size: $text-md; }
 }
 
-// Legacy `.stats-grid` / `.stat-card` KPI tile system removed (Plan 20 #20) —
+// Legacy `.stats-grid` / `.stat-card` KPI tile system removed —
 // pages use the shared KpiBand primitive (`.sk-kpiband`). `.stat-icon` below is
 // kept: it is a standalone icon chip still used by StyleGuide demos.
 .stat-icon {
@@ -233,7 +233,7 @@
 }
 
 // Legacy `.stat-content` / `.stat-label` / `.stat-value` / `.stat-suffix` /
-// `.stat-detail` / `.stat-card--clickable` removed (Plan 20 #20) — superseded by
+// `.stat-detail` / `.stat-card--clickable` removed — superseded by
 // the MetricCard tile (`.sk-kpi`) inside KpiBand.
 
 // Progress bar

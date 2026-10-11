@@ -272,7 +272,7 @@ class ProcessService:
 
     @classmethod
     def get_systemd_unit_status(cls, unit_name: str) -> Dict:
-        """Check whether a systemd unit is active — via ``unit_is_active`` (§G6).
+        """Check whether a systemd unit is active — via ``unit_is_active``.
 
         The probe itself was re-inlined in four other services; this keeps the
         dict shape its own callers read and lets one implementation answer.

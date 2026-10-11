@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.services.dns_zone_service import DNSZoneService
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 dns_zones_bp = Blueprint('dns_zones', __name__)
 
@@ -30,7 +31,7 @@ def adopt_zone():
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json() or {}
+    data = json_object()
     try:
         zone = DNSZoneService.adopt_zone(
             data.get('domain'), data.get('dns_provider_config_id'))
@@ -73,7 +74,7 @@ def create_zone():
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json()
+    data = json_object()
     try:
         zone = DNSZoneService.create_zone(data)
         return jsonify(zone.to_dict()), 201
@@ -107,7 +108,7 @@ def create_record(zone_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json()
+    data = json_object()
     try:
         record = DNSZoneService.create_record(zone_id, data)
         return jsonify(record.to_dict()), 201
@@ -121,7 +122,7 @@ def update_record(record_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json()
+    data = json_object()
     record = DNSZoneService.update_record(record_id, data)
     if not record:
         return jsonify({'error': 'Record not found'}), 404
@@ -153,7 +154,7 @@ def apply_preset(zone_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json() or {}
+    data = json_object()
     preset_key = data.get('preset')
     variables = data.get('variables', {})
     try:
@@ -233,7 +234,7 @@ def import_zone(zone_id):
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json() or {}
+    data = json_object()
     content = data.get('zone_file', '')
     try:
         records = DNSZoneService.import_zone(zone_id, content)

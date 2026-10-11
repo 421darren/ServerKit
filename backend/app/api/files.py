@@ -6,6 +6,7 @@ from app.exceptions import NotFoundError, PermissionDeniedError, ValidationError
 from ..middleware.rbac import permission_required
 from ..services.file_service import FileService
 from ..services.storage_provider_service import StorageProviderService
+from app.api._request import json_object
 import os
 import tempfile
 
@@ -61,7 +62,7 @@ def read_file():
 @permission_required('files', 'write')
 def write_file():
     """Write content to a file."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -85,7 +86,7 @@ def write_file():
 @permission_required('files', 'write')
 def create_file():
     """Create a new file."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -105,7 +106,7 @@ def create_file():
 @permission_required('files', 'write')
 def create_directory():
     """Create a new directory."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -138,7 +139,7 @@ def delete_path():
 @permission_required('files', 'write')
 def rename_path():
     """Rename a file or directory."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -158,7 +159,7 @@ def rename_path():
 @permission_required('files', 'write')
 def copy_path():
     """Copy a file or directory."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -178,7 +179,7 @@ def copy_path():
 @permission_required('files', 'write')
 def move_path():
     """Move a file or directory."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -198,7 +199,7 @@ def move_path():
 @permission_required('files', 'write')
 def change_permissions():
     """Change file/directory permissions."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         raise ValidationError('Request body is required')
@@ -293,14 +294,11 @@ def download_file():
     if os.path.isdir(path):
         return jsonify({'error': 'Cannot download directory'}), 400
 
-    try:
-        return send_file(
-            path,
-            as_attachment=True,
-            download_name=os.path.basename(path)
-        )
-    except Exception as e:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(e)
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=os.path.basename(path)
+    )
 
 
 @files_bp.route('/upload', methods=['POST'])
@@ -390,7 +388,7 @@ def s3_read():
 @permission_required('files', 'write')
 def s3_write():
     """Write (create or overwrite) an object from text content."""
-    data = request.get_json() or {}
+    data = json_object()
     path = data.get('path')
     content = data.get('content')
     if not path:

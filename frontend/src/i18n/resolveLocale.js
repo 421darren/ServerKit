@@ -1,4 +1,4 @@
-// Plan 79 A4 — locale precedence, as pure functions so it can be tested
+// Locale precedence, as pure functions so it can be tested
 // without a browser, a store, or i18next.
 //
 //   user.language (server, per-user)
@@ -73,7 +73,7 @@ export function languageInfo(code) {
         || LANGUAGES.find((language) => language.code === DEFAULT_LANGUAGE);
 }
 
-/** Writing direction for a code — drives <html dir> (plan 79 §H). */
+/** Writing direction for a code — drives <html dir>. */
 export function directionFor(code) {
     return languageInfo(code).dir || 'ltr';
 }

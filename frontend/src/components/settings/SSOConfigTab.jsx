@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import SSOProviderIcon from '../SSOProviderIcon';
@@ -42,6 +42,7 @@ const FIELD_LABELS = {
 
 const SSOConfigTab = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const register = useSettingFocus();
     const [config, setConfig] = useState({});
     const [loading, setLoading] = useState(true);
@@ -179,11 +180,12 @@ const SSOConfigTab = () => {
                 <div className="sso-general-form">
                     <div className="settings-row">
                         <div className="settings-label">
-                            <Label>{t('app.sSOConfigTab.autoProvisionUsers', 'Auto-provision users')}</Label>
+                            <Label htmlFor={`${fieldId}-auto-provision`}>{t('app.sSOConfigTab.autoProvisionUsers', 'Auto-provision users')}</Label>
                             <span className="settings-hint">{t('app.sSOConfigTab.automaticallyCreateAccountsForNewSso', 'Automatically create accounts for new SSO users')}</span>
                         </div>
                         <div className="settings-control">
                             <Switch
+                                id={`${fieldId}-auto-provision`}
                                 checked={autoProvision}
                                 onCheckedChange={setAutoProvision}
                             />
@@ -191,9 +193,9 @@ const SSOConfigTab = () => {
                     </div>
 
                     <div className="form-group">
-                        <Label>{t('app.sSOConfigTab.defaultRoleForNewSsoUsers', 'Default role for new SSO users')}</Label>
+                        <Label htmlFor={`${fieldId}-default-role`}>{t('app.sSOConfigTab.defaultRoleForNewSsoUsers', 'Default role for new SSO users')}</Label>
                         <Select value={defaultRole} onValueChange={setDefaultRole}>
-                            <SelectTrigger>
+                            <SelectTrigger id={`${fieldId}-default-role`}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -206,7 +208,7 @@ const SSOConfigTab = () => {
 
                     <div className="settings-row">
                         <div className="settings-label">
-                            <Label>{t('app.sSOConfigTab.ssoOnlyMode', 'SSO-only mode')}</Label>
+                            <Label htmlFor={`${fieldId}-force-sso`}>{t('app.sSOConfigTab.ssoOnlyMode', 'SSO-only mode')}</Label>
                             <span className="settings-hint">
                                 {forceSso ? (
                                     <span className="text-warning">
@@ -219,6 +221,7 @@ const SSOConfigTab = () => {
                         </div>
                         <div className="settings-control">
                             <Switch
+                                id={`${fieldId}-force-sso`}
                                 checked={forceSso}
                                 onCheckedChange={setForceSso}
                             />
@@ -226,8 +229,9 @@ const SSOConfigTab = () => {
                     </div>
 
                     <div className="form-group">
-                        <Label>{t('app.sSOConfigTab.allowedEmailDomains', 'Allowed email domains')}</Label>
+                        <Label htmlFor={`${fieldId}-allowed-domains`}>{t('app.sSOConfigTab.allowedEmailDomains', 'Allowed email domains')}</Label>
                         <Input
+                            id={`${fieldId}-allowed-domains`}
                             type="text"
                             value={allowedDomains}
                             onChange={e => setAllowedDomains(e.target.value)}
@@ -275,10 +279,11 @@ const SSOConfigTab = () => {
                             <div className="sso-provider-config__body">
                                 <div className="settings-row">
                                     <div className="settings-label">
-                                        <Label>{t('common.actions.enable', 'Enable')} {provider.name}</Label>
+                                        <Label htmlFor={`${fieldId}-${provider.id}-enabled`}>{t('common.actions.enable', 'Enable')} {provider.name}</Label>
                                     </div>
                                     <div className="settings-control">
                                         <Switch
+                                            id={`${fieldId}-${provider.id}-enabled`}
                                             checked={enabled}
                                             onCheckedChange={(checked) => setFieldValue(provider.id, 'enabled', checked)}
                                         />
@@ -287,9 +292,10 @@ const SSOConfigTab = () => {
 
                                 {provider.fields.map(field => (
                                     <div key={field} className="form-group">
-                                        <Label>{FIELD_LABELS[field] || field}</Label>
+                                        <Label htmlFor={`${fieldId}-${provider.id}-${field}`}>{FIELD_LABELS[field] || field}</Label>
                                         {field === 'idp_cert' ? (
                                             <Textarea
+                                                id={`${fieldId}-${provider.id}-${field}`}
                                                 rows={4}
                                                 value={getFieldValue(provider.id, field)}
                                                 onChange={e => setFieldValue(provider.id, field, e.target.value)}
@@ -297,6 +303,7 @@ const SSOConfigTab = () => {
                                             />
                                         ) : (
                                             <Input
+                                                id={`${fieldId}-${provider.id}-${field}`}
                                                 type={field.includes('secret') ? 'password' : 'text'}
                                                 value={getFieldValue(provider.id, field)}
                                                 onChange={e => setFieldValue(provider.id, field, e.target.value)}

@@ -1,4 +1,4 @@
-// Runtime skin applier (plan 60).
+// Runtime skin applier.
 //
 // A "skin" is a theme's validated token map applied on top of the stock
 // stylesheet at runtime. We set each canonical token (plus its legacy aliases)

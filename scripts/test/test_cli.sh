@@ -97,6 +97,45 @@ else
     bad "update --branch dev forwarding broken: [$out]"
 fi
 
+# T1c — unknown flags used to be dropped and the update ran anyway, so
+# `serverkit update --help` updated the box. Help prints usage; an unknown
+# flag fails; neither reaches the updater.
+for args in "--help" "--frobnicate"; do
+    out="$(
+        set -Eeuo pipefail
+        check_root() { :; }
+        check_installed() { :; }
+        INSTALL_DIR="$t"; VENV_DIR="$t/venv"
+        cmd_update $args 2>&1
+    )"
+    rc=$?
+    if printf '%s' "$out" | grep -q 'ARGS:'; then
+        bad "update $args ran the updater: [$out]"
+    elif ! printf '%s' "$out" | grep -q 'Usage: serverkit update'; then
+        bad "update $args printed no usage: rc=$rc out=[$out]"
+    elif [ "$args" = "--help" ] && [ "$rc" -ne 0 ]; then
+        bad "update --help exited $rc"
+    elif [ "$args" != "--help" ] && [ "$rc" -eq 0 ]; then
+        bad "update $args exited 0"
+    else
+        ok "update $args prints usage and never runs the updater (rc=$rc)"
+    fi
+done
+
+for args in "--help" "--frobnicate"; do
+    out="$( set -Eeuo pipefail; check_root() { :; }; cmd_uninstall $args 2>&1 )"
+    rc=$?
+    if printf '%s' "$out" | grep -q 'This will remove ServerKit'; then
+        bad "uninstall $args went on to the uninstall: [$out]"
+    elif [ "$args" = "--help" ] && [ "$rc" -eq 0 ]; then
+        ok "uninstall --help prints usage only"
+    elif [ "$args" != "--help" ] && [ "$rc" -ne 0 ]; then
+        ok "uninstall with an unknown flag fails (rc=$rc)"
+    else
+        bad "uninstall $args: rc=$rc out=[$out]"
+    fi
+done
+
 # --------------------------------------------------------------------------
 # T2 — L6: cmd_start must warn (not raw-abort) when systemctl/docker fail
 # (partial installs, non-systemd boxes). cmd_stop already had these guards.

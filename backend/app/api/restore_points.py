@@ -1,4 +1,4 @@
-"""Generic restore-point lifecycle API (Plan 81, M3).
+"""Generic restore-point lifecycle API.
 
 Application-owned scopes use the existing ResourceGrant seam. Host-level
 surfaces are operational and require a developer role even when their local

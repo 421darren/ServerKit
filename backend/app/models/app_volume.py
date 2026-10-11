@@ -30,7 +30,7 @@ class AppVolume(TimestampMixin, db.Model):
     driver = db.Column(db.String(40), nullable=False, default='local')
     read_only = db.Column(db.Boolean, nullable=False, default=False)
     size_bytes = db.Column(db.BigInteger, nullable=True)      # denormalized last-measured size
-    declared_size = db.Column(db.String(40), nullable=True)   # operator/manifest-declared size cap, e.g. "10Gi" (plan 35)
+    declared_size = db.Column(db.String(40), nullable=True)   # operator/manifest-declared size cap, e.g. "10Gi"
 
     # Deleting the app removes its volume rows (ORM cascade); the underlying
     # Docker volumes are intentionally left on disk so an app delete never nukes

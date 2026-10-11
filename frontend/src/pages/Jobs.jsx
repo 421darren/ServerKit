@@ -51,7 +51,7 @@ const POLL_MS = 5000;
 //   columnFilters      — the chrome's client-side {match, rules} column rules.
 //     Narrows the PAGE_SIZE rows already on screen.
 //
-// They shared the name `filters` until plan 69, which is exactly how a preset
+// They shared the name `filters` until the list-page convergence, which is exactly how a preset
 // could blank both server filters while filtering nothing. `serverFilters` is
 // namespaced inside `page` now; useTableChrome's `rename` keeps views users
 // saved under the old top-level `filters` working.

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import {
     FolderUp, UserPlus, Network, Activity, Server, Users as UsersIcon,
     Cable, KeyRound, Ban, Check, Trash2, RefreshCw, X,
@@ -62,6 +62,7 @@ const FTP_USER_VIEWS = [
 
 function FTPServer() {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [status, setStatus] = useState(null);
     const [users, setUsers] = useState([]);
     const [connections, setConnections] = useState([]);
@@ -817,8 +818,9 @@ function FTPServer() {
             {/* Create User Modal */}
             <Modal open={showUserModal} onClose={() => setShowUserModal(false)} title={t('app.fTPServer.createFtpUser', 'New FTP user')}>
                             <div className="form-group">
-                                <Label>{t('app.fTPServer.username2', 'Username *')}</Label>
+                                <Label htmlFor={`${fieldId}-username`}>{t('app.fTPServer.username2', 'Username *')}</Label>
                                 <Input
+                                    id={`${fieldId}-username`}
                                     type="text"
                                     value={newUser.username}
                                     onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
@@ -826,8 +828,9 @@ function FTPServer() {
                                 />
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.fTPServer.passwordLeaveEmptyToAutoGenerate', 'Password (leave empty to auto-generate)')}</Label>
+                                <Label htmlFor={`${fieldId}-password`}>{t('app.fTPServer.passwordLeaveEmptyToAutoGenerate', 'Password (leave empty to auto-generate)')}</Label>
                                 <Input
+                                    id={`${fieldId}-password`}
                                     type="password"
                                     value={newUser.password}
                                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
@@ -835,8 +838,9 @@ function FTPServer() {
                                 />
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.fTPServer.homeDirectoryOptional', 'Home directory (optional)')}</Label>
+                                <Label htmlFor={`${fieldId}-home-dir`}>{t('app.fTPServer.homeDirectoryOptional', 'Home directory (optional)')}</Label>
                                 <Input
+                                    id={`${fieldId}-home-dir`}
                                     type="text"
                                     value={newUser.homeDir}
                                     onChange={(e) => setNewUser({ ...newUser, homeDir: e.target.value })}
@@ -860,8 +864,9 @@ function FTPServer() {
             <Modal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} title={t('app.fTPServer.changePassword', 'Change password')}>
                             <p>{t('app.fTPServer.changingPasswordForUser', 'Changing password for user:')} <strong>{passwordTarget}</strong></p>
                             <div className="form-group">
-                                <Label>{t('app.fTPServer.newPasswordLeaveEmptyToAuto', 'New password (leave empty to auto-generate)')}</Label>
+                                <Label htmlFor={`${fieldId}-new-password`}>{t('app.fTPServer.newPasswordLeaveEmptyToAuto', 'New password (leave empty to auto-generate)')}</Label>
                                 <Input
+                                    id={`${fieldId}-new-password`}
                                     type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}

@@ -178,6 +178,14 @@ export function DataGrid({
                                     role="row"
                                     className={cn('sk-grid__row', on && 'is-picked', onRowClick && 'is-clickable')}
                                     onClick={onRowClick ? () => onRowClick(row) : undefined}
+                                    tabIndex={onRowClick ? 0 : undefined}
+                                    onKeyDown={onRowClick ? (e) => {
+                                        // Only the row itself: a focused button or input inside keeps its keys.
+                                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                                            e.preventDefault();
+                                            onRowClick(row);
+                                        }
+                                    } : undefined}
                                     onContextMenu={onRowContextMenu
                                         ? (e) => { e.preventDefault(); onRowContextMenu(row, e); }
                                         : undefined}

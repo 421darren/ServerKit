@@ -27,7 +27,7 @@ function formatMs(ms) {
         : `${formatNumber(ms)} ms`;
 }
 
-// Requests / errors / latency / cache from the timed nginx log (plan 86 §A2).
+// Requests / errors / latency / cache from the timed nginx log.
 // Hidden until the app has served a request in the window.
 export default function RequestMetricsCard({ appId }) {
     const { t } = useTranslation();

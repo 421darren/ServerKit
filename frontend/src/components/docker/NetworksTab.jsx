@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, Pill, SearchField, SegControl } from '@/components/ds';
 import {
@@ -114,12 +115,18 @@ const NetworksTab = ({ onStatsChange }) => {
     });
     const [groupBy, setGroupBy] = useState(null);
 
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
+
     useEffect(() => {
         loadNetworks();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadNetworks() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -128,10 +135,13 @@ const NetworksTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getNetworks();
             }
+            if (seq !== loadSeq.current) return;
             setNetworks(data.networks || []);
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load networks:', err);
-        } finally {
+            if (seq !== loadSeq.current) return;
+            setNetworks([]);
+            setLoadError(err);
             setLoading(false);
         }
     }
@@ -314,7 +324,9 @@ const NetworksTab = ({ onStatsChange }) => {
 
             <GridChips {...chrome.chipProps} />
 
-            {filteredNetworks.length === 0 ? (
+            {loadError ? (
+                <ErrorState error={loadError} onRetry={loadNetworks} />
+            ) : filteredNetworks.length === 0 ? (
                 <EmptyState
                     icon={NetworkIcon}
                     title={networks.length === 0 ? t('app.networksTab.noNetworks', 'No networks') : t('app.networksTab.noMatchingNetworks', 'No matching networks')}
@@ -351,6 +363,7 @@ const NetworksTab = ({ onStatsChange }) => {
 };
 
 const CreateNetworkModal = ({ onClose, onCreated }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [name, setName] = useState('');
     const [driver, setDriver] = useState('bridge');
@@ -379,8 +392,9 @@ const CreateNetworkModal = ({ onClose, onCreated }) => {
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.networksTab.networkName', 'Network name *')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.networksTab.networkName', 'Network name *')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}

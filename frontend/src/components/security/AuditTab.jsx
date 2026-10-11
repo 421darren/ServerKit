@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ScoreGauge } from '@/components/ds';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
+import { formatDateTime } from '@/utils/intl';
 
 
 const scoreColor = (score) => {
@@ -79,7 +80,7 @@ const AuditTab = () => {
                                     color={scoreColor(audit.score)}
                                     label={t('app.auditTab.securityScore', 'security score')}
                                 />
-                                <div className="sec-audit-meta">{t('app.auditTab.generated', 'Generated')} {new Date(audit.generated_at).toLocaleString()}</div>
+                                <div className="sec-audit-meta">{t('app.auditTab.generated', 'Generated')} {formatDateTime(audit.generated_at)}</div>
                             </div>
 
                             {Object.entries(audit.services || {}).map(([service, data]) => (

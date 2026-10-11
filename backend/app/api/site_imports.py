@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request
 
 from app.middleware.rbac import admin_required, get_current_user
 from app.services.site_import_service import SiteImportError, SiteImportService
+from app.api._request import json_object
 
 site_imports_bp = Blueprint('site_imports', __name__)
 
@@ -33,9 +34,9 @@ def upload_archive():
 @admin_required
 def probe_ssh_source():
     """Preflight an SSH import source: test the connection, list the docroot,
-    sniff the stack (plan 31 #8). Linux-only runtime — returns 501 on a host
+    sniff the stack. Linux-only runtime — returns 501 on a host
     that can't run ssh (e.g. Windows dev) so the wizard can message it."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     source = data.get('source') or data
     try:
         result = SiteImportService.probe_ssh(source)
@@ -49,7 +50,7 @@ def probe_ssh_source():
 @site_imports_bp.route('', methods=['POST'])
 @admin_required
 def create_import():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     user = get_current_user()
     try:
         imp = SiteImportService.create(
@@ -100,7 +101,7 @@ def run_import(import_id):
     if imp.status not in ('analyzed', 'failed'):
         return jsonify({'error': "Import must be analysed before it can run "
                                  f"(status: {imp.status})"}), 409
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     from_step = data.get('from_step') or None
     # Merge wizard-provided run options into the stored ones (body wins),
     # e.g. {'skip_db': True, 'skip_crontab': True}.

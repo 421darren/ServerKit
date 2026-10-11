@@ -36,9 +36,18 @@ import {
     Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
 } from '@/components/ui/select';
 import { errorReason } from '@/utils/errorMessage';
+import usePersistentState from '@/hooks/usePersistentState';
+import { formatDateTime, formatNumber, formatTime } from '@/utils/intl';
 
 // 'logs' stays first so the default landing keeps working on installs with no
 // paired agents (the interactive shell needs a connected agent).
+// Stored line count, or the 200-line default for a missing or junk value.
+const parseLineCount = (stored) => {
+    const v = parseInt(stored, 10);
+    return Number.isFinite(v) ? v : 200;
+};
+const notFalse = (stored) => stored !== 'false';
+
 const VALID_TABS = ['logs', 'journal', 'processes', 'services', 'shell'];
 
 // Section tabs rendered inline in the PageTopbar (Servers-style), routed via
@@ -78,7 +87,7 @@ const Terminal = () => {
 
 // ─── Interactive shell tab (demo console: target rail + terminal pane) ───
 // Sessions run over the ServerKit agent (terminal:create); the panel host has
-// no PTY endpoint (§5 gap), so the rail lists paired agent servers only.
+// no PTY endpoint, so the rail lists paired agent servers only.
 const TerminalShellTab = () => {
     const { t } = useTranslation();
     const [servers, setServers] = useState([]);
@@ -181,15 +190,12 @@ const LogFilesTab = () => {
     const [listError, setListError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(LOG_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(LOG_PREFS.lineCount, parseLineCount);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(LOG_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(LOG_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(LOG_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(LOG_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const contentRef = useRef(null);
@@ -198,9 +204,6 @@ const LogFilesTab = () => {
         [logFiles, selectedLog]
     );
 
-    useEffect(() => { localStorage.setItem(LOG_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.lineCount, lineCount); }, [lineCount]);
 
     // Reset when the target changes (clears previous server's selection)
     useEffect(() => {
@@ -246,14 +249,18 @@ const LogFilesTab = () => {
         }
     }
 
-    async function loadLogContent(logPath, showLoading = true) {
+    // Callers that just set state pass the new values: this render's
+    // lineCount/appliedSearch are still the old ones.
+    async function loadLogContent(logPath, showLoading = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const search = overrides.search ?? appliedSearch;
         if (showLoading) setLoadingContent(true);
         try {
             let data;
-            if (appliedSearch.trim()) {
-                data = await api.searchLog(logPath, appliedSearch, lineCount);
+            if (search.trim()) {
+                data = await api.searchLog(logPath, search, lines);
             } else {
-                data = await api.readLog(logPath, lineCount);
+                data = await api.readLog(logPath, lines);
             }
             setLogContent(data.content || data.lines?.join('\n') || '');
             setSelectedLog(logPath);
@@ -297,7 +304,7 @@ const LogFilesTab = () => {
     function handleSearchClear() {
         setSearchPattern('');
         setAppliedSearch('');
-        if (selectedLog) loadLogContent(selectedLog);
+        if (selectedLog) loadLogContent(selectedLog, true, { search: '' });
     }
 
     function scrollToBottom() {
@@ -367,12 +374,12 @@ const LogFilesTab = () => {
                             </span>
                             <span className="lv-stat">
                                 <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                                <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                                <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                             </span>
                             {lastUpdated && (
                                 <span className="lv-stat">
                                     <Clock size={12} />
-                                    {lastUpdated.toLocaleTimeString()}
+                                    {formatTime(lastUpdated, { seconds: true })}
                                 </span>
                             )}
                         </>
@@ -412,7 +419,7 @@ const LogFilesTab = () => {
                         onSearchSubmit={handleSearchSubmit}
                         onSearchClear={handleSearchClear}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) setTimeout(() => loadLogContent(selectedLog), 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) loadLogContent(selectedLog, true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}
@@ -501,18 +508,15 @@ const JournalTab = () => {
     const [unavailable, setUnavailable] = useState(false);
     const [unit, setUnit] = useState('');
     const [unitInput, setUnitInput] = useState('');
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(JOURNAL_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(JOURNAL_PREFS.lineCount, parseLineCount);
     const [priority, setPriority] = useState('');
     const [source, setSource] = useState('');
     const [sourceLabel, setSourceLabel] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(JOURNAL_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(JOURNAL_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(JOURNAL_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(JOURNAL_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [unitFilter] = useState('');
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -520,9 +524,6 @@ const JournalTab = () => {
     const contentRef = useRef(null);
     const isJournalctl = source === 'journalctl' || source === '';
 
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.lineCount, lineCount); }, [lineCount]);
 
     useEffect(() => {
         loadJournalLogs();
@@ -533,7 +534,11 @@ const JournalTab = () => {
         immediate: false,
     });
 
-    async function loadJournalLogs(showSpinner = true) {
+    // Same as loadLogContent: pass values that were just set.
+    async function loadJournalLogs(showSpinner = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const selectedUnit = overrides.unit ?? unit;
+        const level = overrides.priority ?? priority;
         if (isRemote && !REMOTE_JOURNAL_SUPPORTED.has('read')) {
             setLogContent('');
             setSource('');
@@ -544,7 +549,7 @@ const JournalTab = () => {
         if (showSpinner) setLoading(true);
         setUnavailable(false);
         try {
-            const data = await api.getJournalLogs(unit || null, lineCount);
+            const data = await api.getJournalLogs(selectedUnit || null, lines, level);
             setLogContent(data.lines?.join('\n') || '');
             setSource(data.source || '');
             setSourceLabel(data.source_label || '');
@@ -567,18 +572,18 @@ const JournalTab = () => {
     function pickUnit(u) {
         setUnit(u);
         setUnitInput(u);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: u });
     }
 
     function clearUnit() {
         setUnit('');
         setUnitInput('');
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: '' });
     }
 
     function applyUnitInput() {
         setUnit(unitInput);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: unitInput });
     }
 
     function handleDownload() {
@@ -649,12 +654,12 @@ const JournalTab = () => {
                     )}
                     <span className="lv-stat">
                         <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                        <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                        <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                     </span>
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -698,7 +703,7 @@ const JournalTab = () => {
                                 {filteredUnits.map(u => (
                                     <SharedButton variant="unstyled" type="button"
                                         key={u.id}
-                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}}`}
+                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}`}
                                         onClick={() => pickUnit(u.id)}
                                     >
                                         <span className={`lv-file-dot kind-${u.kind}`} />
@@ -724,7 +729,7 @@ const JournalTab = () => {
                                         <SharedButton variant="unstyled" type="button"
                                             key={opt.value}
                                             className={`lv-file lv-file--compact ${priority === opt.value ? 'active' : ''}`}
-                                            onClick={() => { setPriority(opt.value); setTimeout(loadJournalLogs, 0); }}
+                                            onClick={() => { setPriority(opt.value); loadJournalLogs(true, { priority: opt.value }); }}
                                         >
                                             <span className="lv-file-dot" style={{ background: priorityColor(opt.value) }} />
                                             <span className="lv-file-name">{opt.label}</span>
@@ -750,7 +755,7 @@ const JournalTab = () => {
                         onSearchSubmit={() => setAppliedSearch(searchPattern)}
                         onSearchClear={() => { setSearchPattern(''); setAppliedSearch(''); }}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); setTimeout(loadJournalLogs, 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); loadJournalLogs(true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}
@@ -932,7 +937,7 @@ const ProcessesTab = () => {
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -1027,7 +1032,7 @@ const ProcessesTab = () => {
                                 <span className="meta-label">{t('app.terminal.started', 'Started')}</span>
                                 <span className="meta-value">
                                     {selectedProcess.create_time
-                                        ? new Date(selectedProcess.create_time * 1000).toLocaleString()
+                                        ? formatDateTime(selectedProcess.create_time * 1000)
                                         : '—'}
                                 </span>
                             </div>

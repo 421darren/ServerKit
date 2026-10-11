@@ -13,6 +13,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/intl';
 
 // The backend reports the engine as the bare wire name it derived from the
 // filename prefix; these are what the row (and therefore every rule) says.
@@ -159,7 +160,7 @@ export default function BackupsTab() {
             cellClassName: 'sk-cell-dim',
             render: (b) => {
                 const parsed = Date.parse(b.created_at || '');
-                return Number.isNaN(parsed) ? '—' : new Date(parsed).toLocaleString();
+                return Number.isNaN(parsed) ? '—' : formatDateTime(parsed);
             },
         },
         {

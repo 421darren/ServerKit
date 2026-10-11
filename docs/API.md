@@ -300,48 +300,6 @@ GET /system/disk
 GET /system/network
 ```
 
-### Get Running Processes
-
-```http
-GET /system/processes
-```
-
-**Response (200):**
-```json
-{
-  "processes": [
-    {
-      "pid": 1234,
-      "name": "python",
-      "cpu_percent": 5.2,
-      "memory_percent": 2.1,
-      "status": "running"
-    }
-  ]
-}
-```
-
----
-
-### Get Services Status
-
-```http
-GET /system/services
-```
-
-**Response (200):**
-```json
-{
-  "services": [
-    {"name": "nginx", "status": "running"},
-    {"name": "mysql", "status": "running"},
-    {"name": "docker", "status": "stopped"}
-  ]
-}
-```
-
----
-
 ### Health Check
 
 No authentication required.
