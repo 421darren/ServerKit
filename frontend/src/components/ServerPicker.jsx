@@ -58,6 +58,7 @@ export default function ServerPicker({
     label,
     disabled = false,
     className,
+    id,
 }) {
     const { t } = useTranslation();
     const [servers, setServers] = useState([]);
@@ -149,6 +150,7 @@ export default function ServerPicker({
 
     return (
         <ResourcePicker
+            id={id}
             value={selected}
             onChange={(resource) => {
                 if (resource.type === 'server-target') {

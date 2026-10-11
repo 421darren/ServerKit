@@ -289,10 +289,11 @@ const ReviewStep = ({ form }) => {
 
             <div className="new-service-page__fields-grid">
                 <div className="new-service-page__field">
-                    <Label>
+                    <Label htmlFor={`${fieldId}-project`}>
                         {t('common.labels.project', 'Project')} <span className="new-service-page__optional">(optional)</span>
                     </Label>
                     <ResourcePicker
+                        id={`${fieldId}-project`}
                         value={selectedProjectResource}
                         onChange={handleProjectChange}
                         types={['project']}
@@ -307,8 +308,9 @@ const ReviewStep = ({ form }) => {
                 </div>
                 {selectedProjectId && (
                     <div className="new-service-page__field">
-                        <Label>{t('app.reviewStep.environment', 'Environment')}</Label>
+                        <Label htmlFor={`${fieldId}-environment`}>{t('app.reviewStep.environment', 'Environment')}</Label>
                         <ResourcePicker
+                            id={`${fieldId}-environment`}
                             value={selectedEnvironmentResource}
                             onChange={(resource) => setSelectedEnvironmentId(resource.id)}
                             types={['environment']}

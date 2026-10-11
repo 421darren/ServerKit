@@ -376,9 +376,10 @@ const RemoteAccess = ({ serverId }) => {
                     {!wizardTunnel && (
                         <>
                             <div className="ra-service-field">
-                                <Label>{t('app.remoteAccess.privateHostWhereTheServiceRuns', 'Private host (where the service runs)')}</Label>
+                                <Label htmlFor={`${fieldId}-private-host`}>{t('app.remoteAccess.privateHostWhereTheServiceRuns', 'Private host (where the service runs)')}</Label>
                                 {serverId ? (
                                     <Input
+                                        id={`${fieldId}-private-host`}
                                         value={currentServer?.name || serverId}
                                         disabled
                                     />
@@ -386,6 +387,7 @@ const RemoteAccess = ({ serverId }) => {
                                     // Tunnel endpoints are agent servers; the panel host
                                     // has no server row, so "Local" is not offered.
                                     <ServerPicker
+                                        id={`${fieldId}-private-host`}
                                         value={form.privateServerId}
                                         onChange={(id) => setField('privateServerId', id)}
                                         capability="wireguard"
@@ -395,8 +397,9 @@ const RemoteAccess = ({ serverId }) => {
                                 )}
                             </div>
                             <div className="ra-service-field">
-                                <Label>{t('app.remoteAccess.edgeServerPublicIpFrontsThe', 'Edge server (public IP, fronts the tunnel)')}</Label>
+                                <Label htmlFor={`${fieldId}-edge-server`}>{t('app.remoteAccess.edgeServerPublicIpFrontsThe', 'Edge server (public IP, fronts the tunnel)')}</Label>
                                 <ServerPicker
+                                    id={`${fieldId}-edge-server`}
                                     value={form.edgeServerId}
                                     onChange={(id) => setField('edgeServerId', id)}
                                     capability="wireguard"

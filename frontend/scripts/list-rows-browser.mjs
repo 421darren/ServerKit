@@ -12,6 +12,7 @@ import { chromium } from 'playwright';
 //    the state their delete handlers read, so a delete after opening a vault
 //    or a variable group used first-render values (a null vault, group null).
 //  - Keyboard: a clickable row opens with Enter like it does with a click.
+//  - A label can name a server picker: the picker puts its id on its trigger.
 const root = fileURLToPath(new URL('../', import.meta.url));
 const fixture = `
 import React from 'react';
@@ -19,6 +20,7 @@ import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
 import Vaults from '/src/pages/Vaults.jsx';
 import SharedVariableGroups from '/src/components/shared/SharedVariableGroups.jsx';
+import ServerPicker from '/src/components/ServerPicker.jsx';
 const log=(...a)=>(window.calls=window.calls||[]).push(a);
 const vault={id:11,name:'alpha-vault',description:'',secret_count:1,workspace_id:null};
 window.testApi={
@@ -32,7 +34,8 @@ window.testApi={
  deleteGroupVariable:(gid,vid)=>{log('deleteGroupVariable',gid,vid);return Promise.resolve({});},
 };
 const which=new URLSearchParams(location.search).get('page');
-createRoot(document.getElementById('root')).render(<MemoryRouter>{which==='vaults'?<Vaults/>:<SharedVariableGroups scopeType="workspace" scopeId={1}/>}</MemoryRouter>);
+const picker=<div><label htmlFor="pick-target">Applies to</label><ServerPicker id="pick-target" label="Server" onChange={()=>{}}/></div>;
+createRoot(document.getElementById('root')).render(<MemoryRouter>{which==='vaults'?<Vaults/>:which==='picker'?picker:<SharedVariableGroups scopeType="workspace" scopeId={1}/>}</MemoryRouter>);
 `;
 const server = await createServer({
     root, configFile: false, logLevel: 'error', resolve: { alias: { '@': path.join(root, 'src') } },
@@ -47,6 +50,7 @@ const server = await createServer({
         load(id) {
             const normalized = id.replaceAll('\\', '/');
             if (id === '\0test-i18n') return `const t=(key,f)=>typeof f==='string'?f:(f&&(f.defaultValue_other||f.defaultValue))||key;export const useTranslation=()=>({t,i18n:{language:'en'}});export const Trans=({children})=>children;export const initReactI18next={type:'3rdParty',init(){}};`;
+            if (normalized.endsWith('/src/contexts/useAuth.js')) return `import {createContext} from 'react';export const AuthContext=createContext(null);const auth={user:{id:1,role:'admin'},isAdmin:true,isAuthenticated:true,hasPermission:()=>true};export const useAuth=()=>auth;`;
             if (normalized.endsWith('/src/contexts/useWorkspace.js')) return `const ws={activeWorkspaceId:null,workspaces:[],setActiveWorkspace(){}};export const useWorkspace=()=>ws;`;
             if (normalized.endsWith('/src/contexts/useToast.js')) return `const toast={error(m){(window.toasts=window.toasts||[]).push(m)},success(){},info(){},warning(){}};export const useToast=()=>toast;`;
             if (normalized.endsWith('/src/hooks/useConfirm.js')) return `const confirm=async()=>true;export function useConfirm(){return {confirm,confirmState:{isOpen:false},handleConfirm(){},handleCancel(){}};}`;
@@ -105,6 +109,16 @@ try {
     assert.deepEqual(await keys.evaluate(() => window.calls), [['getVault', 11]]);
     assert.deepEqual(keyErrors, []);
     console.log('PASS Enter on a focused row opens it');
+
+    const pick = await browser.newPage();
+    const pickErrors = [];
+    pick.on('pageerror', error => pickErrors.push(error.message));
+    await pick.goto(`${base}?page=picker`);
+    // Clicking the label activates the picker it names, as with any field.
+    await pick.locator('label[for="pick-target"]').click();
+    await pick.waitForFunction(() => document.getElementById('pick-target')?.getAttribute('aria-expanded') === 'true', null, { timeout: 5000 });
+    assert.deepEqual(pickErrors, []);
+    console.log('PASS clicking a label opens the server picker it names');
 } finally {
     await browser?.close();
     await server.close();
