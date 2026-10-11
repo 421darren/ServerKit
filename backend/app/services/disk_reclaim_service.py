@@ -36,7 +36,6 @@ from app.utils.system import run_checked
 
 # ── Defaults (overridable per call so tests never touch real paths) ──────────
 
-INSTALL_DIR = os.environ.get('SERVERKIT_DIR', '/opt/serverkit')
 # Must match BACKUP_DIR in scripts/update.sh — that is what writes the
 # snapshots this module reclaims.
 BACKUP_DIR = os.environ.get('SERVERKIT_BACKUP_DIR', '/var/backups/serverkit')
