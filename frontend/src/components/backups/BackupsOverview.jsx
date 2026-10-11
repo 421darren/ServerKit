@@ -10,7 +10,7 @@ import { formatBytes } from '@/utils/formatBytes';
 import { KpiBand, MetricCard, Pill, DataTable, DataTableFooter } from '@/components/ds';
 import EmptyState from '../EmptyState';
 import { useTranslation } from 'react-i18next';
-import { formatNumber } from '@/utils/intl';
+import { formatDuration, formatNumber } from '@/utils/intl';
 
 // Daily activity cells: one column per week, one row per weekday. Half a year
 // rather than the mock's 18 weeks — the cells stretch to fill the card (see
@@ -48,14 +48,6 @@ function relativeTime(iso) {
     if (diff < 86400) return `${Math.round(diff / 3600)}h ago`;
     if (diff < 172800) return 'yesterday';
     return `${Math.round(diff / 86400)}d ago`;
-}
-
-function formatDuration(seconds) {
-    if (!seconds && seconds !== 0) return '—';
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const m = Math.floor(seconds / 60);
-    const s = Math.round(seconds % 60);
-    return s ? `${m}m ${s}s` : `${m}m`;
 }
 
 // DataTable columns for the "Latest snapshots" digest. The hand-rolled table
@@ -339,7 +331,7 @@ export default function BackupsOverview({
                         {[
                             ['Total backups', formatNumber(events.length)],
                             ['This week', String(thisWeek)],
-                            ['Avg duration', formatDuration(avgDuration)],
+                            ['Avg duration', formatDuration(avgDuration, { fallback: '—' })],
                             ['Failed (30d)', String(failed30)],
                         ].map(([label, value]) => (
                             <div key={label}>

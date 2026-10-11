@@ -1,3 +1,5 @@
+import { formatDuration as formatDurationIntl } from '@/utils/intl';
+
 // Categorical palette: literal hex on purpose (consumed as inline styles in
 // JS). Values follow the redesign palette in styles/_theme-variables.scss —
 // green #3ddc97 / red #fb6f6f / amber #f5b945 / accent #6d7cff /
@@ -113,12 +115,9 @@ export function isDockerApp(appType) {
 // from this module keep working.
 export { formatRelativeTime } from '@/utils/time';
 
+// A deploy with no recorded duration (or 0) shows '-'.
 export function formatDuration(seconds) {
-    if (!seconds || seconds < 0) return '-';
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const min = Math.floor(seconds / 60);
-    const sec = Math.round(seconds % 60);
-    return `${min}m ${sec}s`;
+    return seconds ? formatDurationIntl(seconds) : '-';
 }
 
 export { SERVICE_TYPES, STATUS_CONFIG, DEPLOY_STATUS };

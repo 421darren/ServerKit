@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { CardHeader as SharedCardHeader, CardFooter as SharedCardFooter } from '@/components/ui/card';
 import { formatDateTime } from '@/utils/intl';
+import { formatDuration } from '@/utils/serviceTypes';
 
 const BuildTab = ({ appId, app }) => {
     const { t } = useTranslation();
@@ -175,12 +176,6 @@ const BuildTab = ({ appId, app }) => {
         } finally {
             setDeploying(false);
         }
-    }
-
-    function formatDuration(seconds) {
-        if (!seconds) return '-';
-        if (seconds < 60) return `${Math.round(seconds)}s`;
-        return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
     }
 
     if (loading) {
