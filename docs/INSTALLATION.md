@@ -64,6 +64,9 @@ On a `minimal` install:
 | `SERVERKIT_OFFLINE_TARBALL=/path/to/...tar.gz` | Use a local tarball instead of downloading |
 | `SERVERKIT_MIRROR_URL=https://mirror.example.com/releases` | Fetch releases/checksums from a private mirror |
 
+These options apply to the installer. Settings the running panel reads from
+its `.env` are listed in [ENVIRONMENT.md](ENVIRONMENT.md).
+
 Example with a domain:
 
 ```bash
