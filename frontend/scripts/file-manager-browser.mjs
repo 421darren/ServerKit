@@ -21,6 +21,7 @@ window.release=(p)=>{const i=window.pending.findIndex(x=>x.path===p);const x=win
 window.testApi={
  browseFiles:(p)=>(window.calls=window.calls||[]).push(p)&&window.holdAll||p!=='/home'?new Promise(resolve=>window.pending.push({path:p,resolve})):Promise.resolve(listing(p)),
  getDiskMounts:()=>Promise.resolve({mounts:[]}),
+ browseRemoteFiles:(sid,p)=>{(window.remoteCalls=window.remoteCalls||[]).push([sid,p]);return Promise.resolve({path:p,parent:null,entries:[{name:'on-agent.txt',path:p+'/on-agent.txt',is_dir:false,type:'file',size:1}]});},
  createDirectory:(p)=>{(window.ops=window.ops||[]).push(['mkdir',p]);return Promise.resolve({});},
  renameFile:(p,n)=>{(window.ops=window.ops||[]).push(['rename',p,n]);return Promise.resolve({});},
  changeFilePermissions:(p,m)=>{(window.ops=window.ops||[]).push(['chmod',p,m]);return Promise.resolve({});},
@@ -44,6 +45,7 @@ const server = await createServer({
             if (normalized.endsWith('/src/contexts/useWorkspace.js')) return `const ws={activeWorkspaceId:null,workspaces:[],setActiveWorkspace(){}};export const useWorkspace=()=>ws;`;
             if (normalized.endsWith('/src/contexts/useToast.js')) return `const toast={error(m){(window.toasts=window.toasts||[]).push(m)},success(){},info(){},warning(){}};export const useToast=()=>toast;`;
             if (normalized.endsWith('/src/services/api.js') || normalized.endsWith('/src/services/api/index.js')) return `const api=new Proxy({}, {get:(_,key)=>(...args)=>(window.testApi[key]?window.testApi[key](...args):Promise.resolve({}))});export {api};export default api;`;
+            if (normalized.endsWith('/src/components/ServerPicker.jsx')) return `export default function ServerPicker({onChange}){return <button type="button" onClick={()=>onChange('7',{name:'edge',allowed_paths:[]})}>pick-agent</button>;}`;
             if (normalized.endsWith('/fm-fixture.jsx')) return fixture;
         },
         configureServer(vite) {
@@ -132,6 +134,21 @@ try {
     assert.deepEqual(await lastOp(), ['chmod', '/home/projects', '700']);
     assert.deepEqual(dlgErrors, []);
     console.log('PASS new-folder, rename and permissions dialogs prefill and submit');
+
+    // Switching to a remote agent that advertises no allowed paths keeps the
+    // same path, so the listing has to reload because the source changed, or
+    // the panel host's /home stays on screen under a remote header.
+    const sw = await browser.newPage();
+    const swErrors = [];
+    sw.on('pageerror', error => swErrors.push(error.message));
+    await sw.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await sw.getByText('projects', { exact: true }).first().waitFor();
+    await sw.getByRole('button', { name: 'pick-agent' }).first().click();
+    await sw.getByText('on-agent.txt').first().waitFor({ timeout: 5000 });
+    assert.deepEqual(await sw.evaluate(() => window.remoteCalls), [['7', '/home']]);
+    assert.equal(await sw.getByText('projects', { exact: true }).count(), 0, 'the panel host listing is still shown');
+    assert.deepEqual(swErrors, []);
+    console.log('PASS switching to a remote agent reloads the listing from that agent');
 } finally {
     await browser?.close();
     await server.close();

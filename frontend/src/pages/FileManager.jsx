@@ -410,7 +410,9 @@ function FileManager() {
 
     useEffect(() => {
         loadDirectory(currentPath);
-    }, [currentPath, showHidden]); // eslint-disable-line react-hooks/exhaustive-deps
+    // fileApi, not loadDirectory: switching target must reload even when the
+    // path stays the same, but loadDirectory also changes with toast/t.
+    }, [currentPath, showHidden, fileApi]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         loadDiskMounts();
