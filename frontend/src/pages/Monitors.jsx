@@ -40,6 +40,7 @@ import { CHECK_TYPES, MONITOR_STATUS, monitorStateOf } from '../components/monit
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatUptimePercent } from '@/utils/uptime';
 
 const POLL_MS = 15000;
 
@@ -86,11 +87,6 @@ function countdown(iso) {
     if (seconds <= 0) return 'due';
     if (seconds < 60) return `${seconds}s`;
     return `${Math.floor(seconds / 60)}m`;
-}
-
-function formatUptime(value) {
-    if (value == null) return '—';
-    return `${Number(value).toFixed(2)}%`;
 }
 
 // Built-in saved views, in the shared envelope (see ds/grid/viewState.js).
@@ -396,7 +392,7 @@ export default function Monitors() {
             key: 'uptime_30d',
             headerKey: 'app.monitors.uptime30d', header: 'Uptime (30d)',
             sortable: true,
-            render: (m) => <span className="mon-uptime">{formatUptime(m.uptime_30d)}</span>,
+            render: (m) => <span className="mon-uptime">{formatUptimePercent(m.uptime_30d)}</span>,
         },
         {
             key: 'last_check_at',

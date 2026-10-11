@@ -36,6 +36,7 @@ import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
 import { formatDate, formatTime } from '@/utils/intl';
+import { formatUptimePercent } from '@/utils/uptime';
 
 const POLL_MS = 15000;
 
@@ -120,10 +121,6 @@ function percentile(values, p) {
     if (!values.length) return null;
     const sorted = [...values].sort((a, b) => a - b);
     return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
-}
-
-function formatUptime(value) {
-    return value == null ? '—' : `${Number(value).toFixed(2)}%`;
 }
 
 function certDaysLeft(iso) {
@@ -440,10 +437,10 @@ export default function MonitorDetail() {
                 </MetricCard>
                 <MetricCard
                     label={t('app.monitorDetail.uptime30d', 'Uptime (30d)')} tone="accent" icon={<CheckCircle2 size={17} />}
-                    value={formatUptime(monitor.uptime_30d)}
+                    value={formatUptimePercent(monitor.uptime_30d)}
                 >
                     <div className="mon-kpi-sub">
-                        24h {formatUptime(monitor.uptime_24h)} {t('app.monitorDetail.7d', '· 7d')} {formatUptime(monitor.uptime_7d)}
+                        24h {formatUptimePercent(monitor.uptime_24h)} {t('app.monitorDetail.7d', '· 7d')} {formatUptimePercent(monitor.uptime_7d)}
                     </div>
                 </MetricCard>
                 <MetricCard
@@ -530,7 +527,7 @@ export default function MonitorDetail() {
                                     ['30d', monitor.uptime_30d], ['90d', monitor.uptime_90d]].map(([label, value]) => (
                                     <div key={label}>
                                         <span className="mon-statstrip__label">{label}</span>
-                                        <span className="mon-statstrip__value">{formatUptime(value)}</span>
+                                        <span className="mon-statstrip__value">{formatUptimePercent(value)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -557,7 +554,7 @@ export default function MonitorDetail() {
                                     <span className="mon-panel-sub">
                                         {selectedDay.state === 'none'
                                             ? t('app.monitorDetail.notMonitoredOnThisDay', 'Not monitored on this day')
-                                            : t('app.monitorDetail.daySummary', { count: selectedDay.checks, failed: selectedDay.down_checks, uptime: formatUptime(selectedDay.uptime), defaultValue_one: '{{count}} check · {{failed}} failed · {{uptime}} uptime', defaultValue_other: '{{count}} checks · {{failed}} failed · {{uptime}} uptime' })}
+                                            : t('app.monitorDetail.daySummary', { count: selectedDay.checks, failed: selectedDay.down_checks, uptime: formatUptimePercent(selectedDay.uptime), defaultValue_one: '{{count}} check · {{failed}} failed · {{uptime}} uptime', defaultValue_other: '{{count}} checks · {{failed}} failed · {{uptime}} uptime' })}
                                     </span>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => setSelectedDay(null)}>{t('common.actions.close', 'Close')}</Button>
