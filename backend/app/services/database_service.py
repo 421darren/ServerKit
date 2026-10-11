@@ -34,7 +34,7 @@ class DatabaseService:
         # run_checked also resolves argv[0] when $PATH misses it, so a client
         # installed outside the unit's PATH stops reading as "not installed"
         # (the class behind a past outage).
-        return run_checked(['mysql', '--version'], timeout=None)['success']
+        return run_checked(['mysql', '--version'])['success']
 
     @staticmethod
     def mysql_is_running():
@@ -394,7 +394,7 @@ class DatabaseService:
     @staticmethod
     def pg_is_installed():
         """Check if PostgreSQL is installed."""
-        return run_checked(['psql', '--version'], timeout=None)['success']
+        return run_checked(['psql', '--version'])['success']
 
     @staticmethod
     def pg_is_running():
