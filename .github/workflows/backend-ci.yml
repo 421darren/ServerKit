@@ -48,6 +48,15 @@ jobs:
         # Lowering the floor requires editing BASELINE_COUNT in the same commit.
         working-directory: backend
         run: python tests/check_test_count.py
+      - name: Undefined names
+        # A name used before it exists only fails when that line runs, so a
+        # rarely-taken branch ships broken: two routes that always 500'd on a
+        # missing import, and a Stop button that crashed on a shadowing local
+        # import. Pyflakes catches both statically in about a second.
+        working-directory: backend
+        run: |
+          pip install ruff==0.14.14
+          ruff check --select F821,F823 app tests
 
   # Sharded because this job WAS the entire wait: 21m50s of a ~22m pipeline,
   # while every other workflow finished inside a minute. Splitting the suite
