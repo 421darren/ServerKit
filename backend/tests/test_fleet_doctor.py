@@ -139,7 +139,7 @@ def test_dns_fail_when_unresolved(app, server, monkeypatch):
     import socket
 
     def _boom(host):
-        raise socket.gaierror(-2, 'name resolution failure')
+        raise socket.gaierror(socket.EAI_NONAME, 'name resolution failure')
 
     monkeypatch.setattr(fleet_doctor_service, '_resolve_host_ips', _boom)
     from app import db
