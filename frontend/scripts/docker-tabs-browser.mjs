@@ -18,19 +18,30 @@ import {MemoryRouter} from 'react-router-dom';
 import {ServerContext} from '/src/components/docker/dockerHelpers.js';
 import ContainersTab from '/src/components/docker/ContainersTab.jsx';
 import ImagesTab from '/src/components/docker/ImagesTab.jsx';
+import VolumesTab from '/src/components/docker/VolumesTab.jsx';
+import NetworksTab from '/src/components/docker/NetworksTab.jsx';
+import ComposeTab from '/src/components/docker/ComposeTab.jsx';
 window.pending=[];
 const hold=(server,kind)=>new Promise((resolve,reject)=>window.pending.push({server,kind,resolve,reject}));
 window.release=(server,kind,ok=true)=>{const i=window.pending.findIndex(p=>p.server===server&&p.kind===kind);const p=window.pending.splice(i,1)[0];
- const row=kind==='containers'?{data:[{id:server+'-c',name:server+'-web',image:'nginx',status:'Up',state:'running'}]}:{data:[{id:server+'-i',repository:server+'-repo',tag:'latest',size:'1MB'}]};
+ const rows={containers:[{id:server+'-c',name:server+'-web',image:'nginx',status:'Up',state:'running'}],
+  images:[{id:server+'-i',repository:server+'-repo',tag:'latest',size:'1MB'}],
+  volumes:[{name:server+'-vol',driver:'local'}],
+  networks:[{id:server+'-n',name:server+'-net',driver:'bridge'}],
+  compose:[{name:server+'-stack',status:'running(1)'}]};
+ const row={data:rows[kind]};
  ok?p.resolve({success:true,...row}):p.reject(new Error('Docker is not reachable: daemon down'));};
 window.testApi={
  getRemoteContainers:(server)=>hold(server,'containers'),
  getRemoteImages:(server)=>hold(server,'images'),
+ getRemoteVolumes:(server)=>hold(server,'volumes'),
+ getRemoteNetworks:(server)=>hold(server,'networks'),
+ getRemoteComposeProjects:(server)=>hold(server,'compose'),
  getRemoteContainerStats:()=>Promise.resolve({}),
  getContainersStats:()=>Promise.resolve({}),
 };
 function App(){const [server,setServer]=useState('alpha');window.setServer=setServer;const tab=new URLSearchParams(location.search).get('tab');
- return <ServerContext.Provider value={{serverId:server,serverName:server,isRemote:true}}>{tab==='images'?<ImagesTab/>:<ContainersTab/>}</ServerContext.Provider>}
+ return <ServerContext.Provider value={{serverId:server,serverName:server,isRemote:true}}>{({images:<ImagesTab/>,volumes:<VolumesTab/>,networks:<NetworksTab/>,compose:<ComposeTab/>})[tab]||<ContainersTab/>}</ServerContext.Provider>}
 createRoot(document.getElementById('root')).render(<MemoryRouter><App/></MemoryRouter>);
 `;
 const server = await createServer({
@@ -71,7 +82,8 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     const base = `http://127.0.0.1:${server.httpServer.address().port}/docker-check`;
 
-    for (const [tab, kind, label] of [['containers', 'containers', 'web'], ['images', 'images', 'repo']]) {
+    for (const [tab, kind, label] of [['containers', 'containers', 'web'], ['images', 'images', 'repo'], ['volumes', 'volumes', 'vol'],
+        ['networks', 'networks', 'net'], ['compose', 'compose', 'stack']]) {
         await page.goto(`${base}?tab=${tab}`);
         await waitPending(page, 'alpha', kind);
         await page.evaluate(() => window.setServer('beta'));
