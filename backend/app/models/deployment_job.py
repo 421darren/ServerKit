@@ -34,7 +34,7 @@ class DeploymentJob(RunLifecycleMixin, JsonColumnMixin, db.Model):
     requested_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     trigger = db.Column(db.String(30), default='manual')
 
-    # Links to the release ledgers (§3 unification): the DeploymentJob is the
+    # Links to the release ledgers: the DeploymentJob is the
     # canonical execution record; Deployment / GitDeployment remain the
     # version/release ledgers it produces. All nullable — a template-install job
     # has none of these set.

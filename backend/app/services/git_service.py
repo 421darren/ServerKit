@@ -101,7 +101,7 @@ class GitService:
     def _git_out(app_path, *args, timeout=None):
         """stdout of a read-only ``git -C <app_path> <args>``, or ``None``.
 
-        ``None`` means the command did not succeed — not "empty output" (§A).
+        ``None`` means the command did not succeed — not "empty output".
         ``get_commit_info`` alone had five copies of
         ``subprocess.run(...); x = result.stdout.strip() if result.returncode
         == 0 else None``, which is this function written out by hand each time.

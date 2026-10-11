@@ -142,7 +142,7 @@ class DeploymentService:
                 if not pull_result.get('success'):
                     return cls._fail(app, deployment, pull_result.get('error') or 'Git pull failed')
                 # create_deployment read HEAD before this pull, so the row named
-                # the commit that was live, not the one being deployed (§A2).
+                # the commit that was live, not the one being deployed.
                 cls._record_commit(app, deployment)
 
             if cls._uses_compose(app):
@@ -168,7 +168,7 @@ class DeploymentService:
 
                 deploy_stages.mark('Build')
                 # An immutable tag per deployment: a rollback then redeploys
-                # the image that actually ran, not whatever :latest became (§A1).
+                # the image that actually ran, not whatever :latest became.
                 from app.services.app_image_retention import deploy_image_tag
                 build_result = BuildService.build(
                     app_id,
@@ -727,7 +727,7 @@ class DeploymentService:
 
             # A compose app's code lives in its images: checking out the old
             # commit changed files and nothing else, so the "rollback"
-            # reported success while the new release kept serving (§A6).
+            # reported success while the new release kept serving.
             # Rebuild and recreate from the checked-out tree, validated first.
             if cls._uses_compose(app):
                 from app.services import deploy_preflight_service as preflight

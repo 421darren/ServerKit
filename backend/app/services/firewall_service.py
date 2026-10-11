@@ -135,7 +135,7 @@ class FirewallService:
         # unprivileged LXC, where ufw exists and is on PATH but fails on
         # dropped CAP_NET_ADMIN) or an exception is "could not check": None,
         # never a fabricated inactive — the shape a past outage warned about,
-        # verified live in the §D capability-restricted container.
+        # verified live in a capability-restricted container.
         active = None if installed else False
         error = None
         if installed:

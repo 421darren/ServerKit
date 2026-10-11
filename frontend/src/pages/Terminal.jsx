@@ -87,7 +87,7 @@ const Terminal = () => {
 
 // ─── Interactive shell tab (demo console: target rail + terminal pane) ───
 // Sessions run over the ServerKit agent (terminal:create); the panel host has
-// no PTY endpoint (§5 gap), so the rail lists paired agent servers only.
+// no PTY endpoint, so the rail lists paired agent servers only.
 const TerminalShellTab = () => {
     const { t } = useTranslation();
     const [servers, setServers] = useState([]);

@@ -150,7 +150,7 @@ class DbConfigTunerService:
 
     @classmethod
     def _docker(cls, args, timeout=60):
-        """Run a docker CLI command — via DockerService.run (§G3).
+        """Run a docker CLI command — via DockerService.run.
 
         The named seam stays (tests stub it). The private copy collapsed a
         missing docker and a timed-out docker into the same ``str(e)``, so a
@@ -161,7 +161,7 @@ class DbConfigTunerService:
 
     @classmethod
     def _exec_sql(cls, target, sql):
-        """Run SQL against the target's engine — via ``db_exec`` (§G5).
+        """Run SQL against the target's engine — via ``db_exec``.
 
         ``target``: {'container', 'engine', 'user', 'password'}.
         Returns {'success', 'output', 'error'} with machine-readable output

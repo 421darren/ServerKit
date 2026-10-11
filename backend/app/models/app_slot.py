@@ -39,7 +39,7 @@ class AppSlot(db.Model):
     # What the app listens on inside the container; the same for both slots.
     container_port = db.Column(db.Integer, nullable=True)
     container_name = db.Column(db.String(128), nullable=True)
-    # Compose slots (§C): the slot's own compose project.
+    # Compose slots: the slot's own compose project.
     project_name = db.Column(db.String(128), nullable=True)
     # Immutable image this slot runs (serverkit-app-<id>:d<deployment> or a digest).
     image_ref = db.Column(db.String(255), nullable=True)

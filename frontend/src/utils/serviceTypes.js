@@ -4,7 +4,7 @@
 // cyan #49c7f0 / violet #b07bf5, neutral gray #646b7a.
 const SERVICE_TYPES = {
     // Tab order note: ops/waf/build/deploy were merged in from the retired
-    // ApplicationDetail page (§1 feature unification), then relocated into the
+    // ApplicationDetail page, then relocated into the
     // Settings sub-nav to declutter the top strip — Container Ops + Git & Deploy
     // + Build live under Settings, WAF under Settings → Security. Type-gating of
     // those sections is handled in SettingsTab (ops = Docker only; waf = Docker +

@@ -990,7 +990,7 @@ location /p/ {{
         the cache file, so a fixed-string grep for ``KEY: http[s]://<host>/``
         finds exactly this site's files; the trailing ``/`` keeps
         ``shop.example.com`` from matching ``shop.example.com.evil``. Entries
-        cached under the pre-§B3 key (before the vhost was rewritten) aren't
+        cached under an older key (before the vhost was rewritten) aren't
         found this way, and expire on their own TTL.
 
         Without ``hosts`` the whole shared directory is wiped (every site).
@@ -1118,7 +1118,7 @@ location /p/ {{
     def read_vhost(cls, name: str) -> Optional[str]:
         """The vhost's current content, or ``None`` if it cannot be read.
 
-        ``None`` means "could not determine", never "empty file" (§A). Callers
+        ``None`` means "could not determine", never "empty file". Callers
         that need to distinguish a missing vhost from an unreadable one check
         ``os.path.exists`` themselves.
         """
@@ -1143,7 +1143,7 @@ location /p/ {{
 
     @classmethod
     def write_vhost(cls, name: str, content: str, *, enable: bool = True) -> Dict:
-        """Write, enable, config-test, roll back on failure, reload. One door (§G4).
+        """Write, enable, config-test, roll back on failure, reload. One door.
 
         ``environment_domain_service`` re-implemented this whole sequence with
         raw ``sudo`` calls, and ``nginx_advanced_service`` wrote the file with a

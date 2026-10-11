@@ -83,7 +83,7 @@ def sanitize(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Failure hints (D6 / §5.3): first match wins, evaluated against the failure tail
+# Failure hints: first match wins, evaluated against the failure tail
 # at close time. One sentence, action-first, never jokey.
 # ---------------------------------------------------------------------------
 HINTS: List = [

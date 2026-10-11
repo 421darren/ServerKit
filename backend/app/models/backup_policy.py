@@ -5,7 +5,7 @@ from app import db
 from app.models.mixins import TimestampMixin
 from app.models.json_column_mixin import JsonColumnMixin
 
-# Every CORE data-protection target the unified policy system can back up (§8).
+# Every CORE data-protection target the unified policy system can back up.
 # 'application' is the original target; 'database', 'files', and 'server' were
 # folded in from the legacy BackupService so a single BackupPolicy/BackupRun
 # system covers all data-protection backups.

@@ -660,8 +660,8 @@ class TemplateService:
     #   SERVICE_FQDN_<NAME>      -> the app's auto-assigned hostname (best-effort)
     #   SERVICE_URL_<NAME>       -> full URL derived from the FQDN (+ scheme)
     #   SERVICE_BASE64_<NAME>    -> base64 of a freshly generated secret
-    #   SERVERKIT_METRICS_TOKEN  -> the panel's Prometheus scrape token (plan
-    #                               86 §A4), so a monitoring template can scrape
+    #   SERVERKIT_METRICS_TOKEN  -> the panel's Prometheus scrape token, so a
+    #                               monitoring template can scrape
     #                               /api/v1/fleet-monitor/prometheus
     #
     # Resolution is PURE and unit-testable: no Docker, no network. The only
@@ -2470,7 +2470,7 @@ class TemplateService:
 
             if not compose_result.get('success'):
                 # Rollback — and say whether it worked: an unchecked `up` here
-                # reported a plain failure while the app sat stopped (§A6).
+                # reported a plain failure while the app sat stopped.
                 if os.path.exists(backup_path):
                     shutil.copy(backup_path, compose_path)
                     restored = DockerService.compose_up(app_path, detach=True)

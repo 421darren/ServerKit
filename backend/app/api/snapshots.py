@@ -33,7 +33,7 @@ def _get_snapshot_or_404(app_id, snap_id):
 
 
 # "Config Checkpoint" is the user-facing name for a deployment config snapshot
-# (§8 decision: rename in the UI; keep /snapshots working). Every route below is
+# (decision: rename in the UI; keep /snapshots working). Every route below is
 # also reachable under /config-checkpoints so the API matches the new wording.
 @snapshots_bp.route('/<int:app_id>/snapshots', methods=['GET'])
 @snapshots_bp.route('/<int:app_id>/config-checkpoints', methods=['GET'])

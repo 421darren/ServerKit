@@ -121,7 +121,7 @@ class CronService:
     def _read_crontab(cls) -> Optional[str]:
         """The current user's crontab, or ``None`` if it could not be read.
 
-        ``None`` is "could not read", never "empty crontab" (§A). An empty
+        ``None`` is "could not read", never "empty crontab". An empty
         crontab is ``''`` and ``crontab -l`` exits non-zero for it on some
         implementations, so callers that install a replacement treat a failed
         read as "start from nothing" only where that was already the behaviour.

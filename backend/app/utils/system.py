@@ -386,7 +386,7 @@ def write_privileged_file(path: str, content: str, *, append: bool = False,
 
     ``success`` is never True on a write that did not demonstrably happen — a
     ``FileNotFoundError`` (no ``tee``) or a timeout reports the failure instead
-    of being swallowed into a cheerful return (§A, probe honesty).
+    of being swallowed into a cheerful return (probe honesty).
 
     *mode* and *owner* are applied after the write (``chmod`` / ``chown``); a
     failure there is reported, because a config written with the wrong
@@ -437,7 +437,7 @@ _COMMAND_SEARCH_DIRS = ('/usr/local/sbin', '/usr/local/bin', '/usr/sbin',
 
 
 def unit_is_active(unit: str, *, timeout: int = 10) -> Optional[bool]:
-    """Tri-state systemd unit probe: ``True``, ``False``, or ``None`` (§G6).
+    """Tri-state systemd unit probe: ``True``, ``False``, or ``None``.
 
     ``None`` means *could not determine* — no systemctl, no systemd, a probe
     that timed out — and is deliberately not ``False``. The five hand-rolled

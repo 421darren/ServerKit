@@ -281,7 +281,7 @@ def create_app(config_name=None):
             from app.services.dns_zone_service import DNSZoneService
             n_zones = DNSZoneService.link_legacy_zones()
             # Fold a legacy single-row email relay config into the unified
-            # EmailProviderConnection table (§6); idempotent, best-effort.
+            # EmailProviderConnection table; idempotent, best-effort.
             try:
                 from app.services.email_relay_service import EmailRelayService
                 EmailRelayService.migrate_legacy_config()

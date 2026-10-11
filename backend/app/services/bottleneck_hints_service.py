@@ -1,8 +1,8 @@
 """Name an app's likely bottleneck from what the panel measures.
 
-A rule-based doctor, no AI: it reads the app's request metrics (§A2), its
+A rule-based doctor, no AI: it reads the app's request metrics, its
 container's CPU, and, for a PostgreSQL / MySQL it reaches through
-``fromService``, that database's CPU and top queries (§A3). Each hint names
+``fromService``, that database's CPU and top queries. Each hint names
 the component that fits the signal, links to where it is set up, and states
 that component's failure mode. Nothing is ever added automatically.
 

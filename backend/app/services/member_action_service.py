@@ -7,7 +7,7 @@ Phase-4 matrix, and it is deliberately narrow:
   - No free text ever reaches a shell. Every parameter is validated against a
     typed schema (enum / bounded int) before the executor runs.
   - Each template declares (id, label, param schema, executor, min_role). The
-    min_role reuses the same capability tiers as the rest of the plan
+    min_role reuses the panel's capability tiers
     (can_operate_app for 'member', can_admin_app for 'admin').
   - Every run is audit-logged.
   - The whole surface is feature-flagged (config MEMBER_ACTIONS_ENABLED).
@@ -15,7 +15,7 @@ Phase-4 matrix, and it is deliberately narrow:
 The registry ships one concrete template today — `set-backup-frequency`, which
 adjusts an app's backup schedule through the existing BackupPolicyService (no new
 side-channel). The cron "ping this app's scheduler every N minutes" template
-named in the plan is deferred until its ScheduledJob wiring lands;
+is deferred until its ScheduledJob wiring lands;
 adding it is just another registry entry.
 """
 from app.services.resource_grant_service import ResourceGrantService

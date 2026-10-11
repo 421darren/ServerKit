@@ -30,7 +30,7 @@ class EmailProviderConnection(TimestampMixin, JsonColumnMixin, db.Model):
     is_default = db.Column(db.Boolean, default=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
 
-    # Usage flags (§6 unification): one connection can power the Notification Bus
+    # Usage flags: one connection can power the Notification Bus
     # and/or the Postfix outbound relay. API providers (SendGrid/Postmark/SES/
     # Mailgun) can't be a Postfix smarthost, so only 'smtp' rows set uses_relay.
     uses_notifications = db.Column(db.Boolean, default=True, nullable=False)

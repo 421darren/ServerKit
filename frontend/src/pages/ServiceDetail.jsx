@@ -18,7 +18,7 @@ import GunicornTab from '../components/service-detail/GunicornTab';
 import CommandsTab from '../components/service-detail/CommandsTab';
 import OverviewTab from '../components/service-detail/OverviewTab';
 // Container Ops / WAF / Build / Deploy (merged in from the retired
-// ApplicationDetail page in §1) now live under the Settings sub-nav, so they're
+// ApplicationDetail page) now live under the Settings sub-nav, so they're
 // imported by SettingsTab rather than rendered as top-level tabs here.
 import PreviewList from '../components/previews/PreviewList';
 import EmptyState from '../components/EmptyState';

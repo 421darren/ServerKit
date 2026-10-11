@@ -58,7 +58,7 @@ export async function deleteBackupRun(targetType, targetId, runId) {
     return this.request(`${runsBase(targetType, targetId)}/${runId}`, { method: 'DELETE' });
 }
 
-// ---- fleet-wide policy + run views (§8 unification) -----------------------
+// ---- fleet-wide policy + run views -----------------------
 // The per-target methods above answer "how is THIS site protected?"; these two
 // answer "how is everything protected?" and back the Backups overview — the
 // protected-resource count, the activity heatmap, and the success rate all come

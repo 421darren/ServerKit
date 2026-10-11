@@ -11,7 +11,7 @@ export async function getApps(options = {}) {
 }
 
 // "Services" is the user-facing term for what the backend calls Applications
-// (§1 unification). These aliases let new code speak "services" while the
+//. These aliases let new code speak "services" while the
 // API client and backend model keep the canonical `apps`/`Application` names.
 export async function getAppServices(options = {}) {
     return getApps.call(this, options);

@@ -1040,7 +1040,7 @@ class DockerService:
 
     @classmethod
     def run_compose(cls, cmd, *, cwd=None, timeout=None):
-        """Run an already-built compose argv; the shared result shape (§G1).
+        """Run an already-built compose argv; the shared result shape.
 
         Separate from :meth:`run` because the argv head is whatever
         ``_get_compose_cmd()`` resolved — ``docker compose`` (v2) or
