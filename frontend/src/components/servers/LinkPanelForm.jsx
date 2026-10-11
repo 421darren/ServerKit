@@ -10,13 +10,14 @@ import { Input } from '@/components/ui/input';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const POLL_INTERVAL = 5000;
 
 function formatTimestamp(iso) {
     if (!iso) return '—';
     const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? '—' : formatDateTime(date);
 }
 
 // "Link panel" tab of the Add Server modal — the inverse of the other two

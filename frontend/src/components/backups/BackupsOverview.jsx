@@ -10,6 +10,7 @@ import { formatBytes } from '@/utils/formatBytes';
 import { KpiBand, MetricCard, Pill, DataTable, DataTableFooter } from '@/components/ds';
 import EmptyState from '../EmptyState';
 import { useTranslation } from 'react-i18next';
+import { formatNumber } from '@/utils/intl';
 
 // Daily activity cells: one column per week, one row per weekday. Half a year
 // rather than the mock's 18 weeks — the cells stretch to fill the card (see
@@ -336,7 +337,7 @@ export default function BackupsOverview({
 
                     <div className="bk-heat__stats">
                         {[
-                            ['Total backups', events.length.toLocaleString()],
+                            ['Total backups', formatNumber(events.length)],
                             ['This week', String(thisWeek)],
                             ['Avg duration', formatDuration(avgDuration)],
                             ['Failed (30d)', String(failed30)],

@@ -38,6 +38,7 @@ import { formatCompact, formatFull } from '../utils/formatNumber';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Radix Select items cannot use '' — stands in for "no group filter".
 const ALL_GROUPS = '__all';
@@ -394,7 +395,7 @@ const QueueOperations = () => {
             type: 'date',
             value: (queue) => queue.created_at,
             sortValue: (queue) => new Date(queue.created_at).getTime(),
-            render: (queue) => new Date(queue.created_at).toLocaleString(),
+            render: (queue) => formatDateTime(queue.created_at),
         },
         {
             key: '__actions',

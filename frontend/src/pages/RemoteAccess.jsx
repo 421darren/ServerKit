@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Tunnel / service status → status-pill tone.
 const pillKind = (status) => statusKind(status);
@@ -264,7 +265,7 @@ const RemoteAccess = ({ serverId }) => {
                                             <span className="ra-dot">·</span>
                                             <span>
                                                 {tunnel.last_handshake_at
-                                                    ? t('app.remoteAccess.handshakeAt', 'handshake {{time}}', { time: new Date(tunnel.last_handshake_at).toLocaleString() })
+                                                    ? t('app.remoteAccess.handshakeAt', 'handshake {{time}}', { time: formatDateTime(tunnel.last_handshake_at) })
                                                     : t('app.remoteAccess.noHandshakeYetShort', 'no handshake yet')}
                                             </span>
                                         </div>

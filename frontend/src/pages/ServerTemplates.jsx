@@ -26,6 +26,7 @@ import {
     GridToolsMenu, GridFilterDrawer,
 } from '@/components/ds/grid';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Two surfaces, two treatments — on purpose.
 //
@@ -103,7 +104,7 @@ function formatUpdated(value) {
     if (!value) return 'Never';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Never';
-    return date.toLocaleString();
+    return formatDateTime(date);
 }
 
 // Built-in saved views. Every rule matches a column's `value` accessor, so the

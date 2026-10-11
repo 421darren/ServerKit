@@ -20,6 +20,7 @@ import BackupDetailDrawer from './BackupDetailDrawer';
 import RestoreDrawer from './RestoreDrawer';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 function sameLocalDay(iso, date) {
     if (!iso) return false;
@@ -242,7 +243,7 @@ export default function ProtectionPanel({ targetType, targetId, targetName, show
                                     className="backup-history-card__chip"
                                     onClick={() => setDayFilter(null)}
                                 >
-                                    {dayFilter.toLocaleDateString()} <X size={12} />
+                                    {formatDate(dayFilter)} <X size={12} />
                                 </Button>
                             )}
                             <div className="backup-history-card__toggle">

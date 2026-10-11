@@ -3,6 +3,7 @@ import { EngineIcon } from '../icons/DatabaseBrands';
 import EngineGlyph from './EngineGlyph';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatNumber } from '@/utils/intl';
 
 // Icon per node kind / engine. Brand glyphs come from DatabaseBrands; tint comes
 // from `.is-<engine>` in SCSS (the brand icons use currentColor). An engine
@@ -149,7 +150,7 @@ function TreeRow({ node, depth, expanded, childrenCache, loading, activeKey, sel
                 )}
 
                 {node.kind === 'table' && node.rows != null && (
-                    <span className="dbx-tree-badge">{node.rows.toLocaleString()}</span>
+                    <span className="dbx-tree-badge">{formatNumber(node.rows)}</span>
                 )}
                 {node.kind === 'database' && node.sizeText && (
                     <span className="dbx-tree-badge">{node.sizeText}</span>

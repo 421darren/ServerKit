@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { errorReason } from '@/utils/errorMessage';
 import usePersistentState from '@/hooks/usePersistentState';
+import { formatDateTime, formatNumber, formatTime } from '@/utils/intl';
 
 // 'logs' stays first so the default landing keeps working on installs with no
 // paired agents (the interactive shell needs a connected agent).
@@ -373,12 +374,12 @@ const LogFilesTab = () => {
                             </span>
                             <span className="lv-stat">
                                 <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                                <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                                <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                             </span>
                             {lastUpdated && (
                                 <span className="lv-stat">
                                     <Clock size={12} />
-                                    {lastUpdated.toLocaleTimeString()}
+                                    {formatTime(lastUpdated, { seconds: true })}
                                 </span>
                             )}
                         </>
@@ -652,12 +653,12 @@ const JournalTab = () => {
                     )}
                     <span className="lv-stat">
                         <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                        <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                        <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                     </span>
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -935,7 +936,7 @@ const ProcessesTab = () => {
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -1030,7 +1031,7 @@ const ProcessesTab = () => {
                                 <span className="meta-label">{t('app.terminal.started', 'Started')}</span>
                                 <span className="meta-value">
                                     {selectedProcess.create_time
-                                        ? new Date(selectedProcess.create_time * 1000).toLocaleString()
+                                        ? formatDateTime(selectedProcess.create_time * 1000)
                                         : '—'}
                                 </span>
                             </div>

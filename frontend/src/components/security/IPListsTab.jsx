@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { t } from '../../i18n/t';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 import { errorReason } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Both lists have the same columns; only the accent tone and the remove
 // target differ, so one factory builds both. Two accessors per column on
@@ -64,7 +65,7 @@ const ipListColumns = (listType, tone, onRemove) => [
             return Number.isNaN(t) ? null : t;
         },
         cellClassName: 'sk-cell-dim sec-faint',
-        render: (item) => new Date(item.added_at).toLocaleDateString(),
+        render: (item) => formatDate(item.added_at),
     },
     {
         key: 'actions',

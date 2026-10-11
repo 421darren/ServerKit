@@ -1,5 +1,6 @@
 // Shared formatting helpers for the backup "Protection" components.
 import { timeAgo } from '@/utils/time';
+import { formatDate, formatDateTime as intlDateTime } from '@/utils/intl';
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
 
@@ -27,7 +28,7 @@ export function formatWhen(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const date = formatDate(d, { parts: { month: 'short', day: 'numeric', year: 'numeric' } });
     const rel = timeAgo(iso); // 'just now' | '4h' | '2d' | locale date
     if (rel === 'just now') return `${date} · just now`;
     if (/^\d+[mhd]$/.test(rel)) return `${date} · ${rel} ago`;
@@ -39,9 +40,9 @@ export function formatDateTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined, {
+    return intlDateTime(d, { parts: {
         month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
+    } });
 }
 
 // Pill kind for a run/policy status, from the ONE shared vocabulary.

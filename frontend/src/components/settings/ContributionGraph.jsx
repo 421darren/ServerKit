@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate as intlDate } from '@/utils/intl';
 
 const ContributionGraph = ({ data, title, username }) => {
     const { t } = useTranslation();
@@ -29,7 +30,7 @@ const ContributionGraph = ({ data, title, username }) => {
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return intlDate(date, { parts: { month: 'short', day: 'numeric', year: 'numeric' } });
     };
 
     return (

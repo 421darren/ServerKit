@@ -24,6 +24,7 @@ import DomainField from '../components/DomainField';
 import { formatExpiry } from '../utils/expiry';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const DAY = 86400000;
 
@@ -404,7 +405,7 @@ const SSLCertificates = () => {
                 return (
                     <span
                         className={`ssl-expiry ssl-expiry--${exp.tone}`}
-                        title={new Date(c.expiresAt).toLocaleString()}
+                        title={formatDateTime(c.expiresAt)}
                     >
                         {exp.relative}
                     </span>

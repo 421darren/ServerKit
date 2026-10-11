@@ -29,6 +29,7 @@ import {
     TagIcon,
 } from './serverDetailShared';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Radix Select items cannot carry an empty value; this stands for "no group".
 const NO_GROUP = '__none';
@@ -272,7 +273,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             {connectionInfo.connected_since && (
                                 <InfoItem
                                     label={t('app.serverSettingsTab.connectedSince', 'Connected since')}
-                                    value={new Date(connectionInfo.connected_since).toLocaleString()}
+                                    value={formatDateTime(connectionInfo.connected_since)}
                                 />
                             )}
                         </InfoList>
@@ -343,7 +344,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             <KeyIcon /> {rotatingKey ? t('app.serverSettingsTab.rotating', 'Rotating…') : t('app.serverSettingsTab.rotateApiKey', 'Rotate API key')}
                         </Button>
                         {server.api_key_last_rotated && (
-                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {new Date(server.api_key_last_rotated).toLocaleString()}</span>
+                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {formatDateTime(server.api_key_last_rotated)}</span>
                         )}
                     </div>
 
@@ -467,7 +468,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${result.regi
                         <div className="token-status">
                             <span className="token-status-dot active" />
                             <span>
-                                {t('app.serverSettingsTab.activeExpires', 'Active, expires')} {new Date(result.registration_expires).toLocaleString()}
+                                {t('app.serverSettingsTab.activeExpires', 'Active, expires')} {formatDateTime(result.registration_expires)}
                             </span>
                         </div>
 

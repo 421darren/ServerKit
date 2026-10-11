@@ -35,6 +35,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate, formatTime } from '@/utils/intl';
 
 const POLL_MS = 15000;
 
@@ -226,7 +227,7 @@ export default function MonitorDetail() {
             type: 'date',
             value: (c) => c.checked_at || null,
             sortValue: (c) => (c.checked_at ? new Date(c.checked_at).getTime() : null),
-            render: (c) => new Date(c.checked_at).toLocaleTimeString(),
+            render: (c) => formatTime(c.checked_at),
         },
         {
             // Split from the HTTP code beside it. This cell used to print the
@@ -579,7 +580,7 @@ export default function MonitorDetail() {
                         {monitor.cert_expires_at ? (
                             <dl className="mon-inforows">
                                 <div><dt>{t('app.monitorDetail.issuer', 'Issuer')}</dt><dd>{monitor.cert_issuer || '—'}</dd></div>
-                                <div><dt>{t('app.monitorDetail.expires', 'Expires')}</dt><dd>{new Date(monitor.cert_expires_at).toLocaleDateString()}</dd></div>
+                                <div><dt>{t('app.monitorDetail.expires', 'Expires')}</dt><dd>{formatDate(monitor.cert_expires_at)}</dd></div>
                                 <div>
                                     <dt>{t('app.monitorDetail.remaining', 'Remaining')}</dt>
                                     <dd>{certDays < 0 ? t('app.monitorDetail.daysAgo', { count: -certDays, defaultValue_one: '{{count}} day ago', defaultValue_other: '{{count}} days ago' }) : t('app.monitorDetail.days', { count: certDays, defaultValue_one: '{{count}} day', defaultValue_other: '{{count}} days' })}</dd>

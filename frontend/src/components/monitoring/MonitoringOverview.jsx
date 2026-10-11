@@ -12,6 +12,7 @@ import MonitorsSummary from './MonitorsSummary';
 import DiskReclaimModal from './DiskReclaimModal';
 import { HOST_SCOPE, useScopeMetrics, trendOf } from './useMonitorScope';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 const PERIODS = ['1h', '6h', '24h', '7d'];
 
@@ -399,7 +400,7 @@ export default function MonitoringOverview({
                                 </Pill>
                                 <span>
                                     {t('app.monitoringOverview.tested', 'Tested')} {speedTest.last_result.tested_at
-                                        ? new Date(speedTest.last_result.tested_at).toLocaleString()
+                                        ? formatDateTime(speedTest.last_result.tested_at)
                                         : 'never'}
                                 </span>
                             </div>

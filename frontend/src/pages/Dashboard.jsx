@@ -32,6 +32,7 @@ import { useShortcut, useShortcutCommands } from '../hooks/useShortcut';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatTime } from '@/utils/intl';
 
 // Auto-refresh choices, in seconds. 0 means "don't".
 const REFRESH_OPTIONS = [
@@ -435,7 +436,7 @@ const Dashboard = () => {
     const hostname = metrics?.system?.hostname || activeSysInfo?.hostname || 'server';
     const isConnected = isRemote ? !!remoteMetrics : !!localMetrics;
     const displayTime = localTime
-        ? localTime.toLocaleTimeString('en-GB', { hour12: false })
+        ? formatTime(localTime, { parts: { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false } })
         : metrics?.time?.current_time_formatted?.split(' ')[1] || '--:--:--';
 
     if (boardsLoading && metricsLoading) {

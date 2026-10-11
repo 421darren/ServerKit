@@ -6,6 +6,7 @@ import ImageThumb from './ImageThumb';
 import { getFileType } from './fileTypes';
 import { highlightLine, fileExt } from './highlight';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Above this the highlighted view would render too many DOM nodes — fall back
 // to the plain read-only textarea.
@@ -84,7 +85,7 @@ export default function PreviewDrawer({
                     )}
                     <div className="meta-item meta-item-wide">
                         <span className="meta-label">{t('app.previewDrawer.modified', 'Modified')}</span>
-                        <span className="meta-value">{new Date(file.modified).toLocaleString()}</span>
+                        <span className="meta-value">{formatDateTime(file.modified)}</span>
                     </div>
                 </div>
 

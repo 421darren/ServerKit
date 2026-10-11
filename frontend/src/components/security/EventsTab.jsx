@@ -5,6 +5,7 @@ import ErrorState from '@/components/ErrorState';
 import { Feed, FeedItem } from '@/components/ds';
 import { useTranslation } from 'react-i18next';
 import { CardHeader as SharedCardHeader, CardContent as SharedCardContent, Card as SharedCard } from '@/components/ui/card';
+import { formatDateTime } from '@/utils/intl';
 
 const EventsTab = () => {
     const { t } = useTranslation();
@@ -116,7 +117,7 @@ const EventsTab = () => {
                                     key={index}
                                     icon={getEventIcon(event.type)}
                                     tone={getEventTone(event.type)}
-                                    time={new Date(event.timestamp).toLocaleString()}
+                                    time={formatDateTime(event.timestamp)}
                                 >
                                     {event.message}
                                 </FeedItem>

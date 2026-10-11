@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Activity, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { averageUptime, formatUptimePercent } from '@/utils/uptime';
+import { formatDateTime } from '@/utils/intl';
 
 const STATUS_META = {
     operational: { labelKey: 'app.publicStatusPage.operational', label: 'Operational', badge: 'success', icon: CheckCircle2 },
@@ -24,7 +25,7 @@ const IMPACT_META = {
 
 function formatDate(value) {
     if (!value) return 'Never';
-    return new Date(value).toLocaleString();
+    return formatDateTime(value);
 }
 
 function PublicStatusPage() {

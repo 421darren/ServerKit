@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/useAuth.js';
 import { useServerMutation, useServerQuery } from '../hooks/useServerQuery';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Preset views. `servers` and `users` are quota CEILINGS, not usage, so there
 // is no column to express "near capacity" against.
@@ -80,7 +81,7 @@ const formatSince = (iso) => {
     const d = new Date(iso);
     return Number.isNaN(d.getTime())
         ? null
-        : d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+        : formatDate(d, { parts: { month: 'short', year: 'numeric' } });
 };
 
 const Workspaces = () => {

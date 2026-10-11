@@ -16,6 +16,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Built-in saved views. Neither one names a `kind`: the registry decides what
 // lands here, so a preset that spelled out 'domain' would be a list this file
@@ -172,7 +173,7 @@ export default function RecycleBinTab() {
                 const left = retentionDays - days;
                 return (
                     <div>
-                        <div className="sk-cell-dim">{when.toLocaleDateString()}</div>
+                        <div className="sk-cell-dim">{formatDate(when)}</div>
                         <div className={`sk-cell-sub ${left <= 3 ? 'is-urgent' : ''}`}>
                             {left > 0 ? t('app.recycleBinTab.purgesInDays', 'purges in {{days}}d', { days: left }) : t('app.recycleBinTab.pastRetention', 'past retention')}
                         </div>

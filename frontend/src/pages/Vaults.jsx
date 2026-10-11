@@ -18,8 +18,9 @@ import { CopyButton } from '../components/CopyButton';
 import { useWorkspace } from '../contexts/useWorkspace.js';
 import { useTranslation } from 'react-i18next';
 import { errorReason } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
-const formatDate = (d) => (d ? new Date(d).toLocaleString() : '—');
+const formatDate = (d) => (d ? formatDateTime(d) : '—');
 
 // Two tables, one chrome. The vault list and a vault's secrets are the same
 // surface at two depths, so both go through ResourceListPage rather than the

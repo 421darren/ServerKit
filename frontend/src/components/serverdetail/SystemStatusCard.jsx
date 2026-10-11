@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Surfaces everything the agent's capability probe reports: detected
 // runtimes (python/node/php/go/ruby/java versions), runtime version
@@ -206,5 +207,5 @@ function formatRelative(iso) {
     if (diff < 60_000) return 'just now';
     if (diff < 3600_000) return `${Math.round(diff / 60_000)}m ago`;
     if (diff < 86400_000) return `${Math.round(diff / 3600_000)}h ago`;
-    return new Date(iso).toLocaleString();
+    return formatDateTime(iso);
 }

@@ -44,6 +44,7 @@ import ErrorState from '../components/ErrorState';
 import { statusKind } from '@/components/ds/status';
 import { useTranslation } from 'react-i18next';
 import { errorReason } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const SEVERITY_ORDER = ['critical', 'error', 'warning', 'info', 'debug'];
 
@@ -337,7 +338,7 @@ export default function Telemetry() {
             sortable: true,
             sortValue: (event) => (event.timestamp ? new Date(event.timestamp).getTime() : null),
             cellClassName: 'telemetry-cell__when',
-            render: (event) => new Date(event.timestamp).toLocaleString(),
+            render: (event) => formatDateTime(event.timestamp),
         },
     ];
 
@@ -524,7 +525,7 @@ export default function Telemetry() {
                 onOpenChange={(open) => { if (!open) setSelectedEvent(null); }}
                 title={selectedEvent?.message || selectedEvent?.event_type || t('app.telemetry.event', 'Event')}
                 subtitle={selectedEvent
-                    ? `${selectedEvent.source} · ${new Date(selectedEvent.timestamp).toLocaleString()}`
+                    ? `${selectedEvent.source} · ${formatDateTime(selectedEvent.timestamp)}`
                     : ''}
                 icon={<Activity size={18} />}
             >

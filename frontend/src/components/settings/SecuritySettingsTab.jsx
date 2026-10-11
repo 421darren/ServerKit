@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import CopyField from '../CopyField';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatDateTime } from '@/utils/intl';
 
 const LinkedAccounts = ({ register }) => {
     const { t } = useTranslation();
@@ -284,7 +285,7 @@ const SecuritySettingsTab = () => {
 
     function downloadBackupCodes() {
         const content = `ServerKit Backup Codes
-Generated: ${new Date().toLocaleString()}
+Generated: ${formatDateTime(new Date())}
 
 These codes can be used to access your account if you lose your authenticator device.
 Each code can only be used once.
@@ -336,7 +337,7 @@ Keep these codes in a safe place.`;
                         <div className="two-fa-status">
                             <Badge variant="success">{t('app.securitySettingsTab.enabled', 'Enabled')}</Badge>
                             <span className="two-fa-info">
-                                {t('app.securitySettingsTab.enabledOn', 'Enabled on')} {new Date(twoFAStatus.confirmed_at).toLocaleDateString()}
+                                {t('app.securitySettingsTab.enabledOn', 'Enabled on')} {formatDate(twoFAStatus.confirmed_at)}
                             </span>
                         </div>
                         <div className="two-fa-backup-info">

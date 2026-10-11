@@ -36,6 +36,7 @@ import { formatExpiry } from '../utils/expiry';
 import { useTranslation } from 'react-i18next';
 import { t } from '../i18n/t';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 const DAY = 86400000;
 const norm = (s) => (s || '').toLowerCase().replace(/\.$/, '');
@@ -826,7 +827,7 @@ const Domains = () => {
                                         <div className="dom-specs__value">{sslPill(drawerDomain)}</div>
                                         <div className="sk-spec-card__sub">
                                             {drawerDomain.ssl_enabled
-                                                ? (drawerDomain.ssl_expires_at ? t('app.domains.sslExpiresOn', 'Expires {{date}}', { date: new Date(drawerDomain.ssl_expires_at).toLocaleDateString() }) : t('app.domains.letsEncrypt', "Let's Encrypt"))
+                                                ? (drawerDomain.ssl_expires_at ? t('app.domains.sslExpiresOn', 'Expires {{date}}', { date: formatDate(drawerDomain.ssl_expires_at) }) : t('app.domains.letsEncrypt', "Let's Encrypt"))
                                                 : t('app.domains.notIssued', 'Not issued')}
                                         </div>
                                     </div>

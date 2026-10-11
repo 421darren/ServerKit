@@ -2,6 +2,7 @@ import { CloudCog, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useLabel from '../i18n/labels';
 import { MANAGED_CAPABILITY_MAP } from './sidebarItems';
+import { formatDate } from '@/utils/intl';
 
 // The managed card: what a held capability's page shows instead of
 // its content. It names the capability, who holds it and since when, and links
@@ -19,7 +20,7 @@ export default function ManagedCard({ capability, profile, compact = false }) {
     const label = entry ? label_(entry) : capability;
     const heldBy = profile?.held_by || 'ServerKit Cloud';
     const since = profile?.since
-        ? new Date(profile.since).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+        ? formatDate(profile.since, { parts: { year: 'numeric', month: 'long', day: 'numeric' } })
         : null;
 
     return (

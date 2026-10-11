@@ -25,6 +25,7 @@ import { useClipboard } from '@/hooks/useClipboard';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // What a masked value renders as. Unchanged from the list this table replaces:
 // every env var is stored as a secret, so every value is dots until the row's
@@ -768,7 +769,7 @@ const EnvironmentVariables = ({ appId }) => {
                                 headerKey: 'app.environmentVariables.changedAt', header: 'Changed At',
                                 sortable: true,
                                 sortValue: (h) => new Date(h.changed_at).getTime(),
-                                render: (h) => new Date(h.changed_at).toLocaleString(),
+                                render: (h) => formatDateTime(h.changed_at),
                             },
                         ]}
                         data={history.map((h, idx) => ({ ...h, __idx: idx }))}

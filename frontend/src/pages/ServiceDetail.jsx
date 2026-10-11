@@ -30,6 +30,7 @@ import FavoriteStar from '@/components/FavoriteStar';
 import { useRecordVisit } from '@/hooks/useRecordVisit';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate, formatDateTime } from '@/utils/intl';
 
 const TAB_LABELS = {
     overview: 'Overview',
@@ -459,7 +460,7 @@ const ServiceDetail = () => {
                             )
                         )}
                         {service.port && <span className="separator">&middot;</span>}
-                        <span>{t('common.labels.created', 'Created')} {new Date(service.created_at).toLocaleDateString()}</span>
+                        <span>{t('common.labels.created', 'Created')} {formatDate(service.created_at)}</span>
                         {primaryDomain && (
                             <>
                                 <span className="separator">&middot;</span>
@@ -551,7 +552,7 @@ const ServiceDetail = () => {
                             {versions.slice().reverse().map(v => (
                                 <li key={v.version} className={v.version === currentVersion ? 'is-current' : ''}>
                                     <span className="svc-detail__version-name">v{v.version}</span>
-                                    <span className="svc-detail__version-date">{new Date(v.created_at).toLocaleString()}</span>
+                                    <span className="svc-detail__version-date">{formatDateTime(v.created_at)}</span>
                                     {v.version === currentVersion ? (
                                         <span className="svc-detail__version-current">{t('common.labels.current', 'Current')}</span>
                                     ) : (

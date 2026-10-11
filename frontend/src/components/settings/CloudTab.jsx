@@ -7,6 +7,7 @@ import useLabel from '../../i18n/labels';
 import { MANAGED_CAPABILITY_MAP } from '../sidebarItems';
 import EmptyState from '../EmptyState';
 import ErrorState from '../ErrorState';
+import { formatDateTime } from '@/utils/intl';
 
 // Settings › ServerKit Cloud: the one place the customer reads
 // what ServerKit Cloud holds for them — the connect state, and the managed
@@ -38,7 +39,7 @@ const CloudTab = () => {
 
     const held = profile?.held_capabilities || [];
     const fmt = (iso) => (iso
-        ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+        ? formatDateTime(iso)
         : null);
 
     return (

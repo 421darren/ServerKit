@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Pill } from '@/components/ds';
 import { formatRelativeTime } from '../../utils/time';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // The backend stamps observations with datetime.utcnow().isoformat(), which
 // carries no timezone suffix — JS would read that as local time and skew every
@@ -22,7 +23,7 @@ const ObservedAt = ({ iso }) => {
     const date = asUtcDate(iso);
     if (!date) return null;
     return (
-        <time dateTime={date.toISOString()} title={date.toLocaleString()}>
+        <time dateTime={date.toISOString()} title={formatDateTime(date)}>
             {formatRelativeTime(date.toISOString())}
         </time>
     );

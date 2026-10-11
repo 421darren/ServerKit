@@ -21,6 +21,7 @@ import EmptyState from '../components/EmptyState';
 import { timeAgo } from '../utils/time';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const PAGE_SIZE = 50;
 
@@ -43,7 +44,7 @@ function levelKind(level) {
 function formatStamp(iso) {
     if (!iso) return '—';
     const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? '—' : formatDateTime(date);
 }
 
 // `context` arrives as an object from the API but is rendered as text; a

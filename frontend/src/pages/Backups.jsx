@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import useFocusParam from '../hooks/useFocusParam';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // `backups` is kept as an alias so old /backups/backups links still resolve to
 // the archive, which now answers to `snapshots`.
@@ -442,7 +443,7 @@ const Backups = () => {
     };
 
     const formatTimestamp = (timestamp) => {
-        return new Date(timestamp).toLocaleString();
+        return formatDateTime(timestamp);
     };
 
     const formatMoney = (n) => {

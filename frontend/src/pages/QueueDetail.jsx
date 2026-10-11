@@ -34,6 +34,7 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const STATUS_ORDER = ['pending', 'in_flight', 'completed', 'failed', 'dead_letter'];
 
@@ -283,7 +284,7 @@ const QueueDetail = () => {
             type: 'date',
             value: (msg) => msg.created_at,
             sortValue: (msg) => new Date(msg.created_at).getTime(),
-            render: (msg) => new Date(msg.created_at).toLocaleString(),
+            render: (msg) => formatDateTime(msg.created_at),
         },
         ...(!viewOnly ? [{
             key: '__actions',
@@ -463,7 +464,7 @@ const QueueDetail = () => {
                             <div><strong>{t('app.queueDetail.id', 'ID:')}</strong> <code>{selectedMessage.id}</code></div>
                             <div><strong>{t('app.queueDetail.status2', 'Status:')}</strong> <Pill kind={statusKind(selectedMessage.status)}>{selectedMessage.status}</Pill></div>
                             <div><strong>{t('app.queueDetail.attempts2', 'Attempts:')}</strong> {selectedMessage.attempts} / {selectedMessage.max_attempts}</div>
-                            <div><strong>{t('app.queueDetail.created2', 'Created:')}</strong> {new Date(selectedMessage.created_at).toLocaleString()}</div>
+                            <div><strong>{t('app.queueDetail.created2', 'Created:')}</strong> {formatDateTime(selectedMessage.created_at)}</div>
                             {selectedMessage.error_message && (
                                 <div className="queue-message-error"><strong>{t('app.queueDetail.error', 'Reason:')}</strong> {selectedMessage.error_message}</div>
                             )}

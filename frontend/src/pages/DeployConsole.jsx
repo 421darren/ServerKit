@@ -13,6 +13,7 @@ import { sourceRef } from '../utils/deployActivity';
 import { useClipboard } from '@/hooks/useClipboard';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 const STATUS_META = {
     pending: { labelKey: 'app.deployConsole.queued', label: 'Queued', icon: Clock, cls: 'pending' },
@@ -25,7 +26,7 @@ const STATUS_META = {
 const fmtStarted = (iso) => {
     if (!iso) return 'not started';
     try {
-        return new Date(iso).toLocaleString();
+        return formatDateTime(iso);
     } catch {
         return iso;
     }

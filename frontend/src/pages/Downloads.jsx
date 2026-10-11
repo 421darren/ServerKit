@@ -5,6 +5,7 @@ import { useTopbarActions } from '@/hooks/useTopbarActions';
 import CopyField from '../components/CopyField';
 import { scrollBehavior } from '@/utils/reducedMotion';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/utils/intl';
 
 // Platform icons as SVG components
 const LinuxIcon = () => (
@@ -156,7 +157,7 @@ function Downloads() {
                         <div className="version-info">
                             <span className="version-label">{t('app.downloads.latestVersion', 'Latest version')}</span>
                             <span className="version-number">v{versionInfo.version}</span>
-                            <span className="version-date">{t('app.downloads.released', 'Released')} {new Date(versionInfo.published_at).toLocaleDateString()}</span>
+                            <span className="version-date">{t('app.downloads.released', 'Released')} {formatDate(versionInfo.published_at)}</span>
                         </div>
                         <div className="version-actions">
                             {versionInfo.release_notes_url && (

@@ -9,6 +9,7 @@ import { DataTableFooter } from '@/components/ds';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 const ActivityTab = () => {
     const { t } = useTranslation();
@@ -96,10 +97,10 @@ const ActivityTab = () => {
     function formatDate(dateString) {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleString('en-US', {
+        return formatDateTime(date, { parts: {
             month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
-        });
+        } });
     }
 
     function getActionClass(action) {

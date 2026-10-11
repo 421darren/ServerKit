@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/utils/intl';
 
 const ProfileTab = () => {
     const { t } = useTranslation();
@@ -84,7 +85,7 @@ const ProfileTab = () => {
                     <Label htmlFor="profile-member-since">{t('app.profileTab.memberSince', 'Member since')}</Label>
                     <Input
                         id="profile-member-since" type="text"
-                        value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                        value={user?.created_at ? formatDate(user.created_at) : '-'}
                         readOnly
                     />
                 </div>

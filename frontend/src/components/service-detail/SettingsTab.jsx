@@ -45,6 +45,7 @@ import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Grouped left sub-nav for the service Settings tab — mirrors the WordPress
 // detail page's settings layout: a group label per section with
@@ -597,7 +598,7 @@ const DomainSslPanel = ({ app, domains, primaryDomain, onUpdate }) => {
                 {issued && health.expires_at && (
                     <InfoItem
                         label={t('app.settingsTab.expires', 'Expires')}
-                        value={`${new Date(health.expires_at).toLocaleDateString()}${typeof health.days_remaining === 'number' ? ` (${health.days_remaining}d)` : ''}`}
+                        value={`${formatDate(health.expires_at)}${typeof health.days_remaining === 'number' ? ` (${health.days_remaining}d)` : ''}`}
                     />
                 )}
                 {issued && health.issuer && (

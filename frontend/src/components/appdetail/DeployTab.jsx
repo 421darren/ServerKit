@@ -14,6 +14,7 @@ import Modal from '@/components/Modal';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { CardFooter as SharedCardFooter } from '@/components/ui/card';
+import { formatDateTime } from '@/utils/intl';
 
 // `embedded` renders this inside the Settings → Git & Deploy section, where the
 // shared RepoConnectForm already owns the connect/disconnect + repo identity. In
@@ -240,7 +241,7 @@ const DeployTab = ({ appId, embedded = false }) => {
                                     {history.slice(0, 5).map((dep, idx) => (
                                         <div key={idx} className="deployment-item">
                                             <Pill kind={statusKind(dep.status)}>{dep.status}</Pill>
-                                            <span className="deployment-date">{new Date(dep.timestamp).toLocaleString()}</span>
+                                            <span className="deployment-date">{formatDateTime(dep.timestamp)}</span>
                                         </div>
                                     ))}
                                 </div>

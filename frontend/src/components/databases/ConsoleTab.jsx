@@ -7,6 +7,7 @@ import SqlEditor from './SqlEditor';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/intl';
 
 const HISTORY_KEY = 'serverkit_query_history';
 const MAX_HISTORY = 50;
@@ -193,7 +194,7 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
                                             <code>{item.query}</code>
                                             <span className="dbx-history-time">
                                                 <Clock size={11} aria-hidden="true" />
-                                                {new Date(item.timestamp).toLocaleString()}
+                                                {formatDateTime(item.timestamp)}
                                             </span>
                                         </SharedButton>
                                     </li>

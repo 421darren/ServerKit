@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toastError } from '@/utils/errorMessage';
 import { averageUptime, formatUptimePercent } from '@/utils/uptime';
+import { formatDateTime } from '@/utils/intl';
 
 // pill → ds Pill kind · tone → .status-dot modifier · dot → .comp-dots square
 const STATUS_META = {
@@ -85,7 +86,7 @@ function normalizeSlug(value) {
 
 function formatDate(value) {
     if (!value) return 'Never';
-    return new Date(value).toLocaleString();
+    return formatDateTime(value);
 }
 
 function getPublicStatusUrl(page) {

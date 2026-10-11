@@ -14,6 +14,7 @@ import { CHART_COLORS, METRIC_LABELS } from './fleetMetrics';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime, formatTime } from '@/utils/intl';
 
 // The three fleet-wide questions that only make sense across servers: how do
 // these boxes compare, which one is behaving unlike itself, and when does a
@@ -244,13 +245,13 @@ export default function FleetCapacityPanel({ scope, refreshKey = 0 }) {
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
                             <XAxis
                                 dataKey="timestamp"
-                                tickFormatter={(v) => new Date(v).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                tickFormatter={(v) => formatTime(v, { parts: { hour: '2-digit', minute: '2-digit' } })}
                                 stroke="var(--text-secondary)"
                                 fontSize={12}
                             />
                             <YAxis stroke="var(--text-secondary)" fontSize={12} unit="%" />
                             <Tooltip
-                                labelFormatter={(v) => new Date(v).toLocaleString()}
+                                labelFormatter={(v) => formatDateTime(v)}
                                 contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border-color)' }}
                             />
                             <Legend />

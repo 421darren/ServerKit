@@ -17,8 +17,9 @@ import ErrorState from '../ErrorState';
 import CopyField from '@/components/CopyField';
 import { useTranslation } from 'react-i18next';
 import { errorReason } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
-const formatDate = (d) => (d ? new Date(d).toLocaleString() : '—');
+const formatDate = (d) => (d ? formatDateTime(d) : '—');
 
 /**
  * Webhooks — receive, verify, and forward inbound webhooks.

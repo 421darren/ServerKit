@@ -14,6 +14,7 @@ import Modal from '@/components/Modal';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
 import { CardHeader as SharedCardHeader, CardFooter as SharedCardFooter } from '@/components/ui/card';
+import { formatDateTime } from '@/utils/intl';
 
 const BuildTab = ({ appId, app }) => {
     const { t } = useTranslation();
@@ -272,7 +273,7 @@ const BuildTab = ({ appId, app }) => {
                                     <Pill kind={statusKind(dep.status)}>{dep.status}</Pill>
                                 </div>
                                 <div className="deployment-meta">
-                                    <span>{new Date(dep.created_at).toLocaleString()}</span>
+                                    <span>{formatDateTime(dep.created_at)}</span>
                                     <span>{formatDuration(dep.build_duration)}</span>
                                 </div>
                                 {dep.status !== 'live' && (

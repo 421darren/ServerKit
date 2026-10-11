@@ -18,6 +18,7 @@ import { KpiBand, MetricCard, Pill, Gauge, EnvTag, statusKind } from '@/componen
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { normalizeContainerStats, resolveAppContainerId } from '@/utils/containerMetrics';
+import { formatDate } from '@/utils/intl';
 
 // Live metrics cadence.
 const METRICS_REFRESH_MS = 10000;
@@ -198,9 +199,9 @@ const OverviewTab = ({ app, deployConfig }) => {
                         )}
                         <InfoItem label={t('common.labels.created', 'Created')}>
                             <span className="info-value">
-                                {new Date(app.created_at).toLocaleDateString('en-US', {
+                                {formatDate(app.created_at, { parts: {
                                     year: 'numeric', month: 'short', day: 'numeric'
-                                })}
+                                } })}
                             </span>
                         </InfoItem>
                         {deployConfig && (

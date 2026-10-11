@@ -7,6 +7,7 @@ import { Cpu, MemoryStick, HardDrive, TrendingUp } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDate, formatTime } from '@/utils/intl';
 
 // Chart series colors — redesign "infra console" palette (see
 // docs/REDESIGN_MAP.md). Kept as hex (not CSS var()) on purpose: var() does not
@@ -79,11 +80,11 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
             const date = new Date(isoString);
             const tz = safeTimeZone(timezone);
             if (period === '1h' || period === '6h' || period === '24h') {
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: tz });
+                return formatTime(date, { parts: { hour: '2-digit', minute: '2-digit', timeZone: tz } });
             } else if (period === '7d') {
-                return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', timeZone: tz });
+                return formatDate(date, { parts: { weekday: 'short', hour: '2-digit', timeZone: tz } });
             } else {
-                return date.toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: tz });
+                return formatDate(date, { parts: { month: 'short', day: 'numeric', timeZone: tz } });
             }
         }
 

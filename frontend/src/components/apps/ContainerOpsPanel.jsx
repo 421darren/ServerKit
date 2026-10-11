@@ -14,6 +14,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@
 import { InfoList, InfoItem } from '../InfoList';
 import { useTranslation } from 'react-i18next';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Short SHA helper for image digests (handles "sha256:abcdef..." or bare hashes)
 function shortDigest(digest) {
@@ -130,7 +131,7 @@ const ImageUpdateSection = ({ app, onChanged }) => {
                     <InfoItem label={t('app.containerOpsPanel.latestDigest', 'Latest digest')} value={shortDigest(info?.latest_digest)} mono />
                     <InfoItem
                         label={t('app.containerOpsPanel.lastChecked', 'Last checked')}
-                        value={checkedAt ? new Date(checkedAt).toLocaleString() : 'Never'}
+                        value={checkedAt ? formatDateTime(checkedAt) : 'Never'}
                     />
                 </InfoList>
 
@@ -350,7 +351,7 @@ const AutoSleepSection = ({ app, onChanged }) => {
                         <Label htmlFor={`sleep-timeout-${app.id}`}>{t('app.containerOpsPanel.idleTimeoutMinutes', 'Idle timeout (minutes)')}</Label>
                         <span className="container-ops__field-hint">
                             {policy?.last_activity_at
-                                ? t('app.containerOpsPanel.lastActivity', 'Last activity {{when}}', { when: new Date(policy.last_activity_at).toLocaleString() })
+                                ? t('app.containerOpsPanel.lastActivity', 'Last activity {{when}}', { when: formatDateTime(policy.last_activity_at) })
                                 : t('app.containerOpsPanel.noRecordedActivityYet', 'No recorded activity yet.')}
                         </span>
                     </div>

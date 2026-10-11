@@ -28,6 +28,7 @@ import LinkPanelForm from '../components/servers/LinkPanelForm';
 import { useTranslation } from 'react-i18next';
 import { t } from '../i18n/t';
 import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Radix Select items cannot use '' — stands in for "no group".
 const NO_GROUP = '__none';
@@ -128,7 +129,7 @@ const formatLastSeen = (timestamp) => {
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return new Date(timestamp).toLocaleDateString();
+    return formatDate(timestamp);
 };
 
 const clamp = (v) => Math.min(100, Math.max(0, Number(v) || 0));

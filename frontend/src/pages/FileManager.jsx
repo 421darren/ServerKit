@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import { errorReason } from '@/utils/errorMessage';
 import usePersistentState from '@/hooks/usePersistentState';
+import { formatTime } from '@/utils/intl';
 
 // Demo rail shortcuts (Quick access) — one-click jumps to the paths people
 // actually visit on a ServerKit host. "Stack" starts at the default install
@@ -1235,7 +1236,7 @@ function FileManager() {
                                     {diskLastUpdated && (
                                         <span className="disk-updated disk-updated--footer">
                                             <Clock size={11} />
-                                            {t('app.fileManager.updatedAt', 'Updated {{time}}', { time: diskLastUpdated.toLocaleTimeString() })}
+                                            {t('app.fileManager.updatedAt', 'Updated {{time}}', { time: formatTime(diskLastUpdated, { seconds: true }) })}
                                         </span>
                                     )}
                                 </div>

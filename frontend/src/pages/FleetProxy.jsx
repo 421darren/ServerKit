@@ -16,6 +16,7 @@ import EmptyState from '../components/EmptyState';
 import { useTranslation } from 'react-i18next';
 import { t } from '../i18n/t';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // Fleet-wide reverse-proxy dashboard (Phase 4 of C6). Aggregates every
 // server's managed-proxy posture into one table: which proxy each server runs
@@ -49,7 +50,7 @@ function formatTimestamp(value) {
     if (!value) return 'Never';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'Never';
-    return date.toLocaleString();
+    return formatDateTime(date);
 }
 
 function typeMeta(type) {

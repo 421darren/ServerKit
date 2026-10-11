@@ -3,6 +3,7 @@ import { Check, Download, Edit3, Lock, Trash2 } from 'lucide-react';
 import FileIcon from './FileIcon';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDate } from '@/utils/intl';
 
 function FileRow({
     entry,
@@ -51,7 +52,7 @@ function FileRow({
             </span>
             <span className="col-size">{entry.is_dir ? '—' : entry.size_human}</span>
             <span className="col-modified">
-                {new Date(entry.modified).toLocaleDateString()}
+                {formatDate(entry.modified)}
             </span>
             <span className="col-permissions">{entry.permissions}</span>
             <span className="col-owner">{entry.owner}</span>

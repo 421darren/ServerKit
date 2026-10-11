@@ -23,6 +23,7 @@ import {
     normalizeListResponse,
 } from './dockerHelpers';
 import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 export const PullImageButton = () => {
     const { t } = useTranslation();
@@ -306,7 +307,7 @@ const ImagesTab = ({ onStatsChange }) => {
                 if (ms == null) return <span className="dx-muted-line">-</span>;
                 const iso = new Date(ms).toISOString();
                 return (
-                    <span className="dx-muted-line" title={new Date(ms).toLocaleString()}>
+                    <span className="dx-muted-line" title={formatDateTime(ms)}>
                         {formatRelativeTime(iso)}
                     </span>
                 );
