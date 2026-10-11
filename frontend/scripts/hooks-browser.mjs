@@ -18,6 +18,7 @@ import Login from '/src/pages/Login.jsx';
 import SSOCallback from '/src/pages/SSOCallback.jsx';
 import {useOverflowItems} from '/src/hooks/useOverflowItems.js';
 import useFocusTrap from '/src/hooks/ai/useFocusTrap.js';
+import {useStableHandler} from '/src/hooks/useStableHandler.js';
 window.calls=[]; window.users=[]; window.reads=0;
 window.onUser=user=>window.users.push(user);
 window.testApi={
@@ -38,9 +39,16 @@ function Focus(){
  useFocusTrap(box,{active,restoreFocusRef:restore});
  return <><button id="first" ref={first}>first</button><button id="second" ref={second}>second</button><div ref={box}><button>inside</button></div></>
 }
+window.rowRenders=0;window.seen=[];
+const Row=React.memo(function Row({onPick}){window.rowRenders++;return <button id="row" onClick={onPick}>row</button>});
+function Stable(){
+ const [count,setCount]=useState(0);window.inc=()=>setCount(n=>n+1);
+ const onPick=useStableHandler(()=>window.seen.push(count));
+ return <><output>{count}</output><Row onPick={onPick}/></>
+}
 function App(){
  const [,setTick]=useState(0);window.bump=()=>setTick(n=>n+1);
- if(mode==='overflow')return <Overflow/>;if(mode==='focus')return <Focus/>;
+ if(mode==='overflow')return <Overflow/>;if(mode==='stable')return <Stable/>;if(mode==='focus')return <Focus/>;
  const entry=mode==='sso'?'/login/callback/test?code=code1&state=state1':{pathname:'/login',state:{requires2FA:true,tempToken:'challenge1'}};
  return <MemoryRouter initialEntries={[entry]}><Routes><Route path="/login" element={<Login/>}/><Route path="/login/callback/:provider" element={<SSOCallback/>}/><Route path="*" element={<div id="done">done</div>}/></Routes></MemoryRouter>
 }
@@ -104,5 +112,13 @@ try {
  await page.goto(origin+'/hook-check?mode=focus');await page.locator('#first').waitFor();await page.waitForTimeout(100);
  await page.evaluate(()=>window.deactivate());await page.waitForFunction(()=>document.activeElement.id==='first');
  console.log('PASS focus restores activation target after ref changes');
+ await page.goto(origin+'/hook-check?mode=stable');await page.locator('#row').waitFor();
+ const mounted=await page.evaluate(()=>window.rowRenders);
+ for(let i=0;i<3;i++)await page.evaluate(()=>window.inc());
+ await page.waitForFunction(()=>document.querySelector('output').textContent==='3');
+ assert.equal(await page.evaluate(()=>window.rowRenders),mounted,'a parent update re-rendered the memoized row');
+ await page.locator('#row').click();
+ assert.deepEqual(await page.evaluate(()=>window.seen),[3]);
+ console.log('PASS a stable handler keeps memoized rows still and still sees the latest state');
  assert.deepEqual(errors,[]);
 } finally {await browser?.close();await server.close()}

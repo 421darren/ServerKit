@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import { errorReason } from '@/utils/errorMessage';
 import usePersistentState from '@/hooks/usePersistentState';
+import { useStableHandler } from '@/hooks/useStableHandler';
 import { formatTime } from '@/utils/intl';
 
 // Demo rail shortcuts (Quick access) — one-click jumps to the paths people
@@ -865,6 +866,16 @@ function FileManager() {
         setContextMenu({ x: e.clientX, y: e.clientY, entry });
     };
 
+    // Stable identities for the memoized rows/cards: a fresh handler on every
+    // render made each keystroke or selection re-render every row.
+    const rowOpen = useStableHandler(handleOpen);
+    const rowToggleSelect = useStableHandler(handleToggleSelect);
+    const rowContext = useStableHandler(openContextMenu);
+    const rowDownload = useStableHandler((entry) => fileApi.download(entry));
+    const rowRename = useStableHandler(openRenameModal);
+    const rowPermissions = useStableHandler(openPermissionsModal);
+    const rowDelete = useStableHandler((entry) => handleDelete(entry));
+
     const copyPathToClipboard = (path) => copyText(path);
 
     const downloadSelected = () => {
@@ -1309,9 +1320,9 @@ function FileManager() {
                                         entry={entry}
                                         selected={selectedPaths.has(entry.path)}
                                         selectMode={selectMode}
-                                        onOpen={handleOpen}
-                                        onToggleSelect={handleToggleSelect}
-                                        onContext={openContextMenu}
+                                        onOpen={rowOpen}
+                                        onToggleSelect={rowToggleSelect}
+                                        onContext={rowContext}
                                         isS3={isS3}
                                     />
                                 ))}
@@ -1348,13 +1359,13 @@ function FileManager() {
                                         entry={entry}
                                         selected={selectedPaths.has(entry.path)}
                                         selectMode={selectMode}
-                                        onOpen={handleOpen}
-                                        onToggleSelect={handleToggleSelect}
-                                        onContext={openContextMenu}
-                                        onDownload={(e) => fileApi.download(e)}
-                                        onRename={openRenameModal}
-                                        onPermissions={openPermissionsModal}
-                                        onDelete={(e) => handleDelete(e)}
+                                        onOpen={rowOpen}
+                                        onToggleSelect={rowToggleSelect}
+                                        onContext={rowContext}
+                                        onDownload={rowDownload}
+                                        onRename={rowRename}
+                                        onPermissions={rowPermissions}
+                                        onDelete={rowDelete}
                                     />
                                 ))}
                             </div>
