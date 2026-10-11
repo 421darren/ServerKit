@@ -10,7 +10,7 @@ import threading
 import pytest
 
 from app.exceptions import ConflictError
-from app.services import template_service
+from app.services import template_ports
 from app.services.template_service import TemplateService
 
 
@@ -18,7 +18,7 @@ from app.services.template_service import TemplateService
 def nothing_in_use(monkeypatch):
     monkeypatch.setattr(TemplateService, '_get_database_used_ports', classmethod(lambda cls: set()))
     monkeypatch.setattr(TemplateService, '_get_docker_used_ports', classmethod(lambda cls: set()))
-    monkeypatch.setattr(template_service, '_claimed_ports', {})
+    monkeypatch.setattr(template_ports, '_claimed_ports', {})
 
 
 def test_concurrent_claims_get_distinct_ports(nothing_in_use):
@@ -44,7 +44,7 @@ def test_claimed_port_is_not_suggested_or_free(nothing_in_use):
 
 def test_claims_expire(nothing_in_use, monkeypatch):
     claimed = TemplateService._claim_port(41200)
-    monkeypatch.setattr(template_service, '_PORT_CLAIM_TTL', -1)
+    monkeypatch.setattr(template_ports, '_PORT_CLAIM_TTL', -1)
     assert TemplateService._find_available_port(41200) == claimed
 
 
