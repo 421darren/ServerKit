@@ -94,7 +94,7 @@ export default function RecycleBinTab() {
         }
     }, []);
 
-    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => { load(); }, [load]);
 
     const rowKey = (row) => `${row.kind}:${row.id}`;
 
