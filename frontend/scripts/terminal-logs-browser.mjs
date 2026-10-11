@@ -21,7 +21,7 @@ window.testApi={
  getLogFiles:()=>Promise.resolve({logs:[{path:'/var/log/syslog',name:'syslog',size:10}]}),
  readLog:(p,n)=>log('read',p,n),
  searchLog:(p,q,n)=>log('search',p,q,n),
- getJournalLogs:(u,n)=>log('journal',u,n),
+ getJournalLogs:(u,n,pr)=>log('journal',u,n,pr),
 };
 const tab=new URLSearchParams(location.search).get('tab');
 createRoot(document.getElementById('root')).render(
@@ -101,6 +101,13 @@ try {
         return c[1] === 'nginx' && c[2] === 1000;
     });
     console.log('PASS picking a unit and a line count fetch the journal with the NEW values');
+
+    // The priority filter was decorative: its value never reached the API.
+    await page.getByText('Error', { exact: true }).first().click();
+    await page.waitForFunction(() => window.calls.filter(x => x[0] === 'journal').at(-1)[3] === '3');
+    const journalCall = await page.evaluate(() => window.calls.filter(x => x[0] === 'journal').at(-1));
+    assert.deepEqual(journalCall.slice(1), ['nginx', 1000, '3']);
+    console.log('PASS the priority filter is sent with the unit and line count');
     assert.deepEqual(errors, []);
 } finally {
     await browser?.close();

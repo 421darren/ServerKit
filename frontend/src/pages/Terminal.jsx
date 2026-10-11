@@ -538,6 +538,7 @@ const JournalTab = () => {
     async function loadJournalLogs(showSpinner = true, overrides = {}) {
         const lines = overrides.lineCount ?? lineCount;
         const selectedUnit = overrides.unit ?? unit;
+        const level = overrides.priority ?? priority;
         if (isRemote && !REMOTE_JOURNAL_SUPPORTED.has('read')) {
             setLogContent('');
             setSource('');
@@ -548,7 +549,7 @@ const JournalTab = () => {
         if (showSpinner) setLoading(true);
         setUnavailable(false);
         try {
-            const data = await api.getJournalLogs(selectedUnit || null, lines);
+            const data = await api.getJournalLogs(selectedUnit || null, lines, level);
             setLogContent(data.lines?.join('\n') || '');
             setSource(data.source || '');
             setSourceLabel(data.source_label || '');
@@ -728,7 +729,7 @@ const JournalTab = () => {
                                         <SharedButton variant="unstyled" type="button"
                                             key={opt.value}
                                             className={`lv-file lv-file--compact ${priority === opt.value ? 'active' : ''}`}
-                                            onClick={() => { setPriority(opt.value); setTimeout(loadJournalLogs, 0); }}
+                                            onClick={() => { setPriority(opt.value); loadJournalLogs(true, { priority: opt.value }); }}
                                         >
                                             <span className="lv-file-dot" style={{ background: priorityColor(opt.value) }} />
                                             <span className="lv-file-name">{opt.label}</span>

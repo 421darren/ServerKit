@@ -260,9 +260,10 @@ export async function getAppLogs(appName, type = 'access', lines = 100) {
     return this.request(`/logs/app/${appName}?type=${encodeURIComponent(type)}&lines=${encodeURIComponent(lines)}`);
 }
 
-export async function getJournalLogs(unit, lines = 100) {
+export async function getJournalLogs(unit, lines = 100, priority = '') {
     const params = new URLSearchParams({ lines });
     if (unit) params.append('unit', unit);
+    if (priority) params.append('priority', priority);
     return this.request(`/logs/journal?${params}`);
 }
 
