@@ -12,6 +12,11 @@ from app.utils.system import run_checked
 
 logger = logging.getLogger(__name__)
 
+# Metadata reads (ps, inspect, info, version) answer in well under a second
+# on a healthy daemon. Unbounded, a wedged dockerd held each request thread
+# forever; the panel runs one worker process, so they add up.
+QUICK_TIMEOUT = 30
+
 # Docker-style memory limit: a number plus a one-letter unit (bytes/kilo/mega/giga).
 _MEMORY_LIMIT_RE = re.compile(r'^\d+(\.\d+)?(b|k|m|g)$', re.IGNORECASE)
 
@@ -35,7 +40,7 @@ class DockerService:
         # dropping the guard here made a broken Popen surface as
         # `compose up` exit_code -1 instead of falling back to v1.
         try:
-            if run_checked(['docker', 'compose', 'version'], timeout=None)['success']:
+            if run_checked(['docker', 'compose', 'version'], timeout=QUICK_TIMEOUT)['success']:
                 cls._compose_cmd = ['docker', 'compose']
                 return cls._compose_cmd
         except Exception as e:  # noqa: BLE001
@@ -86,7 +91,7 @@ class DockerService:
     @staticmethod
     def is_docker_installed():
         """Check if Docker is installed and running."""
-        result = DockerService.run(['version', '--format', 'json'], timeout=None)
+        result = DockerService.run(['version', '--format', 'json'], timeout=QUICK_TIMEOUT)
         if not result['success']:
             return {'installed': False, 'error': result['error']}
         try:
@@ -97,7 +102,7 @@ class DockerService:
     @staticmethod
     def get_docker_info():
         """Get Docker system information."""
-        result = DockerService.run(['info', '--format', '{{json .}}'], timeout=None)
+        result = DockerService.run(['info', '--format', '{{json .}}'], timeout=QUICK_TIMEOUT)
         if not result['success']:
             logger.error('Failed to get Docker info: %s', result['error'])
             return None
@@ -151,7 +156,7 @@ class DockerService:
         if all_containers:
             args.insert(1, '-a')
 
-        result = DockerService.run(args, timeout=None)
+        result = DockerService.run(args, timeout=QUICK_TIMEOUT)
         if not result['success']:
             raise DependencyUnavailableError(
                 'Docker is not reachable: '
@@ -226,7 +231,7 @@ class DockerService:
         if all_containers:
             args.insert(1, '-a')
 
-        result = cls.run(args, timeout=None)
+        result = cls.run(args, timeout=QUICK_TIMEOUT)
         if not result['success']:
             logger.warning('docker ps (bulk) failed: %s', result['error'])
             return []
@@ -251,7 +256,7 @@ class DockerService:
     @staticmethod
     def get_container(container_id):
         """Get detailed container information."""
-        result = DockerService.run(['inspect', container_id], timeout=None)
+        result = DockerService.run(['inspect', container_id], timeout=QUICK_TIMEOUT)
         if not result['success']:
             return None
         try:
@@ -853,7 +858,7 @@ class DockerService:
     def tag_image(source, target):
         """Tag an image."""
         try:
-            result = DockerService.run(['tag', source, target], timeout=None)
+            result = DockerService.run(['tag', source, target], timeout=QUICK_TIMEOUT)
             if result['success']:
                 return {'success': True}
             return {'success': False, 'error': result['error']}
@@ -904,7 +909,7 @@ class DockerService:
 
         The shared external ``serverkit`` network lets manifest-generated app
         projects resolve each other by container name (fromService.host)."""
-        if DockerService.run(['network', 'inspect', name], timeout=None)['success']:
+        if DockerService.run(['network', 'inspect', name], timeout=QUICK_TIMEOUT)['success']:
             return {'success': True, 'existed': True}
         created = DockerService.create_network(name, driver=driver)
         created['existed'] = False
@@ -978,7 +983,7 @@ class DockerService:
     def inspect_volume(name):
         """Live state of a named volume: {'present', 'mountpoint', 'driver'}."""
         try:
-            result = DockerService.run(['volume', 'inspect', name], timeout=None)
+            result = DockerService.run(['volume', 'inspect', name], timeout=QUICK_TIMEOUT)
             if not result['success']:
                 return {'present': False, 'mountpoint': None, 'driver': None}
             data = json.loads(result['output'] or '[]')
