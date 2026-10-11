@@ -148,14 +148,6 @@ export async function startPanelUpdate() {
     });
 }
 
-export async function getSystemProcesses() {
-    return this.request('/system/processes');
-}
-
-export async function getServices() {
-    return this.request('/system/services');
-}
-
 export async function healthCheck() {
     return this.request('/system/health');
 }
