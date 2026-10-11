@@ -333,7 +333,7 @@ export default function Vaults() {
             },
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], [revealSecretId, revealedValue]);
+    ], [revealSecretId, revealedValue, selectedVault]);
 
     const vaultTable = selectedVault ? (
         <ResourceListPage

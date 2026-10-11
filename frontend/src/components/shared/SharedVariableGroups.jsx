@@ -289,7 +289,7 @@ const SharedVariableGroups = ({ scopeType = 'workspace', scopeId = 'default' }) 
             ),
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], []);
+    ], [selectedId, loadGroups]);
 
     const variableColumns = useMemo(() => [
         {
@@ -350,7 +350,7 @@ const SharedVariableGroups = ({ scopeType = 'workspace', scopeId = 'default' }) 
             ),
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], []);
+    ], [selectedId, loadDetail, loadGroups]);
 
     if (!detail) {
         return (
