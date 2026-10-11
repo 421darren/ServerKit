@@ -9,6 +9,7 @@ from flask_jwt_extended import jwt_required
 
 from app.services.volume_service import VolumeService, VolumeError
 from app.api._access import require_app
+from app.api._request import json_object
 
 app_volumes_bp = Blueprint('app_volumes', __name__)
 
@@ -25,7 +26,7 @@ def list_volumes(app_id):
 @jwt_required()
 def attach_volume(app_id):
     app = require_app(app_id, write=True)
-    data = request.get_json() or {}
+    data = json_object()
     try:
         volume = VolumeService.create(
             app,
@@ -62,7 +63,7 @@ def convert_bind_mount(app_id):
     into it. (Deviates from the plan's ``/<vid>/convert`` — a convert creates a
     new volume, so there is no prior vid.)"""
     app = require_app(app_id, write=True)
-    data = request.get_json() or {}
+    data = json_object()
     host_path = data.get('host_path')
     mount_path = data.get('mount_path')
     if not host_path or not mount_path:

@@ -17,6 +17,7 @@ from flask import Blueprint, jsonify, request
 from ..middleware.rbac import admin_required
 from ..services.doctor_service import DOCTOR_REPAIR_JOB_KIND, DoctorService
 from ..services.drift_service import DRIFT_JOB_KIND, DriftService
+from app.api._request import json_object
 
 doctor_bp = Blueprint('doctor', __name__)
 
@@ -45,7 +46,7 @@ def run_drift_check():
 @admin_required
 def repair_drift(check_type, resource_id):
     """Repair one drifted resource. Explicit confirmation required."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         return jsonify({'error': 'Confirmation required: pass {"confirm": true}.'}), 400
     rid = int(resource_id) if resource_id.isdigit() else resource_id
@@ -83,7 +84,7 @@ def repair_items():
     Synchronous remains the default for existing CLI callers. The web shell
     asks for ``wait=false`` and follows the returned job in Operations.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     items = data.get('items')
     if not isinstance(items, list) or not items:
         return jsonify({'error': "Body must carry a non-empty 'items' list."}), 400

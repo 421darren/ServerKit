@@ -14,6 +14,7 @@ from flask_jwt_extended import jwt_required
 from app.services.dns_cutover_service import DnsCutoverService, DnsCutoverError
 from app.middleware.rbac import require_admin_user
 from app.exceptions import not_found
+from app.api._request import json_object
 
 dns_cutover_bp = Blueprint('dns_cutover', __name__)
 
@@ -30,7 +31,7 @@ def _cutover_error(exc):
 @dns_cutover_bp.route('/ttl-guidance', methods=['POST'])
 @jwt_required()
 def ttl_guidance():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     return jsonify(DnsCutoverService.ttl_guidance(data.get('records') or []))
 
 
@@ -38,7 +39,7 @@ def ttl_guidance():
 @jwt_required()
 def create_snapshot():
     require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         snapshot = DnsCutoverService.create_snapshot(
             domain=data.get('domain'),
@@ -71,7 +72,7 @@ def get_snapshot(snapshot_id):
 @jwt_required()
 def cutover():
     require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     snapshot_id = data.get('snapshot_id')
     if not snapshot_id:
         return jsonify({'error': 'snapshot_id is required — a cutover needs a '
@@ -92,7 +93,7 @@ def cutover():
 @dns_cutover_bp.route('/verify', methods=['POST'])
 @jwt_required()
 def verify():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         result = DnsCutoverService.verify(
             domain=data.get('domain'),

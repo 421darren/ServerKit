@@ -14,6 +14,7 @@ from app.exceptions import field_required
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask import jsonify, request
 from app.api.servers import _agent_failure_status, _get_operable_server, servers_bp
+from app.api._request import json_object
 
 
 # ==================== Remote Terminal ====================
@@ -29,7 +30,7 @@ def create_terminal_session(server_id):
     """
     _get_operable_server(server_id)
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
 
     cols = data.get('cols', 80)
     rows = data.get('rows', 24)
@@ -56,7 +57,7 @@ def terminal_input(session_id):
         data: Base64-encoded input data
     """
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('data'):
         raise field_required('data')
@@ -83,7 +84,7 @@ def terminal_resize(session_id):
         rows: New terminal height
     """
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('cols') or not data.get('rows'):
         return jsonify({'error': 'cols and rows are required'}), 400
@@ -172,7 +173,7 @@ def remote_cron_list(server_id):
 @developer_required
 def remote_cron_add(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     schedule = (data.get('schedule') or '').strip()
     command = (data.get('command') or '').strip()
     if not schedule:
@@ -201,7 +202,7 @@ def remote_cron_remove(server_id, job_id):
 @developer_required
 def remote_cron_toggle(server_id, job_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     enabled = bool(data.get('enabled', True))
     result = RemoteCronService.toggle_job(server_id, job_id, enabled, user_id=user_id)
     return _agent_result(result)
@@ -251,7 +252,7 @@ def remote_cloudflared_list(server_id):
 @developer_required
 def remote_cloudflared_create(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     name = (data.get('name') or '').strip()
     if not name:
         raise field_required('name')
@@ -264,7 +265,7 @@ def remote_cloudflared_create(server_id):
 @developer_required
 def remote_cloudflared_route(server_id, tunnel_ref):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     hostname = (data.get('hostname') or '').strip()
     if not hostname:
         raise field_required('hostname')
@@ -357,7 +358,7 @@ def remote_packages_install(server_id):
     Returns {job_id, channel} immediately; the panel subscribes to the
     matching Socket.IO room for live install output."""
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     names = data.get('names') or []
     if isinstance(names, str):
         names = [names]
@@ -371,7 +372,7 @@ def remote_packages_install(server_id):
 @developer_required
 def remote_packages_remove(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     name = (data.get('name') or '').strip()
     if not name:
         raise field_required('name')
@@ -385,7 +386,7 @@ def remote_packages_upgrade(server_id):
     """Streaming upgrade. Body: {all: bool, names?: [...]}. Returns
     {job_id, channel}."""
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     names = data.get('names') or []
     all_pkgs = bool(data.get('all', False))
     if not all_pkgs and not names:
@@ -502,7 +503,7 @@ def remote_runtimes_python_current(server_id):
 @developer_required
 def remote_runtimes_python_install(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     version = (data.get('version') or '').strip()
     if not version:
         raise field_required('version')
@@ -514,7 +515,7 @@ def remote_runtimes_python_install(server_id):
 @developer_required
 def remote_runtimes_python_uninstall(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     version = (data.get('version') or '').strip()
     if not version:
         raise field_required('version')
@@ -526,7 +527,7 @@ def remote_runtimes_python_uninstall(server_id):
 @developer_required
 def remote_runtimes_python_set_global(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     version = (data.get('version') or '').strip()
     if not version:
         raise field_required('version')
@@ -538,7 +539,7 @@ def remote_runtimes_python_set_global(server_id):
 @developer_required
 def remote_runtimes_python_set_local(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     version = (data.get('version') or '').strip()
     dir_path = (data.get('dir') or '').strip()
     if not version or not dir_path:
@@ -591,7 +592,7 @@ def remote_file_read(server_id):
 @developer_required
 def remote_file_write(server_id):
     user_id = get_jwt_identity()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     path = (data.get('path') or '').strip()
     content = data.get('content')
     if not path:

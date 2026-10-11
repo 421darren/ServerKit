@@ -7,7 +7,7 @@ Provides endpoints for enabling, disabling, and managing 2FA.
 import logging
 import threading
 import time
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import limiter
 from app.middleware.session_auth import issue_session_tokens
@@ -16,6 +16,7 @@ from app.services.totp_service import TOTPService, TwoFactorSetup
 from app.services import auth_throttle_service
 from app.utils.client_ip import get_client_ip
 from app.exceptions import AuthenticationError, RateLimitedError, not_found
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ def confirm_2fa_setup():
     if user.totp_enabled:
         return jsonify({'error': '2FA is already enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'Verification code is required'}), 400
 
@@ -138,7 +139,7 @@ def disable_2fa():
     if not user.totp_enabled:
         return jsonify({'error': '2FA is not enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'Verification code is required'}), 400
 
@@ -171,7 +172,7 @@ def regenerate_backup_codes():
     if not user.totp_enabled:
         return jsonify({'error': '2FA is not enabled'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'code' not in data:
         return jsonify({'error': 'TOTP code is required'}), 400
 
@@ -208,7 +209,7 @@ def verify_2fa_code():
             'error': 'Too many failed attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 

@@ -2,7 +2,7 @@
 # seam (can_access_app for reads, can_edit_app for mutations).
 """API endpoints for managing private URLs for applications."""
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Application, User
@@ -10,6 +10,7 @@ from app.services.private_url_service import PrivateURLService
 from app.services.nginx_service import NginxService
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 private_urls_bp = Blueprint('private_urls', __name__)
 
@@ -45,7 +46,7 @@ def enable_private_url(app_id):
             'private_url': f'/p/{app.private_slug}'
         }), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     custom_slug = data.get('slug')
 
     if custom_slug:
@@ -132,7 +133,7 @@ def update_private_url(app_id):
     if not app.private_url_enabled:
         return jsonify({'error': 'Private URL is not enabled for this service'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'slug' not in data:
         return jsonify({'error': 'Slug is required'}), 400
 

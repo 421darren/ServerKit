@@ -12,6 +12,7 @@ from flask_jwt_extended import jwt_required
 from app.services.waf_service import WafService
 from app.middleware.rbac import require_admin_user
 from app.api._access import require_app
+from app.api._request import json_object
 
 waf_bp = Blueprint('waf', __name__)
 
@@ -30,7 +31,7 @@ def update_policy(app_id):
     require_admin_user()
     require_app(app_id, conceal=True)
 
-    data = request.get_json() or {}
+    data = json_object()
     try:
         policy = WafService.set_policy(
             app_id,

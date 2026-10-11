@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from app.middleware.rbac import admin_required
 from app.services.php_service import PHPService
+from app.api._request import json_object
 
 php_bp = Blueprint('php', __name__)
 
@@ -30,7 +31,7 @@ def install_version(version):
 @admin_required
 def set_default_version():
     """Set default PHP version."""
-    data = request.get_json()
+    data = json_object()
     version = data.get('version') if data else None
 
     if not version:
@@ -52,7 +53,7 @@ def get_extensions(version):
 @admin_required
 def install_extension(version):
     """Install a PHP extension."""
-    data = request.get_json()
+    data = json_object()
     extension = data.get('extension') if data else None
 
     if not extension:
@@ -74,7 +75,7 @@ def get_pools(version):
 @admin_required
 def create_pool(version):
     """Create a new FPM pool."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'name' not in data:
         return jsonify({'error': 'Pool name is required'}), 400

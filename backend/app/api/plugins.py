@@ -12,6 +12,7 @@ from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
 from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 plugins_bp = Blueprint('plugins', __name__)
 
@@ -54,7 +55,7 @@ def install_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'url' not in data:
         return jsonify({'error': 'url required'}), 400
 
@@ -119,7 +120,7 @@ def preview_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     url = (data.get('url') or '').strip()
     if not url:
         return jsonify({'error': 'url required'}), 400
@@ -152,7 +153,7 @@ def install_plugin_local():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     path = (data.get('path') or '').strip()
     if not path:
         return jsonify({'error': 'path required'}), 400
@@ -247,7 +248,7 @@ def uninstall_plugin(plugin_id):
     # ?purge=true or a JSON body {"purge": true}.
     purge = str(request.args.get('purge', '')).lower() in ('1', 'true', 'yes')
     if not purge:
-        body = request.get_json(silent=True) or {}
+        body = json_object(optional=True)
         purge = bool(body.get('purge'))
 
     plugin_name = plugin.name
@@ -614,7 +615,7 @@ def update_plugin_config(plugin_id):
     if not plugin:
         return jsonify({'error': 'Plugin not found'}), 404
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     config = data.get('config')
     if not isinstance(config, dict):
         return jsonify({'error': 'config must be an object'}), 400
@@ -681,7 +682,7 @@ def update_plugin_route(plugin_id):
             and not registry_service._show_unreviewed():
         return jsonify({'error': 'Extension not found in the registry'}), 404
 
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     acknowledged = body.get('acknowledge_risk') is True
     reason, message = registry_service.consent_gate(entry, acknowledged)
     if reason:

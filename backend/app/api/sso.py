@@ -14,6 +14,7 @@ from app.middleware.rbac import admin_required, get_current_user
 from app.middleware.session_auth import issue_session_tokens
 from app.error_reporting import record_unexpected
 from app.exceptions import NotFoundError
+from app.api._request import json_object
 
 sso_bp = Blueprint('sso', __name__)
 
@@ -56,7 +57,7 @@ def callback(provider):
     if provider not in VALID_PROVIDERS or provider == 'saml':
         return jsonify({'error': f'Invalid OAuth provider: {provider}'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -158,7 +159,7 @@ def link_provider(provider):
         return jsonify({'error': f'Invalid provider: {provider}'}), 400
 
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
     code = data.get('code', '')
     state = data.get('state', '')
     redirect_uri = data.get('redirect_uri', '')
@@ -232,7 +233,7 @@ def update_provider_config(provider):
     if provider not in VALID_PROVIDERS:
         return jsonify({'error': f'Invalid provider: {provider}'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     prefix = f'sso_{provider}_'
     updated = []
 
@@ -268,7 +269,7 @@ def update_general_settings():
     """Update general SSO settings (auto_provision, force_sso, etc.)."""
     user = get_current_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     general_keys = ['sso_auto_provision', 'sso_default_role', 'sso_force_sso', 'sso_allowed_domains']
     updated = []
 

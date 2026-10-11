@@ -16,6 +16,7 @@ from flask_jwt_extended import jwt_required
 from app.models.server import Server
 from app.middleware.rbac import developer_required
 from app.services.proxy_stack_service import ProxyStackService
+from app.api._request import json_object
 
 proxy_bp = Blueprint('proxy', __name__)
 
@@ -114,7 +115,7 @@ def configure_proxy(server_id):
     if err:
         return err
 
-    data = request.get_json() or {}
+    data = json_object()
     proxy_type = data.get('proxy_type')
     custom_snippet = data.get('custom_snippet')
 
@@ -142,7 +143,7 @@ def regenerate_proxy(server_id):
     if err:
         return err
 
-    data = request.get_json() or {}
+    data = json_object()
     sites = data.get('sites')
     result = ProxyStackService.regenerate(server_id, sites=sites)
     status = 200 if result.get('success') else 502
@@ -157,7 +158,7 @@ def switch_proxy(server_id):
     if err:
         return err
 
-    data = request.get_json() or {}
+    data = json_object()
     proxy_type = data.get('proxy_type')
     if not proxy_type:
         return jsonify({'error': 'proxy_type is required'}), 400

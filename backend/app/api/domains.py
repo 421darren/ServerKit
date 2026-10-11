@@ -147,7 +147,7 @@ def get_domain(domain_id):
 def create_domain():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -279,7 +279,7 @@ def give_subdomain():
     publish under a specific registered base domain."""
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
-    data = request.get_json() or {}
+    data = json_object()
     app = (Application.query_active().filter_by(id=data.get('application_id')).first()
            if data.get('application_id') else None)
     if not app:
@@ -387,7 +387,7 @@ def enable_ssl(domain_id):
     if not ResourceGrantService.can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     # An address on the request wins; otherwise the panel-wide ACME contact,
     # so the modal stops asking for the same address on every certificate.
     email = get_acme_contact(data.get('email'))

@@ -4,6 +4,7 @@ from app.services.advanced_ssl_service import AdvancedSSLService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 advanced_ssl_bp = Blueprint('advanced_ssl', __name__)
 
@@ -21,7 +22,7 @@ def issue_wildcard():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     domain = data.get('domain')
     provider = data.get('dns_provider')
     creds = data.get('credentials', {})
@@ -46,7 +47,7 @@ def issue_san():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     domains = data.get('domains', [])
     if not domains:
         return jsonify({'error': 'domains list required'}), 400
@@ -66,7 +67,7 @@ def upload_cert():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     domain = data.get('domain')
     cert = data.get('certificate')
     key = data.get('private_key')

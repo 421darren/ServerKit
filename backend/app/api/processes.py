@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.middleware.rbac import admin_required
 from app.services.process_service import ProcessService
+from app.api._request import json_object
 
 processes_bp = Blueprint('processes', __name__)
 
@@ -47,7 +48,7 @@ def get_services():
 @admin_required
 def control_service(service_name):
     """Control a system service."""
-    data = request.get_json()
+    data = json_object()
     action = data.get('action') if data else None
 
     if not action:

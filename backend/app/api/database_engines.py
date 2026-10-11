@@ -29,6 +29,7 @@ from app.services import database_engine_service as engines
 from app.services.deployment_job_service import DeploymentJobService
 from app.services.template_service import TemplateService
 from app.api._access import require_app
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def install_database_engine():
     so the caller navigates to the deploy console exactly as it would for any
     other template install.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
 
     plan = engines.plan_install(
         template_id=data.get('template_id'),
@@ -155,7 +156,7 @@ def install_engine_extension(app_id):
     gets "your image does not carry this, install X instead" rather than a raw
     ``could not open extension control file``.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     result = extensions.install_extension(
         app_id,
         extension_id=data.get('extension_id') or data.get('id'),

@@ -7,6 +7,7 @@ from app.exceptions import field_required
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask import jsonify, request
 from app.api.servers import _agent_failure_status, servers_bp
+from app.api._request import json_object
 
 
 # ==================== Remote Docker Operations ====================
@@ -68,7 +69,7 @@ def start_remote_container(server_id, container_id):
 def stop_remote_container(server_id, container_id):
     """Stop a container on a remote server"""
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
     timeout = data.get('timeout')
 
     result = RemoteDockerService.stop_container(server_id, container_id, timeout=timeout, user_id=user_id)
@@ -84,7 +85,7 @@ def stop_remote_container(server_id, container_id):
 def restart_remote_container(server_id, container_id):
     """Restart a container on a remote server"""
     user_id = get_jwt_identity()
-    data = request.get_json() or {}
+    data = json_object()
     timeout = data.get('timeout')
 
     result = RemoteDockerService.restart_container(server_id, container_id, timeout=timeout, user_id=user_id)
@@ -176,7 +177,7 @@ def list_remote_images(server_id):
 def pull_remote_image(server_id):
     """Pull an image on a remote server"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('image'):
         return jsonify({'error': 'Image name required'}), 400
@@ -310,7 +311,7 @@ def list_remote_compose_projects(server_id):
 def remote_compose_ps(server_id):
     """List containers for a compose project"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')
@@ -332,7 +333,7 @@ def remote_compose_ps(server_id):
 def remote_compose_up(server_id):
     """Start a compose project"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')
@@ -356,7 +357,7 @@ def remote_compose_up(server_id):
 def remote_compose_down(server_id):
     """Stop a compose project"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')
@@ -380,7 +381,7 @@ def remote_compose_down(server_id):
 def remote_compose_logs(server_id):
     """Get logs from a compose project"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')
@@ -404,7 +405,7 @@ def remote_compose_logs(server_id):
 def remote_compose_restart(server_id):
     """Restart a compose project or specific service"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')
@@ -427,7 +428,7 @@ def remote_compose_restart(server_id):
 def remote_compose_pull(server_id):
     """Pull images for a compose project"""
     user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data or not data.get('project_path'):
         raise field_required('project_path')

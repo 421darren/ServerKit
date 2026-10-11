@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.middleware.rbac import admin_required
 from app.services.log_service import LogService
+from app.api._request import json_object
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -71,7 +72,7 @@ def get_journal_logs():
 @admin_required
 def clear_log():
     """Clear/truncate a log file."""
-    data = request.get_json()
+    data = json_object()
     filepath = data.get('path') if data else None
 
     if not filepath:

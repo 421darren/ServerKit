@@ -347,7 +347,7 @@ def check_agent_version():
         "arch": "amd64"
     }
     """
-    data = request.get_json() or {}
+    data = json_object()
     current_version = data.get('current_version', '0.0.0')
     agent_os = data.get('os', 'linux')
     agent_arch = data.get('arch', 'amd64')
@@ -542,7 +542,7 @@ def list_agent_versions():
 @admin_required
 def add_agent_version():
     """Add a new available agent version"""
-    data = request.get_json()
+    data = json_object()
     
     if not data.get('version'):
         raise field_required('Version')

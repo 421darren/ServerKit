@@ -20,6 +20,7 @@ from app.services.connection_provider_sdk import (
 from app.services import connection_providers  # noqa: F401
 from app.services.container_registry_service import ContainerRegistryService
 from app.services.workspace_service import WorkspaceService
+from app.api._request import json_object
 
 connections_bp = Blueprint('connections', __name__)
 
@@ -168,7 +169,7 @@ def list_registries():
 @connections_bp.route('/registries', methods=['POST'])
 @admin_required
 def create_registry():
-    data = request.get_json() or {}
+    data = json_object()
     name = (data.get('name') or '').strip()
     if not name:
         return jsonify({'error': 'name is required'}), 400
@@ -191,7 +192,7 @@ def update_registry(registry_id):
     registry = ContainerRegistryService.get(registry_id)
     if not registry:
         return jsonify({'error': 'Registry not found'}), 404
-    data = request.get_json() or {}
+    data = json_object()
     registry = ContainerRegistryService.update(
         registry,
         name=data.get('name'),

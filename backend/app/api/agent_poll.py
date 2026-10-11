@@ -20,6 +20,7 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from app.services.agent_registry import agent_registry
+from app.api._request import json_object
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ def poll():
     if not agent:
         return jsonify({'error': 'invalid session'}), 401
 
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     metrics = body.get('metrics') or {}
     sysinfo = body.get('system_info')
     caps = body.get('capabilities')

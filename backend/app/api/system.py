@@ -15,6 +15,7 @@ from app.services.site_domain_service import SiteDomainService
 from app.utils.domain import is_valid_canonical_domain
 from app.utils.version import get_panel_version, get_install_dir
 from app.middleware.rbac import require_admin_user
+from app.api._request import json_object
 
 # Cache for update check (to avoid hitting GitHub API too often)
 _update_cache = {
@@ -124,7 +125,7 @@ def start_panel_update():
 
     Body must carry ``{"confirm": true}`` — this restarts the panel backend.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         raise ValidationError('Confirmation required: pass {"confirm": true}.')
 
@@ -215,7 +216,7 @@ def reclaim_disk_space():
     ``?wait=false`` enqueues the work as a background job instead of running
     it inline — reclaims can take minutes when Docker or a VACUUM is involved.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         raise ValidationError('Confirmation required: pass {"confirm": true}.')
     keys = data.get('keys')
@@ -453,7 +454,7 @@ def set_capacity_profile():
     """Record an operator's profile change made after install."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     profile = data.get('profile')
 
     try:
@@ -487,7 +488,7 @@ def set_timezone():
     """Set server timezone (admin only)."""
     require_admin_user()
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'timezone' not in data:
         return jsonify({'error': 'Timezone is required'}), 400
 

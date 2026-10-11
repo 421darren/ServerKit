@@ -46,3 +46,19 @@ def test_an_object_body_still_reaches_the_route(client, admin_headers):
     resp = client.post('/api/v1/cron/jobs/job_x/toggle', data=json.dumps({'enabled': False}),
                        headers={**admin_headers, 'Content-Type': 'application/json'})
     assert resp.status_code != 400 or resp.get_json().get('code') != 'validation.body_not_object'
+
+
+def test_optional_body_may_be_absent(client, admin_headers):
+    """Action routes read optional settings: no body (or no JSON content type)
+    is an empty dict, exactly as `get_json(silent=True) or {}` gave."""
+    resp = client.delete('/api/v1/setup-health/snooze?key=setup.canonical_domain',
+                         headers=admin_headers)
+    assert resp.status_code != 415
+    assert (resp.get_json() or {}).get('code') != 'validation.body_not_object'
+
+
+def test_optional_body_must_still_be_an_object(client, admin_headers):
+    resp = client.delete('/api/v1/setup-health/snooze', data='[]',
+                         headers={**admin_headers, 'Content-Type': 'application/json'})
+    assert resp.status_code == 400
+    assert resp.get_json()['code'] == 'validation.body_not_object'

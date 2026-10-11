@@ -19,6 +19,7 @@ from app.models.app_attachment import AppAttachment
 from app.services.app_attachment_service import (
     FAILURE_MODES, AppAttachmentService, AttachmentError)
 from app.services.resource_grant_service import ResourceGrantService
+from app.api._request import json_object
 
 app_attachments_bp = Blueprint('app_attachments', __name__)
 
@@ -58,7 +59,7 @@ def attach_service(app_id, kind):
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(user, app):
         raise not_found('service')
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     service_app_id = data.get('service_app_id')
     if not isinstance(service_app_id, int) or isinstance(service_app_id, bool):
         raise ValidationError("'service_app_id' is required")
@@ -114,7 +115,7 @@ def set_pooler(app_id):
         raise not_found('service')
     if not pooler_service.is_postgres_engine(app):
         raise ValidationError('Connection pooling is for an installed PostgreSQL')
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if not isinstance(data.get('enabled'), bool):
         raise ValidationError("'enabled' must be true or false")
     result = pooler_service.set_enabled(app, data['enabled'])
@@ -144,7 +145,7 @@ def set_immutable_assets(app_id):
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(get_current_user(), app):
         raise not_found('service')
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if not isinstance(data.get('enabled'), bool):
         raise ValidationError("'enabled' must be true or false")
     return jsonify(SiteDomainService.set_immutable_assets(app, data['enabled']))

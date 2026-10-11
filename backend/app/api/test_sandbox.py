@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 
 from ..middleware.rbac import admin_required, viewer_required
 from ..services.test_sandbox_service import TestSandboxService
+from app.api._request import json_object
 
 test_sandbox_bp = Blueprint('test_sandbox', __name__)
 
@@ -30,7 +31,7 @@ def list_runs():
 @test_sandbox_bp.route('/runs', methods=['POST'])
 @admin_required
 def start_run():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     distros = data.get('distros') or []
     mode = data.get('mode', 'quick')
     try:

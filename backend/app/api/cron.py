@@ -230,7 +230,7 @@ def jobs_for_app(app_id):
 def toggle_tracking(job_id):
     """Enable/disable run tracking for a job (rewrites its crontab line with the
     serverkit-cron-run shim; disabling restores the bare command)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     enabled = bool(data.get('enabled', True))
     options = {}
     if 'alert_on_failure' in data:
@@ -271,7 +271,7 @@ def ingest_run():
     if remote not in ('127.0.0.1', '::1', 'localhost'):
         return jsonify({'error': 'Ingest is restricted to localhost'}), 403
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     job_id = data.get('job_id')
     if not job_id:
         return jsonify({'error': 'job_id is required'}), 400
@@ -334,7 +334,7 @@ def preview_schedule():
     existing cron read gate rather than the admin write gate — the Backups and
     server-detail embedders shouldn't need admin to preview a schedule.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     schedule = data.get('schedule', '')
     result = CronService.preview_schedule(schedule)
     return jsonify(result)

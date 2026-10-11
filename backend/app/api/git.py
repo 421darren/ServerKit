@@ -18,6 +18,7 @@ from ..models import Application, GitWebhook
 from ..services.webhook_service import WebhookService
 from ..services.git_deploy_service import GitDeployService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 git_bp = Blueprint('git', __name__)
 
@@ -64,7 +65,7 @@ def list_webhooks():
 @admin_required
 def create_webhook():
     """Create a new webhook."""
-    data = request.get_json() or {}
+    data = json_object()
 
     result = WebhookService.create_webhook(
         name=data.get('name'),
@@ -236,7 +237,7 @@ def get_deployment(deployment_id):
 @admin_required
 def manual_deploy(app_id):
     """Trigger a manual deployment for an application."""
-    data = request.get_json() or {}
+    data = json_object()
     branch = data.get('branch')
 
     result = GitDeployService.manual_deploy(app_id, branch=branch)
@@ -250,7 +251,7 @@ def manual_deploy(app_id):
 @admin_required
 def rollback_deployment(app_id):
     """Rollback to a previous deployment version."""
-    data = request.get_json() or {}
+    data = json_object()
     target_version = data.get('targetVersion')
 
     result = GitDeployService.rollback(app_id, target_version=target_version)

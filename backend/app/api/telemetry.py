@@ -10,6 +10,7 @@ from app import db
 from app.middleware.rbac import admin_required
 from app.models.system_event import SystemEvent
 from app.services.telemetry_service import TelemetryService
+from app.api._request import json_object
 
 telemetry_bp = Blueprint('telemetry', __name__)
 
@@ -122,7 +123,7 @@ def cleanup_events():
 @admin_required
 def emit_test_event():
     """Emit a test telemetry event (admin only)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     user_id = get_jwt_identity()
     event = TelemetryService.emit(
         source=data.get('source', 'system'),

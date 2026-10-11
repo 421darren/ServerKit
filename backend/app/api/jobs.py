@@ -7,6 +7,7 @@ from app.jobs import registry
 from app.jobs.models import Job
 from app.jobs.service import JobService, ScheduledJobService
 from app.middleware.rbac import require_admin_user
+from app.api._request import json_object
 
 jobs_bp = Blueprint('jobs', __name__)
 
@@ -87,7 +88,7 @@ def run_scheduled(scheduled_id):
 @jwt_required()
 def toggle_scheduled(scheduled_id):
     require_admin_user()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     scheduled = ScheduledJobService.set_enabled(scheduled_id, bool(body.get('enabled', True)))
     if not scheduled:
         return jsonify({'error': 'Scheduled job not found'}), 404

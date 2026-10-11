@@ -3,7 +3,7 @@
 Environments are children of a project; access is derived from the parent
 project's workspace, mirroring projects.py.
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.project_service import ProjectService
@@ -11,6 +11,7 @@ from app.services.workspace_service import WorkspaceService
 from app.middleware.rbac import get_current_user
 from app.exceptions import permission_denied
 from app.api._access import visible_workspace_ids
+from app.api._request import json_object
 
 environments_bp = Blueprint('environments', __name__)
 
@@ -34,7 +35,7 @@ def _project_for_write(user, project_id):
 def create_environment():
     """Create an environment under a project. Body: {project_id, name, is_default?}."""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     project_id = data.get('project_id')
     if not project_id:
         return jsonify({'error': 'project_id is required'}), 400
@@ -67,7 +68,7 @@ def update_environment(environment_id):
     if err:
         return err
 
-    data = request.get_json() or {}
+    data = json_object()
     updated = ProjectService.update_environment(
         environment_id, name=data.get('name'), is_default=data.get('is_default'))
     return jsonify({'message': 'Environment updated', 'environment': updated.to_dict(include_counts=True)}), 200
@@ -97,7 +98,7 @@ def delete_environment(environment_id):
 def reorder_environments():
     """Reorder a project's environments. Body: {project_id, ordered_ids:[...]}"""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     project_id = data.get('project_id')
     ordered_ids = data.get('ordered_ids')
     if not project_id:

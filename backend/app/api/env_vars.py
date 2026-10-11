@@ -14,6 +14,7 @@ from app.services.env_service import EnvService
 from app.services.resource_grant_service import ResourceGrantService
 from app.api._access import require_app
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 env_vars_bp = Blueprint('env_vars', __name__)
 
@@ -44,7 +45,7 @@ def create_env_var(app_id):
     current_user_id = get_jwt_identity()
     app = require_app(app_id, write=True)
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -97,7 +98,7 @@ def update_env_var(app_id, key):
     current_user_id = get_jwt_identity()
     app = require_app(app_id, write=True)
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -150,7 +151,7 @@ def bulk_set_env_vars(app_id):
     current_user_id = get_jwt_identity()
     app = require_app(app_id, write=True)
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'env_vars' not in data:
         return jsonify({'error': 'env_vars object is required'}), 400
 
@@ -172,7 +173,7 @@ def import_env_file(app_id):
     current_user_id = get_jwt_identity()
     app = require_app(app_id, write=True)
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'content' not in data:
         return jsonify({'error': 'content is required'}), 400
 

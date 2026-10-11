@@ -15,6 +15,7 @@ from app.services.workspace_service import WorkspaceService
 from app.middleware.rbac import get_current_user
 from app.exceptions import permission_denied
 from app.api._access import visible_workspace_ids
+from app.api._request import json_object
 
 projects_bp = Blueprint('projects', __name__)
 
@@ -54,7 +55,7 @@ def list_projects():
 def create_project():
     """Create a project (auto-creates a default environment)."""
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
     name = (data.get('name') or '').strip()
     if not name:
         return jsonify({'error': 'Project name is required'}), 400
@@ -109,7 +110,7 @@ def update_project(project_id):
     if not WorkspaceService.can_write_in_workspace(user, project.workspace_id):
         return jsonify({'error': 'You have read-only access to this workspace'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     updated = ProjectService.update_project(
         project_id,
         name=data.get('name'),

@@ -19,11 +19,12 @@ owns the allowlist, the capability gate and the audit trail (rule 6) — this
 layer only authenticates, shapes the batch, and reports refusals as results
 rather than errors.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 
 from ..middleware.rbac import admin_required, get_current_user
 from ..services.fleet_doctor_service import FLEET_DOCTOR_JOB_KIND, FleetDoctorService
 from ..services.fleet_repair_service import FleetRepairService
+from app.api._request import json_object
 
 fleet_doctor_bp = Blueprint('fleet_doctor', __name__)
 
@@ -64,7 +65,7 @@ def repair_fleet_items():
     as a per-item ``success: false`` result — the request still succeeds, which
     is what keeps one offline server from failing the whole batch.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     items = data.get('items')
     if not isinstance(items, list) or not items:
         return jsonify({'error': "Body must carry a non-empty 'items' list."}), 400

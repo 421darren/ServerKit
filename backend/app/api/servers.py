@@ -201,7 +201,7 @@ def list_groups():
 @developer_required
 def create_group():
     """Create a new server group"""
-    data = request.get_json()
+    data = json_object()
 
     if not data.get('name'):
         raise field_required('Name')
@@ -360,7 +360,7 @@ def create_server():
       description, group_id, tags, permissions, permission_profile,
       allowed_ips: passed through unchanged.
     """
-    data = request.get_json() or {}
+    data = json_object()
     # Through the one identity door: @developer_required admits API-key
     # callers, for whom reading the JWT directly raises.
     creator = get_current_user()
@@ -697,7 +697,7 @@ def regenerate_token(server_id):
     """
     server = _get_operable_server(server_id)
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     expires_at = _resolve_token_expiry(data.get('expires_in'))
 
     registration_token = Server.generate_registration_token()

@@ -14,6 +14,7 @@ from flask_jwt_extended import jwt_required
 from app.middleware.rbac import admin_required
 from app.services.security_service import SecurityService
 from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 security_bp = Blueprint('security', __name__)
 
@@ -41,7 +42,7 @@ def get_config():
 @admin_required
 def update_config():
     """Update security configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -63,7 +64,7 @@ def update_config():
 @admin_required
 def initialize_integrity():
     """Create baseline for file integrity monitoring."""
-    data = request.get_json() or {}
+    data = json_object()
     paths = data.get('paths')
     result = SecurityService.initialize_integrity_database(paths)
     return jsonify(result), 200 if result['success'] else 400
@@ -117,7 +118,7 @@ def get_ssh_keys():
 @admin_required
 def add_ssh_key():
     """Add an SSH public key."""
-    data = request.get_json()
+    data = json_object()
     if not data or 'key' not in data:
         return jsonify({'error': 'SSH key required'}), 400
 
@@ -150,7 +151,7 @@ def get_ip_lists():
 @admin_required
 def add_to_ip_list(list_type):
     """Add IP to allowlist or blocklist."""
-    data = request.get_json()
+    data = json_object()
     if not data or 'ip' not in data:
         return jsonify({'error': 'IP address required'}), 400
 
@@ -199,7 +200,7 @@ def fim_baseline(scope):
     from app.services.file_integrity_service import (
         FileIntegrityService, FileIntegrityScopeError,
     )
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     options = data.get('options') if isinstance(data.get('options'), dict) else None
     try:
         result = FileIntegrityService.baseline(scope, options=options)

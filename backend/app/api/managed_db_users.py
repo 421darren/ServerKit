@@ -14,6 +14,7 @@ from app.middleware.rbac import admin_required, developer_required
 from app.services.managed_database_service import ManagedDatabaseService
 from app.services.managed_db_user_service import ManagedDbUserService
 from app.exceptions import not_found
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def create_managed_db_user(managed_id):
     managed, err = _get_managed_or_404(managed_id)
     if err:
         return err
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     result = ManagedDbUserService.create_user(
         managed,
         username=data.get('username'),

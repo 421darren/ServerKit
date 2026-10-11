@@ -49,6 +49,7 @@ from app.exceptions import (
     PermissionDeniedError, ValidationError, field_required, not_found, permission_denied,
 )
 from app.api._access import require_app
+from app.api._request import json_object
 
 apps_bp = Blueprint('apps', __name__)
 
@@ -144,7 +145,7 @@ def link_apps(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -331,7 +332,7 @@ def update_environment(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -481,7 +482,7 @@ def move_apps_to_project():
     from app.models.environment import Environment
 
     user = get_current_user()
-    data = request.get_json() or {}
+    data = json_object()
 
     raw_ids = data.get('app_ids')
     if not isinstance(raw_ids, list) or not raw_ids:
@@ -677,7 +678,7 @@ def grant_app_access(app_id):
         raise not_found('service')
     if not user.is_admin and app.user_id != user.id:
         raise permission_denied()
-    data = request.get_json() or {}
+    data = json_object()
     grantee_id = data.get('user_id')
     if not grantee_id:
         raise field_required('user_id')
@@ -715,7 +716,7 @@ def create_app_from_repository():
     """Create a new application by cloning a Git repository."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     name = _service_slug(data.get('name'))
     repo_url = (data.get('repo_url') or '').strip()
     source_connection_id = data.get('source_connection_id')
@@ -923,7 +924,7 @@ _HOST_BINDING_FIELDS = ('root_path', 'compose_file', 'systemd_unit', 'managed_by
 def create_app():
     user = get_current_user()
     current_user_id = user.id
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -997,7 +998,7 @@ def create_manual_app():
     """Register an app that already exists on the server (manual/local)."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     name = _service_slug(data.get('name'))
     app_type = (data.get('app_type') or 'docker').strip().lower()
     root_path = (data.get('root_path') or '').strip()
@@ -1274,7 +1275,7 @@ def rollback_app_version(app_id):
     if app.source != 'upload':
         return jsonify({'error': 'Rollback is only available for services deployed by upload'}), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     target = data.get('version')
     if target is None:
         raise field_required('version')
@@ -1324,7 +1325,7 @@ def update_app(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
 
     # Validate before anything is assigned, so a bad setting leaves the app
     # untouched rather than half-updated in the session.
@@ -1551,7 +1552,7 @@ def update_sleep_policy(app_id):
         raise not_found('service')
     if not _can_edit_app(user, app):
         raise permission_denied()
-    data = request.get_json() or {}
+    data = json_object()
     policy = ContainerSleepService.set_policy(
         app_id, enabled=data.get('enabled'), idle_timeout_minutes=data.get('idle_timeout_minutes'))
     return jsonify(policy.to_dict())
@@ -1673,7 +1674,7 @@ def update_app_resources(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     try:
         if 'cpu_limit' in data:
             app.cpu_limit = DockerService.validate_cpu_limit(data['cpu_limit'])
@@ -1730,7 +1731,7 @@ def set_micro_cache(app_id):
     if not _can_edit_app(user, app):
         raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     if 'enabled' not in data:
         return jsonify({'error': "'enabled' is required"}), 400
 
@@ -2285,7 +2286,7 @@ def delete_app_backup(app_id, run_id):
 
 
 # --------------------------------------------------------------------------- #
-# WordPress reachable through the generic application surface (§7 unification).
+# WordPress reachable through the generic application surface.
 # A WordPress site is a 1:1 extension of an Application (WordPressSite.
 # application_id); the WordPressSite record — not app_type — is the source of
 # truth (see wordpress.py:_is_wp_app). These additive routes expose the WP
@@ -2352,7 +2353,7 @@ def create_app_db_snapshot(app_id):
         WordPressEnvService = wordpress_env_service()
     except WordPressExtensionMissingError as e:
         return jsonify({'error': str(e)}), 503
-    data = request.get_json() or {}
+    data = json_object()
     result = DatabaseSyncService.create_snapshot(
         db_name=site.db_name,
         name=data.get('name', f'{app.name}_{site.id}'),

@@ -10,6 +10,7 @@ from app.middleware.rbac import admin_required, get_current_user
 from app.models.server import Server
 from app.services import survey_service
 from app.exceptions import not_found
+from app.api._request import json_object
 
 survey_bp = Blueprint('survey', __name__)
 
@@ -54,7 +55,7 @@ def set_management_mode(server_id):
     if server is None:
         raise not_found('server')
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     mode = (data.get('mode') or '').strip().lower()
     if mode not in Server.MANAGEMENT_MODES:
         return jsonify({'error': f'mode must be one of {list(Server.MANAGEMENT_MODES)}'}), 400

@@ -21,6 +21,7 @@ from ..services.setup_reconcile_service import (
     URL_FIX_JOB_KIND,
     SetupReconcileService,
 )
+from app.api._request import json_object
 
 setup_health_bp = Blueprint('setup_health', __name__)
 
@@ -68,7 +69,7 @@ def _snooze_guard(key):
 @auth_required()
 def snooze_item():
     """Snooze a setup item (mutes it; it still renders, just quietly)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     key = data.get('key')
     if not key:
         return jsonify({'error': "Body must carry an item 'key'."}), 400
@@ -82,7 +83,7 @@ def snooze_item():
 @auth_required()
 def unsnooze_item():
     """Clear a snooze so the item is active again."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     key = data.get('key') or request.args.get('key')
     if not key:
         return jsonify({'error': "An item 'key' is required."}), 400

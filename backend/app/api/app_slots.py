@@ -17,12 +17,13 @@
                                        release ran. Destroys later writes; an
                                        explicit second step after a rollback.
 """
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 
 from app.exceptions import ValidationError
 from app.middleware.rbac import developer_required, get_current_user, viewer_required
 from app.services.slot_deploy_service import SlotDeployService
 from app.api._access import require_app
+from app.api._request import json_object
 
 app_slots_bp = Blueprint('app_slots', __name__)
 
@@ -38,7 +39,7 @@ def get_slots(app_id):
 @developer_required
 def set_slots(app_id):
     app = require_app(app_id, write=True, conceal=True)
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     enabled = data.get('enabled')
     if not isinstance(enabled, bool):
         raise ValidationError("'enabled' must be true or false")
@@ -62,7 +63,7 @@ def switch_back(app_id):
 @developer_required
 def restore_db(app_id):
     app = require_app(app_id, write=True, conceal=True)
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     deployment_id = data.get('deployment_id')
     if not isinstance(deployment_id, int) or isinstance(deployment_id, bool):
         raise ValidationError("'deployment_id' is required")
@@ -86,7 +87,7 @@ def compose_split_preview(app_id):
 @developer_required
 def compose_split_apply(app_id):
     app = require_app(app_id, write=True, conceal=True)
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         raise ValidationError("Moving the stateful services stops the service once; send "
                               "{'confirm': true} after reading the preview")

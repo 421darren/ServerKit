@@ -12,6 +12,7 @@ from app.services.settings_service import SettingsService
 from app.services.bounce_service import BounceService
 from app.notifications.service import NotificationBusService
 from app.notifications.providers import EmailProviderService, SUPPORTED as EMAIL_PROVIDERS
+from app.api._request import json_object
 
 # Header carrying the provider's HMAC-SHA256 of the raw request body, formatted
 # as ``sha256=<hexdigest>`` (GitHub-style). The shared secret is
@@ -63,7 +64,7 @@ def get_config():
 @admin_required
 def update_channel_config(channel):
     """Update configuration for a specific notification channel."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -178,7 +179,7 @@ def get_user_preferences():
 def update_user_preferences():
     """Update current user's notification preferences."""
     current_user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -402,7 +403,7 @@ def list_chat_connections():
 def add_chat_connection():
     """Create a chat/webhook connection (destination + secret encrypted)."""
     from app.services.chat_webhook_service import ChatWebhookService
-    data = request.get_json() or {}
+    data = json_object()
     data['created_by'] = int(get_jwt_identity())
     try:
         conn = ChatWebhookService.add(data)
@@ -503,7 +504,7 @@ def test_email_provider(provider_id):
 @admin_required
 def update_email_provider(provider_id):
     """Update a provider's usage flags (uses_notifications / uses_relay /
-    relay_priority) — §6 unification. uses_relay applies only to SMTP."""
+    relay_priority). uses_relay applies only to SMTP."""
     row = EmailProviderService.update_usage(provider_id, request.get_json() or {})
     if row is None:
         return jsonify({'error': 'Provider not found'}), 404

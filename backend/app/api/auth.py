@@ -22,6 +22,7 @@ from app.utils.i18n import normalize_language
 from app.exceptions import (
     AuthenticationError, ConflictError, PermissionDeniedError, ValidationError, not_found,
 )
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def get_setup_status():
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("3 per minute")
 def register():
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -195,7 +196,7 @@ def complete_onboarding():
     """Complete the onboarding wizard and mark setup as done."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     use_cases = data.get('use_cases', [])
 
     # Validate use_cases
@@ -262,7 +263,7 @@ def login():
             'error': 'Too many failed login attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -346,7 +347,7 @@ def login():
 def create_login_link():
     """Mint a single-use login URL. The raw token is returned exactly once."""
     current = require_admin_user()
-    data = request.get_json() or {}
+    data = json_object()
 
     target_id = data.get('user_id') or current.id
     target = User.query.get(target_id)
@@ -422,7 +423,7 @@ def redeem_login_link():
             'error': 'Too many failed attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json() or {}
+    data = json_object()
     token = data.get('token')
 
     user, reason = login_link_service.redeem(token, client_ip)
@@ -599,7 +600,7 @@ def update_current_user():
     if not user:
         raise not_found('user')
 
-    data = request.get_json() or {}
+    data = json_object()
 
     if 'password' in data:
         import time
@@ -693,7 +694,7 @@ def passkey_register():
     user = User.query.get(user_id)
     if not user:
         raise not_found('user')
-    data = request.get_json() or {}
+    data = json_object()
     credential = data.get('credential')
     device_name = data.get('device_name', 'Passkey')
     if not credential:
@@ -725,7 +726,7 @@ def passkey_delete(passkey_id):
 def passkey_auth_options():
     """Begin WebAuthn authentication (public, challenge only)."""
     from app.services.passkey_service import PasskeyService
-    data = request.get_json() or {}
+    data = json_object()
     user_id = data.get('user_id')
     user = User.query.get(user_id) if user_id else None
     options = PasskeyService.begin_authentication(user)
@@ -738,7 +739,7 @@ def passkey_authenticate():
     """Verify a WebAuthn assertion and issue JWT tokens."""
     from app.services.passkey_service import PasskeyService
     from app.services import sso_service
-    data = request.get_json() or {}
+    data = json_object()
     credential = data.get('credential')
     user_id = data.get('user_id')
     if not credential:

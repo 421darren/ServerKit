@@ -18,6 +18,7 @@ from app.services.manifest_apply_service import ManifestApplyService
 from app.services.manifest_persistence_service import ManifestPersistenceService
 from app.middleware.rbac import require_admin_user
 from app.exceptions import not_found
+from app.api._request import json_object
 
 manifests_bp = Blueprint('manifests', __name__)
 
@@ -73,7 +74,7 @@ def validate_manifest():
     """POST /api/v1/manifests/validate  { content | manifest } -> normalized summary."""
     user = require_admin_user()
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         if 'content' in data:
             normalized = ManifestSpecService.normalize_text(data['content'])
@@ -110,7 +111,7 @@ def get_manifest():
 def plan_manifest():
     """POST /api/v1/manifests/plan {project_id, content|manifest?} -> dry-run plan."""
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     project = Project.query.get(data.get('project_id')) if data.get('project_id') else None
     if not project:
         return jsonify({'error': 'A valid project_id is required'}), 400
@@ -128,7 +129,7 @@ def plan_manifest():
 def apply_manifest():
     """POST /api/v1/manifests/apply {project_id, content|manifest?} -> apply."""
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     project = Project.query.get(data.get('project_id')) if data.get('project_id') else None
     if not project:
         return jsonify({'error': 'A valid project_id is required'}), 400
@@ -172,7 +173,7 @@ def reset_bootstrap():
     typing the app name in `confirm`.
     """
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     app = (Application.query_active().filter_by(id=data.get('app_id')).first()
            if data.get('app_id') else None)
     if not app:

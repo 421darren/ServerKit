@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.services.ddns_service import DdnsService
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 ddns_bp = Blueprint('ddns', __name__)
 
@@ -68,7 +69,7 @@ def update():
     """Called by a router or cron when its public IP changes. There is no JWT
     here — the per-host token is the credential. The IP can be passed explicitly
     (?ip=) or inferred from the request source address."""
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     token = request.args.get('token') or request.headers.get('X-DDNS-Token') or body.get('token')
     if not token:
         return jsonify({'error': 'token required'}), 401

@@ -20,6 +20,7 @@ from app.services.repository_manifest_service import RepositoryManifestService
 from app.services.resource_grant_service import ResourceGrantService
 from app.utils.slug import app_name_clash_error, validate_app_name
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 templates_bp = Blueprint('templates', __name__)
 
@@ -315,7 +316,7 @@ def catalog_schema():
 def install_template(template_id):
     """Install a template as a new application."""
     current_user_id = get_jwt_identity()
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -376,7 +377,7 @@ def template_capacity(template_id):
 @jwt_required()
 def validate_installation():
     """Validate template installation parameters before installing."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -464,7 +465,7 @@ def test_db_connection():
         200: Connection successful
         400: Connection failed or missing parameters
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -563,7 +564,7 @@ def list_repositories():
 @admin_required
 def add_repository():
     """Add a template repository."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -582,7 +583,7 @@ def add_repository():
 @admin_required
 def remove_repository():
     """Remove a template repository."""
-    data = request.get_json()
+    data = json_object()
     url = data.get('url') if data else None
 
     if not url:

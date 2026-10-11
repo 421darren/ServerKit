@@ -13,6 +13,7 @@ from app.models.deployment_job import DeploymentJob, DeploymentJobLog
 from app.services.deployment_job_service import DeploymentJobService
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 deployment_jobs_bp = Blueprint('deployment_jobs', __name__)
 
@@ -78,7 +79,7 @@ def simulate_deployment():
     from flask_jwt_extended import get_jwt_identity
     from app.services.demo_deploy_service import DemoDeployService
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     wait = request.args.get('wait', 'false').lower() == 'true'
     result = DemoDeployService.create(
         scenario=data.get('scenario') or '',

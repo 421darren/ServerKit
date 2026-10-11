@@ -19,6 +19,7 @@ from app.services import theme_service
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import require_admin_user
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +120,7 @@ def set_default():
     """Set the panel-wide default theme (admin) — what login/setup and new
     users get before picking their own."""
     user = require_admin_user()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     slug = body.get('slug')
     if not isinstance(slug, str) or not slug:
         return jsonify({'error': 'Missing slug'}), 400

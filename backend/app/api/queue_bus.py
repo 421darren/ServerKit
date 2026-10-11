@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 
 from app.queue_bus.service import QueueBusService, QueueBusError
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 queue_bus_bp = Blueprint('queue_bus', __name__)
 
@@ -69,7 +70,7 @@ def list_groups():
 @queue_bus_bp.route('/groups', methods=['POST'])
 @jwt_required()
 def create_group():
-    data = request.get_json() or {}
+    data = json_object()
     slug = data.get('slug')
     name = data.get('name')
     description = data.get('description')
@@ -111,7 +112,7 @@ def get_group(group_slug):
 def update_group(group_slug):
     _ensure_group_mutable(group_slug)
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     group = QueueBusService.update_group(
         slug=group_slug,
         name=data.get('name'),
@@ -148,7 +149,7 @@ def list_queues(group_slug):
 def create_queue(group_slug):
     _ensure_group_mutable(group_slug)
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     slug = data.get('slug')
     name = data.get('name')
     description = data.get('description')
@@ -181,7 +182,7 @@ def get_queue(group_slug, queue_slug):
 def update_queue(group_slug, queue_slug):
     _ensure_group_mutable(group_slug)
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     queue = QueueBusService.update_queue(
         group_slug=group_slug,
         slug=queue_slug,
@@ -227,7 +228,7 @@ def list_messages(group_slug, queue_slug):
 def send_message(group_slug, queue_slug):
     _ensure_group_mutable(group_slug)
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     payload = data.get('payload')
     priority = data.get('priority', 0)
     delay_ms = data.get('delay_ms', 0)
@@ -251,7 +252,7 @@ def send_message(group_slug, queue_slug):
 @jwt_required()
 def receive_messages(group_slug, queue_slug):
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     visibility_timeout_ms = data.get('visibility_timeout_ms', 30000)
     max_messages = data.get('max_messages', 1)
 
@@ -286,7 +287,7 @@ def complete_message(group_slug, queue_slug, message_id):
 @jwt_required()
 def fail_message(group_slug, queue_slug, message_id):
     _ensure_group_accessible(group_slug)
-    data = request.get_json() or {}
+    data = json_object()
     message = QueueBusService.fail(
         group_slug=group_slug,
         queue_slug=queue_slug,

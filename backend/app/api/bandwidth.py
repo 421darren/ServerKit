@@ -14,6 +14,7 @@ from ..models import Application
 from ..services.bandwidth_service import BandwidthService
 from ..services.request_metrics_service import RequestMetricsService
 from ..services.resource_grant_service import ResourceGrantService
+from app.api._request import json_object
 
 bandwidth_bp = Blueprint('bandwidth', __name__)
 
@@ -66,7 +67,7 @@ def get_app_request_metrics(app_id):
 def run_aggregate():
     """Run the daily aggregation now (optionally for a specific day)."""
     try:
-        payload = request.get_json(silent=True) or {}
+        payload = json_object(optional=True)
         result = BandwidthService.aggregate(day=payload.get('day'))
         return jsonify(result)
     except ValueError:

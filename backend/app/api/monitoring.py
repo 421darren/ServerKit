@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 from app.middleware.rbac import admin_required
 from app.services.monitoring_service import MonitoringService
+from app.api._request import json_object
 
 monitoring_bp = Blueprint('monitoring', __name__)
 
@@ -62,7 +63,7 @@ def get_config():
 @admin_required
 def update_config():
     """Update monitoring configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 

@@ -16,6 +16,7 @@ from app.services.managed_database_service import ManagedDatabaseService
 from app.middleware.rbac import admin_required, get_current_user, require_admin_user
 from app.services.resource_grant_service import ResourceGrantService
 from app.exceptions import field_required, not_found, permission_denied
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ def list_mysql_databases():
 @admin_required
 def create_mysql_database():
     """Create a MySQL database."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'name' not in data:
         raise field_required('name')
@@ -111,7 +112,7 @@ def create_mysql_database():
 @admin_required
 def drop_mysql_database(name):
     """Drop a MySQL database."""
-    data = request.get_json() or {}
+    data = json_object()
     result = DatabaseService.mysql_drop_database(name, data.get('root_password'))
     return jsonify(result), 200 if result['success'] else 400
 
@@ -132,7 +133,7 @@ def get_mysql_tables(name):
 @admin_required
 def backup_mysql_database(name):
     """Backup a MySQL database."""
-    data = request.get_json() or {}
+    data = json_object()
     result = DatabaseService.mysql_backup(name, root_password=data.get('root_password'))
     return jsonify(result), 200 if result['success'] else 400
 
@@ -141,7 +142,7 @@ def backup_mysql_database(name):
 @admin_required
 def restore_mysql_database(name):
     """Restore a MySQL database from backup."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'backup_path' not in data:
         raise field_required('backup_path')
@@ -172,7 +173,7 @@ def list_mysql_users():
 @admin_required
 def create_mysql_user():
     """Create a MySQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'username' not in data:
         raise field_required('username')
@@ -206,7 +207,7 @@ def create_mysql_user():
 @admin_required
 def drop_mysql_user(username):
     """Drop a MySQL user."""
-    data = request.get_json() or {}
+    data = json_object()
     host = data.get('host', 'localhost')
     result = DatabaseService.mysql_drop_user(username, host, data.get('root_password'))
     return jsonify(result), 200 if result['success'] else 400
@@ -229,7 +230,7 @@ def get_mysql_user_privileges(username):
 @admin_required
 def grant_mysql_privileges(username):
     """Grant privileges to a MySQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'database' not in data:
         raise field_required('database')
@@ -248,7 +249,7 @@ def grant_mysql_privileges(username):
 @admin_required
 def revoke_mysql_privileges(username):
     """Revoke privileges from a MySQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'database' not in data:
         raise field_required('database')
@@ -277,7 +278,7 @@ def list_pg_databases():
 @admin_required
 def create_pg_database():
     """Create a PostgreSQL database."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'name' not in data:
         raise field_required('name')
@@ -330,7 +331,7 @@ def backup_pg_database(name):
 @admin_required
 def restore_pg_database(name):
     """Restore a PostgreSQL database from backup."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'backup_path' not in data:
         raise field_required('backup_path')
@@ -353,7 +354,7 @@ def list_pg_users():
 @admin_required
 def create_pg_user():
     """Create a PostgreSQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'username' not in data:
         raise field_required('username')
@@ -388,7 +389,7 @@ def drop_pg_user(username):
 @admin_required
 def grant_pg_privileges(username):
     """Grant privileges to a PostgreSQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'database' not in data:
         raise field_required('database')
@@ -405,7 +406,7 @@ def grant_pg_privileges(username):
 @admin_required
 def revoke_pg_privileges(username):
     """Revoke privileges from a PostgreSQL user."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'database' not in data:
         raise field_required('database')
@@ -450,7 +451,7 @@ def execute_mysql_query(name):
 
     Security: Readonly mode is enforced by default. Admin role required to disable.
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'query' not in data:
         raise field_required('query')
@@ -486,7 +487,7 @@ def execute_pg_query(name):
 
     Security: Readonly mode is enforced by default. Admin role required to disable.
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'query' not in data:
         raise field_required('query')
@@ -521,7 +522,7 @@ def execute_sqlite_query():
 
     Security: Readonly mode is enforced by default. Admin role required to disable.
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'path' not in data or 'query' not in data:
         return jsonify({'error': 'path and query are required'}), 400
@@ -723,7 +724,7 @@ def execute_docker_query(container, database):
 
     Security: Readonly mode is enforced by default. Admin role required to disable.
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'query' not in data:
         raise field_required('query')
@@ -774,7 +775,7 @@ def list_managed_databases():
 @admin_required
 def create_managed_database():
     """Provision a new database (mysql|postgresql) AND track it as managed."""
-    data = request.get_json() or {}
+    data = json_object()
     engine = (data.get('engine') or '').strip().lower()
     name = data.get('name')
     if not name:
@@ -818,7 +819,7 @@ def create_managed_database():
 @admin_required
 def adopt_managed_database():
     """Track a live-discovered database that isn't tracked yet."""
-    data = request.get_json() or {}
+    data = json_object()
     engine = (data.get('engine') or '').strip().lower()
     name = data.get('name')
     if not name or engine not in ('mysql', 'postgresql', 'mongodb'):
@@ -887,7 +888,7 @@ def protect_managed_database(managed_id):
     managed = ManagedDatabaseService.get(managed_id)
     if not managed:
         raise not_found('database')
-    data = request.get_json() or {}
+    data = json_object()
     policy = ManagedDatabaseService.protect(managed, fields=data.get('policy'))
     return jsonify({'policy': policy.to_dict()}), 201
 
@@ -949,7 +950,7 @@ def list_docker_db_processes(container):
 @admin_required
 def kill_docker_db_process(container, pid):
     """Kill/terminate a process inside a Docker database container (admin only)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     target = {
         'engine': data.get('type') or request.args.get('type', 'mysql'),
         'container': container,

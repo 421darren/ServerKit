@@ -12,6 +12,7 @@ from flask_jwt_extended import jwt_required
 from app.exceptions import NotFoundError
 from app.middleware.rbac import permission_required
 from app.services.monitor_service import MonitorService
+from app.api._request import json_object
 
 monitors_bp = Blueprint('monitors', __name__)
 
@@ -98,7 +99,7 @@ def run_check(monitor_id):
 @monitors_bp.route('/<int:monitor_id>/pause', methods=['POST'])
 @permission_required('monitoring', 'write')
 def set_paused(monitor_id):
-    data = request.get_json() or {}
+    data = json_object()
     monitor = MonitorService.set_paused(monitor_id, data.get('paused', True))
     if not monitor:
         return {'error': 'Monitor not found'}, 404
@@ -151,7 +152,7 @@ def list_incidents():
 @monitors_bp.route('/incidents', methods=['POST'])
 @permission_required('monitoring', 'write')
 def create_incident():
-    data = request.get_json() or {}
+    data = json_object()
     if not data.get('title'):
         return {'error': 'Incident title is required'}, 400
     incident = MonitorService.create_incident(data.get('page_id'), data)

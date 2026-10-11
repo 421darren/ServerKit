@@ -44,6 +44,7 @@ from app.services.ai_tool_registry import ai_tool_registry
 from app.error_reporting import unexpected_response
 from app.exceptions import ApplicationError, DependencyUnavailableError, ValidationError
 from app.services import ai_management, ai_usage, ai_runtime
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 ai_bp = Blueprint('ai', __name__)
@@ -275,7 +276,7 @@ def update_settings():
 @admin_required
 def test_settings():
     from app.services.settings_service import SettingsService
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     provider = (data.get('provider') or SettingsService.get('ai_provider', '')).strip()
     model = (data.get('model') or SettingsService.get('ai_model', '')).strip()
     endpoint = data.get('endpoint')
@@ -389,7 +390,7 @@ def list_conversations():
 @jwt_required()
 def create_conversation():
     user = get_current_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     mode = data.get('mode') or AiConversation.MODE_ASSISTANT
     try:
         row = _load_or_create(None, user, mode, data.get('connection_id'), data.get('model'),
@@ -418,7 +419,7 @@ def rename_conversation(conversation_id):
     row = _owned_conversation(conversation_id, user)
     if row is None:
         return jsonify({'error': 'Conversation not found'}), 404
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if 'title' in data:
         row.title = (data['title'] or '').strip()[:256] or row.title
         db.session.commit()
@@ -454,7 +455,7 @@ def chat():
     user = get_current_user()
     if not ai_service.is_configured():
         return jsonify({'error': 'AI assistant is not configured'}), 503
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     invalid = _validate_chat_data(data)
     if invalid:
         raise ValidationError(invalid)
@@ -541,7 +542,7 @@ def chat_stream():
     user = get_current_user()
     if not ai_service.is_configured():
         return jsonify({'error': 'AI assistant is not configured'}), 503
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     invalid = _validate_chat_data(data)
     if invalid:
         raise ValidationError(invalid)
@@ -732,7 +733,7 @@ def chat_stream():
 @jwt_required()
 def chat_confirm():
     user = get_current_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     conversation_id = data.get('conversation_id')
     token = data.get('action_token')
     decision = 'approve' if data.get('decision') == 'approve' else 'deny'
@@ -755,7 +756,7 @@ def chat_confirm():
 @jwt_required()
 def chat_cancel():
     user = get_current_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     conversation_id = data.get('conversation_id')
     if not conversation_id:
         return jsonify({'error': 'conversation_id is required'}), 400
