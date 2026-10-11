@@ -588,7 +588,7 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 // the agent didn't supply one.
                 const suggestedName = res.system_info?.display_name
                     || res.system_info?.hostname;
-                if (!name && suggestedName) setName(suggestedName);
+                if (suggestedName) setName((prev) => prev || suggestedName);
             })
             .catch((err) => {
                 if (cancelled) return;
@@ -598,7 +598,6 @@ const PairAgentForm = ({ groups, onClose, onClaimed }) => {
                 if (!cancelled) setLoading(false);
             });
         return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formattedCode]);
 
     async function handleClaim(e) {
