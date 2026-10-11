@@ -65,7 +65,11 @@ class UptimeService:
         that had stopped being updated. Now the write is atomic and the failure
         is logged and returned, so a caller can tell "saved" from "could not".
         """
-        cls._ensure_data_dir()
+        try:
+            cls._ensure_data_dir()
+        except OSError as e:
+            logger.warning('Could not create uptime data dir %s: %s', cls.DATA_DIR, e)
+            return False
         result = save_json_config(cls.UPTIME_FILE, history)
         if not result['success']:
             logger.warning('Could not save uptime history to %s: %s',

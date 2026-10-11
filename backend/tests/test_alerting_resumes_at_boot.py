@@ -99,3 +99,15 @@ def test_resume_does_not_create_an_uncreatable_data_dir(uptime, tmp_path, monkey
     monkeypatch.setattr(UptimeService, 'UPTIME_FILE', str(data_dir / 'uptime_history.json'))
     UptimeService.resume_if_enabled()
     assert uptime == [] and not data_dir.exists()
+
+
+def test_stopping_tracking_survives_an_uncreatable_data_dir(uptime, tmp_path, monkeypatch):
+    """Stop persists the tracking flag; an unwritable data dir must cost the
+    flag, not turn the request into a 500."""
+    blocker = tmp_path / 'not-a-dir'
+    blocker.write_text('')
+    data_dir = blocker / 'serverkit'
+    monkeypatch.setattr(UptimeService, 'DATA_DIR', str(data_dir))
+    monkeypatch.setattr(UptimeService, 'UPTIME_FILE', str(data_dir / 'uptime_history.json'))
+    UptimeService.start_tracking()
+    assert UptimeService.stop_tracking()['success'] is True
