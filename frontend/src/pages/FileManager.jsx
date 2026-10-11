@@ -4,7 +4,6 @@ import { useToast } from '../contexts/useToast.js';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
-import Modal from '@/components/Modal';
 import {
     Folder, FolderOpen, File, Upload, FolderPlus,
     ArrowLeft, ArrowRight, ArrowUp, Search, X, RefreshCw, Eye, EyeOff,
@@ -16,14 +15,13 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 import FolderTree from '../components/file-manager/FolderTree';
 import FileCard from '../components/file-manager/FileCard';
 import FileRow from '../components/file-manager/FileRow';
 import PreviewDrawer from '../components/file-manager/PreviewDrawer';
 import ContextMenu from '../components/file-manager/ContextMenu';
+import { NamePromptModal, PermissionsModal } from '../components/file-manager/FileDialogs';
 import ServerPicker from '../components/ServerPicker';
 import { serverTarget, targetServerId } from '../utils/serverTarget';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
@@ -246,16 +244,9 @@ function FileManager() {
     const [editing, setEditing] = useState(false);
 
     // ─── modals ──────────────────────────────────────────
-    const [showNewFileModal, setShowNewFileModal] = useState(false);
-    const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-    const [showRenameModal, setShowRenameModal] = useState(false);
-    const [showPermissionsModal, setShowPermissionsModal] = useState(false);
-    const [newFileName, setNewFileName] = useState('');
-    const [newFolderName, setNewFolderName] = useState('');
-    const [renameTarget, setRenameTarget] = useState(null);
-    const [newName, setNewName] = useState('');
-    const [permissionsTarget, setPermissionsTarget] = useState(null);
-    const [newPermissions, setNewPermissions] = useState('');
+    // { kind: 'newFolder' } | { kind: 'rename', entry } | { kind: 'permissions', entry } | null
+    const [dialog, setDialog] = useState(null);
+    const closeDialog = () => setDialog(null);
     const [confirmDialog, setConfirmDialog] = useState(null);
 
     // ─── upload ──────────────────────────────────────────
@@ -593,28 +584,12 @@ function FileManager() {
         }
     };
 
-    const handleCreateFile = async () => {
-        if (!newFileName.trim()) return;
-        if (remoteGuard('create file')) return;
-        try {
-            await api.createFile(`${currentPath}/${newFileName}`);
-            toast.success(t('app.fileManager.fileCreated', 'File created'));
-            setShowNewFileModal(false);
-            setNewFileName('');
-            loadDirectory(currentPath);
-        } catch (error) {
-            toast.error(t('app.fileManager.failedToCreateFile', "Couldn't create the file. {{message}}", { message: errorReason(error) }));
-        }
-    };
-
-    const handleCreateFolder = async () => {
-        if (!newFolderName.trim()) return;
+    const handleCreateFolder = async (name) => {
         if (remoteGuard('create folder')) return;
         try {
-            await api.createDirectory(`${currentPath}/${newFolderName}`);
+            await api.createDirectory(`${currentPath}/${name}`);
             toast.success(t('app.fileManager.folderCreated', 'Folder created'));
-            setShowNewFolderModal(false);
-            setNewFolderName('');
+            closeDialog();
             loadDirectory(currentPath);
             // Refresh tree cache for parent so the new folder appears in the tree
             const parent = currentPath;
@@ -662,46 +637,32 @@ function FileManager() {
         });
     };
 
-    const handleRename = async () => {
-        if (!renameTarget || !newName.trim()) return;
+    const handleRename = async (entry, name) => {
         if (remoteGuard('rename')) return;
         try {
-            await api.renameFile(renameTarget.path, newName);
+            await api.renameFile(entry.path, name);
             toast.success(t('app.fileManager.renamed', 'Renamed'));
-            setShowRenameModal(false);
-            setRenameTarget(null);
-            setNewName('');
+            closeDialog();
             loadDirectory(currentPath);
         } catch (error) {
             toast.error(t('app.fileManager.failedToRename', "Couldn't rename it. {{message}}", { message: errorReason(error) }));
         }
     };
 
-    const handleChangePermissions = async () => {
-        if (!permissionsTarget || !newPermissions.trim()) return;
+    const handleChangePermissions = async (entry, mode) => {
         if (remoteGuard('change permissions')) return;
         try {
-            await api.changeFilePermissions(permissionsTarget.path, newPermissions);
+            await api.changeFilePermissions(entry.path, mode);
             toast.success(t('app.fileManager.permissionsUpdated', 'Permissions updated'));
-            setShowPermissionsModal(false);
-            setPermissionsTarget(null);
-            setNewPermissions('');
+            closeDialog();
             loadDirectory(currentPath);
         } catch (error) {
             toast.error(t('app.fileManager.failed2', "Couldn't do that. {{message}}", { message: errorReason(error) }));
         }
     };
 
-    const openRenameModal = (entry) => {
-        setRenameTarget(entry);
-        setNewName(entry.name);
-        setShowRenameModal(true);
-    };
-    const openPermissionsModal = (entry) => {
-        setPermissionsTarget(entry);
-        setNewPermissions(entry.permissions_octal || '755');
-        setShowPermissionsModal(true);
-    };
+    const openRenameModal = (entry) => setDialog({ kind: 'rename', entry });
+    const openPermissionsModal = (entry) => setDialog({ kind: 'permissions', entry });
 
     // ─── upload ──────────────────────────────────────────
     const uploadFiles = async (files) => {
@@ -920,7 +881,7 @@ function FileManager() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setShowNewFolderModal(true)}
+                onClick={() => setDialog({ kind: 'newFolder' })}
                 disabled={isRemote || isS3}
             >
                 <FolderPlus size={14} /> {t('app.fileManager.newFolder', 'New folder')}
@@ -1277,7 +1238,7 @@ function FileManager() {
                                 </Button>
                                 <Button variant="unstyled" type="button"
                                     className="sidebar-action-btn"
-                                    onClick={() => setShowNewFolderModal(true)}
+                                    onClick={() => setDialog({ kind: 'newFolder' })}
                                     disabled={isRemote}
                                     title={t('app.fileManager.newFolder', 'New folder')}
                                 >
@@ -1467,88 +1428,36 @@ function FileManager() {
                 onDelete={(e) => handleDelete(selectedEntries.length > 1 ? selectedEntries : e)}
             />
 
-            {/* Modals */}
-            <Modal open={showNewFileModal} onClose={() => setShowNewFileModal(false)} title={t('app.fileManager.createNewFile', 'Create new file')}>
-                            <div className="form-group">
-                                <Label>{t('app.fileManager.fileName', 'File name')}</Label>
-                                <Input
-                                    type="text"
-                                    value={newFileName}
-                                    onChange={(e) => setNewFileName(e.target.value)}
-                                    placeholder="example.txt"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && handleCreateFile()}
-                                />
-                            </div>
-                            <p className="text-muted">{t('app.fileManager.willBeCreatedIn', 'Will be created in:')} <code>{currentPath}</code></p>
-                        <div className="modal-actions">
-                            <Button variant="outline" onClick={() => setShowNewFileModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
-                            <Button onClick={handleCreateFile}>{t('app.fileManager.createFile', 'Create file')}</Button>
-                        </div>
-            </Modal>
-
-            <Modal open={showNewFolderModal} onClose={() => setShowNewFolderModal(false)} title={t('app.fileManager.createNewFolder', 'Create new folder')}>
-                            <div className="form-group">
-                                <Label>{t('app.fileManager.folderName', 'Folder name')}</Label>
-                                <Input
-                                    type="text"
-                                    value={newFolderName}
-                                    onChange={(e) => setNewFolderName(e.target.value)}
-                                    placeholder="new-folder"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                                />
-                            </div>
-                            <p className="text-muted">{t('app.fileManager.willBeCreatedIn', 'Will be created in:')} <code>{currentPath}</code></p>
-                        <div className="modal-actions">
-                            <Button variant="outline" onClick={() => setShowNewFolderModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
-                            <Button onClick={handleCreateFolder}>{t('app.fileManager.createFolder', 'Create folder')}</Button>
-                        </div>
-            </Modal>
-
-            <Modal open={showRenameModal} onClose={() => setShowRenameModal(false)} title={t('app.fileManager.rename2', 'Rename {{value}}', { value: renameTarget?.is_dir ? 'Folder' : 'File' })}>
-                            <div className="form-group">
-                                <Label>{t('app.fileManager.newName', 'New name')}</Label>
-                                <Input
-                                    type="text"
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-                                />
-                            </div>
-                        <div className="modal-actions">
-                            <Button variant="outline" onClick={() => setShowRenameModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
-                            <Button onClick={handleRename}>{t('app.fileManager.rename', 'Rename')}</Button>
-                        </div>
-            </Modal>
-
-            <Modal open={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} title={t('app.fileManager.changePermissions', 'Change permissions')}>
-                            <div className="form-group">
-                                <Label>{t('app.fileManager.permissionsOctal', 'Permissions (octal)')}</Label>
-                                <Input
-                                    type="text"
-                                    value={newPermissions}
-                                    onChange={(e) => setNewPermissions(e.target.value)}
-                                    placeholder="755"
-                                    maxLength={4}
-                                    autoFocus
-                                />
-                            </div>
-                            <p className="text-muted">{t('app.fileManager.current', 'Current:')} {permissionsTarget?.permissions} ({permissionsTarget?.permissions_octal})</p>
-                            <div className="permissions-help">
-                                <p>{t('app.fileManager.commonValues', 'Common values:')}</p>
-                                <ul>
-                                    <li><code>755</code> {t('app.fileManager.ownerRwxGroupOtherRxDirectories', 'Owner: rwx, Group/Other: rx (directories)')}</li>
-                                    <li><code>644</code> {t('app.fileManager.ownerRwGroupOtherRFiles', 'Owner: rw, Group/Other: r (files)')}</li>
-                                    <li><code>600</code> {t('app.fileManager.ownerRwOnlyPrivateFiles', 'Owner: rw only (private files)')}</li>
-                                </ul>
-                            </div>
-                        <div className="modal-actions">
-                            <Button variant="outline" onClick={() => setShowPermissionsModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
-                            <Button onClick={handleChangePermissions}>{t('app.fileManager.apply', 'Apply')}</Button>
-                        </div>
-            </Modal>
+            {dialog?.kind === 'newFolder' && (
+                <NamePromptModal
+                    title={t('app.fileManager.createNewFolder', 'Create new folder')}
+                    label={t('app.fileManager.folderName', 'Folder name')}
+                    placeholder="new-folder"
+                    hint={<p className="text-muted">{t('app.fileManager.willBeCreatedIn', 'Will be created in:')} <code>{currentPath}</code></p>}
+                    submitLabel={t('app.fileManager.createFolder', 'Create folder')}
+                    onSubmit={handleCreateFolder}
+                    onClose={closeDialog}
+                />
+            )}
+            {dialog?.kind === 'rename' && (
+                <NamePromptModal
+                    key={dialog.entry.path}
+                    title={t('app.fileManager.rename2', 'Rename {{value}}', { value: dialog.entry.is_dir ? 'Folder' : 'File' })}
+                    label={t('app.fileManager.newName', 'New name')}
+                    initialValue={dialog.entry.name}
+                    submitLabel={t('app.fileManager.rename', 'Rename')}
+                    onSubmit={(name) => handleRename(dialog.entry, name)}
+                    onClose={closeDialog}
+                />
+            )}
+            {dialog?.kind === 'permissions' && (
+                <PermissionsModal
+                    key={dialog.entry.path}
+                    entry={dialog.entry}
+                    onSubmit={(mode) => handleChangePermissions(dialog.entry, mode)}
+                    onClose={closeDialog}
+                />
+            )}
 
             {confirmDialog && (
                 <ConfirmDialog

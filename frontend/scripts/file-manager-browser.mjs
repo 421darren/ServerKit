@@ -16,11 +16,14 @@ import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
 import FileManager from '/src/pages/FileManager.jsx';
 window.pending=[];
-const listing=(p)=>({path:p,parent:p==='/'?null:p.replace(/\\/[^/]+$/,'')||'/',entries:p==='/home'?[{name:'projects',path:'/home/projects',is_dir:true,type:'directory',size:0}]:[{name:'inside-'+p.split('/').pop()+'.txt',path:p+'/x.txt',is_dir:false,type:'file',size:1}]});
+const listing=(p)=>({path:p,parent:p==='/'?null:p.replace(/\\/[^/]+$/,'')||'/',entries:p==='/home'?[{name:'projects',path:'/home/projects',is_dir:true,type:'directory',size:0,permissions:'drwxr-xr-x',permissions_octal:'750'}]:[{name:'inside-'+p.split('/').pop()+'.txt',path:p+'/x.txt',is_dir:false,type:'file',size:1}]});
 window.release=(p)=>{const i=window.pending.findIndex(x=>x.path===p);const x=window.pending.splice(i,1)[0];x.resolve(listing(p));};
 window.testApi={
  browseFiles:(p)=>(window.calls=window.calls||[]).push(p)&&window.holdAll||p!=='/home'?new Promise(resolve=>window.pending.push({path:p,resolve})):Promise.resolve(listing(p)),
  getDiskMounts:()=>Promise.resolve({mounts:[]}),
+ createDirectory:(p)=>{(window.ops=window.ops||[]).push(['mkdir',p]);return Promise.resolve({});},
+ renameFile:(p,n)=>{(window.ops=window.ops||[]).push(['rename',p,n]);return Promise.resolve({});},
+ changeFilePermissions:(p,m)=>{(window.ops=window.ops||[]).push(['chmod',p,m]);return Promise.resolve({});},
 };
 createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/files']}><FileManager/></MemoryRouter>);
 `;
@@ -95,6 +98,40 @@ try {
     await blocked.getByText('projects', { exact: true }).first().waitFor();
     assert.deepEqual(blockedErrors, []);
     console.log('PASS the File Manager renders and browses with storage blocked');
+
+    // The dialogs: each owns its input, prefilled from the entry, and hands
+    // the answer back to the page.
+    const dlg = await browser.newPage();
+    const dlgErrors = [];
+    dlg.on('pageerror', error => dlgErrors.push(error.message));
+    await dlg.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await dlg.getByText('projects', { exact: true }).first().waitFor();
+    const lastOp = () => dlg.evaluate(() => (window.ops || []).at(-1));
+
+    await dlg.getByRole('button', { name: 'New folder' }).first().click();
+    await dlg.getByPlaceholder('new-folder').fill('assets');
+    await dlg.getByRole('button', { name: 'Create folder' }).click();
+    await dlg.waitForFunction(() => (window.ops || []).length === 1);
+    assert.deepEqual(await lastOp(), ['mkdir', '/home/assets']);
+    assert.equal(await dlg.getByPlaceholder('new-folder').count(), 0, 'new-folder dialog stayed open');
+
+    await dlg.getByTitle('Rename').first().click();
+    const renameInput = dlg.getByRole('dialog').getByRole('textbox');
+    assert.equal(await renameInput.inputValue(), 'projects');
+    await renameInput.fill('work');
+    await renameInput.press('Enter');
+    await dlg.waitForFunction(() => (window.ops || []).length === 2);
+    assert.deepEqual(await lastOp(), ['rename', '/home/projects', 'work']);
+
+    await dlg.getByTitle('Permissions').first().click();
+    const modeInput = dlg.getByPlaceholder('755');
+    assert.equal(await modeInput.inputValue(), '750');
+    await modeInput.fill('700');
+    await dlg.getByRole('button', { name: 'Apply' }).click();
+    await dlg.waitForFunction(() => (window.ops || []).length === 3);
+    assert.deepEqual(await lastOp(), ['chmod', '/home/projects', '700']);
+    assert.deepEqual(dlgErrors, []);
+    console.log('PASS new-folder, rename and permissions dialogs prefill and submit');
 } finally {
     await browser?.close();
     await server.close();
