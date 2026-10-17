@@ -3083,6 +3083,8 @@ def list_server_mailboxes(server_id):
     )
 
     if not result.get('success'):
+        if result.get('code') == MailServerService.NOT_INSTALLED_CODE:
+            return jsonify(result), 404
         status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
         return jsonify(result), status
 
@@ -3209,6 +3211,8 @@ def list_server_mail_aliases(server_id):
     )
 
     if not result.get('success'):
+        if result.get('code') == MailServerService.NOT_INSTALLED_CODE:
+            return jsonify(result), 404
         status = 503 if result.get('code') == 'AGENT_OFFLINE' else 500
         return jsonify(result), status
 

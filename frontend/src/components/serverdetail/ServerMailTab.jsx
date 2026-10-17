@@ -57,6 +57,7 @@ const ServerMailTab = ({ serverId, serverStatus }) => {
     const [subTab, setSubTab] = useState('mailboxes');
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
+    const [notInstalled, setNotInstalled] = useState(false);
     const [showCreateMailbox, setShowCreateMailbox] = useState(false);
     const [mailboxEmail, setMailboxEmail] = useState('');
     const [mailboxPassword, setMailboxPassword] = useState('');
@@ -86,6 +87,7 @@ const ServerMailTab = ({ serverId, serverStatus }) => {
     const loadMailData = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
+        setNotInstalled(false);
         // Clear first, so a failed load never shows the previous server's data.
         setMailboxes([]);
         setAliases([]);
@@ -103,7 +105,9 @@ const ServerMailTab = ({ serverId, serverStatus }) => {
                 setAliases(parseAliases(aliasResult.value?.aliases_raw));
             }
             const failed = [mailboxResult, aliasResult].find(r => r.status === 'rejected');
-            if (failed) {
+            if (failed && failed.reason?.code === 'MAIL_SERVER_NOT_INSTALLED') {
+                setNotInstalled(true);
+            } else if (failed) {
                 console.error('Failed to load mail data:', failed.reason);
                 setLoadError(failed.reason?.message || 'Failed to load mail data');
             }
@@ -494,6 +498,19 @@ const ServerMailTab = ({ serverId, serverStatus }) => {
             ),
         },
     ];
+
+    if (notInstalled && !loading) {
+        return (
+            <div className="docker-tab">
+                <EmptyState
+                    icon={Mail}
+                    title={t('app.serverMailTab.notInstalledTitle', 'No mail server on this server')}
+                    description={t('app.serverMailTab.notInstalledDescription',
+                        'Mailboxes can be managed here once a docker-mailserver container named "mailserver" is running on this server.')}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="docker-tab">

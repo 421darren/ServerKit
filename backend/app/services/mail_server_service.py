@@ -111,6 +111,23 @@ class MailServerService:
 
         return status
 
+    NOT_INSTALLED_CODE = 'MAIL_SERVER_NOT_INSTALLED'
+
+    @staticmethod
+    def _not_installed(result: Dict[str, Any]):
+        """Turn Docker's 'No such container' into a clear, friendly answer."""
+        data = result.get('data') or {}
+        text = ' '.join(str(x) for x in (
+            result.get('error'), data.get('stderr'), data.get('stdout'),
+        ) if x)
+        if 'No such container' not in text:
+            return None
+        return {
+            'success': False,
+            'code': MailServerService.NOT_INSTALLED_CODE,
+            'error': 'No mail server is installed on this server.',
+        }
+
     @staticmethod
     def list_mailboxes(
         server_id: str = 'local',
@@ -125,6 +142,10 @@ class MailServerService:
             timeout_seconds=30,
             user_id=user_id,
         )
+
+        not_installed = MailServerService._not_installed(result)
+        if not_installed:
+            return not_installed
 
         if not result.get('success'):
             return result
@@ -368,6 +389,10 @@ class MailServerService:
             timeout_seconds=30,
             user_id=user_id,
         )
+
+        not_installed = MailServerService._not_installed(result)
+        if not_installed:
+            return not_installed
 
         data = result.get('data') or {}
         failed = not result.get('success') or data.get('exit_code', 0) != 0
