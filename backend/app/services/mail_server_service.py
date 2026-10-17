@@ -321,6 +321,21 @@ class MailServerService:
         }
 
     @staticmethod
+    def _is_missing_alias_file(result: Dict[str, Any]) -> bool:
+        """docker-mailserver has no postfix-virtual.cf until the first alias.
+
+        The 'does not exist' message comes back in different places: local
+        exec puts it in stderr, the remote agent may put it in stdout, in a
+        combined 'output' field, or only in the top-level error.
+        """
+        data = result.get('data') or {}
+        text = ' '.join(str(x) for x in (
+            result.get('error'), data.get('stderr'), data.get('stdout'),
+            data.get('output'),
+        ) if x)
+        return 'postfix-virtual.cf' in text and 'does not exist' in text
+
+    @staticmethod
     def list_aliases(
         server_id: str = 'local',
         container_id: str = DEFAULT_CONTAINER,
@@ -335,26 +350,22 @@ class MailServerService:
             user_id=user_id,
         )
 
+        data = result.get('data') or {}
+        failed = not result.get('success') or data.get('exit_code', 0) != 0
+        if failed and MailServerService._is_missing_alias_file(result):
+            # No alias has been created yet: that is an empty list, not an error.
+            return {
+                'success': True,
+                'aliases_raw': '',
+            }
+
         if not result.get('success'):
-            error = result.get('error', '')
-            if 'postfix-virtual.cf' in error and 'does not exist' in error:
-                return {
-                    'success': True,
-                    'aliases_raw': '',
-                }
             return result
 
-        data = result.get('data') or {}
         if data.get('exit_code', 0) != 0:
-            error = data.get('stderr', '')
-            if 'postfix-virtual.cf' in error and 'does not exist' in error:
-                return {
-                    'success': True,
-                    'aliases_raw': '',
-                }
             return {
                 'success': False,
-                'error': error or 'Failed to list aliases',
+                'error': data.get('stderr') or 'Failed to list aliases',
                 'data': data,
             }
 

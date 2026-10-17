@@ -86,18 +86,27 @@ const ServerMailTab = ({ serverId, serverStatus }) => {
     const loadMailData = useCallback(async () => {
         setLoading(true);
         setLoadError(null);
+        // Clear first, so a failed load never shows the previous server's data.
+        setMailboxes([]);
+        setAliases([]);
 
         try {
-            const [mailboxResponse, aliasResponse] = await Promise.all([
+            const [mailboxResult, aliasResult] = await Promise.allSettled([
                 api.getServerMailboxes(serverId),
                 api.getServerMailAliases(serverId),
             ]);
 
-            setMailboxes(parseMailboxes(mailboxResponse?.mailboxes_raw));
-            setAliases(parseAliases(aliasResponse?.aliases_raw));
-        } catch (err) {
-            console.error('Failed to load mail data:', err);
-            setLoadError(err.message || 'Failed to load mail data');
+            if (mailboxResult.status === 'fulfilled') {
+                setMailboxes(parseMailboxes(mailboxResult.value?.mailboxes_raw));
+            }
+            if (aliasResult.status === 'fulfilled') {
+                setAliases(parseAliases(aliasResult.value?.aliases_raw));
+            }
+            const failed = [mailboxResult, aliasResult].find(r => r.status === 'rejected');
+            if (failed) {
+                console.error('Failed to load mail data:', failed.reason);
+                setLoadError(failed.reason?.message || 'Failed to load mail data');
+            }
         } finally {
             setLoading(false);
         }
