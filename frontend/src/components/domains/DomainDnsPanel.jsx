@@ -7,7 +7,7 @@
 // out to the Cloudflare ops surface.
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Cloud, ShieldCheck, Radio, Download, Activity } from 'lucide-react';
+import { Plus, RefreshCw, Cloud, ShieldCheck, Radio, Download, Activity, Pencil, Trash2 } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { ProviderBrandIcon } from '../icons/ProviderBrands';
@@ -55,6 +55,7 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
+    const [editingId, setEditingId] = useState(null); // local record id while editing
 
     // Dynamic DNS hosts for this zone, the just-revealed token, and per-record busy.
     const [hosts, setHosts] = useState([]);
@@ -122,7 +123,7 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
     }, [domain, canLive, loadHosts]);
 
     useEffect(() => {
-        setShowAdd(false); setForm(EMPTY_FORM);
+        setShowAdd(false); setForm(EMPTY_FORM); setEditingId(null);
         setRevealedHost(null); setPropOpen(false); setPropResults(null);
         load();
     }, [load]);
@@ -139,22 +140,83 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
         setSaving(true);
         try {
             const zid = await ensureZone();
-            await api.createDNSRecord(zid, {
+            const payload = {
                 record_type: form.record_type,
                 name: form.name || '@',
                 content: form.content,
                 ttl: Number(form.ttl) || 3600,
                 priority: form.priority !== '' && form.priority != null ? Number(form.priority) : null,
                 proxied: isCloudflare && PROXYABLE.includes(form.record_type) ? !!form.proxied : false,
-            });
-            toast.success(t('app.domainDnsPanel.recordAdded', 'Record added'));
+            };
+            if (editingId) {
+                await api.updateDNSRecord(editingId, payload);
+                toast.success('Record updated');
+            } else {
+                await api.createDNSRecord(zid, payload);
+                toast.success(t('app.domainDnsPanel.recordAdded', 'Record added'));
+            }
             setShowAdd(false);
+            setEditingId(null);
             setForm(EMPTY_FORM);
             await load();
         } catch (e) {
             toast.error(e.message || t('app.domainDnsPanel.failedToAddRecord', 'Failed to add record'));
         } finally {
             setSaving(false);
+        }
+    }
+
+    // ── Edit / delete — only for records ServerKit itself created ─────────────
+    // A live (Cloudflare) row carries the provider's record id; the panel's own
+    // record row (which the update/delete routes use) is matched by that id.
+    async function localRecordFor(r) {
+        if (!canLive) return r; // managed list: the row id already is the local id
+        const zid = await ensureZone();
+        const res = await api.getDNSRecords(zid);
+        const hit = (res.records || []).find((x) => String(x.provider_record_id) === String(r.id));
+        if (!hit) throw new Error('This record was not created from the DNS page, so it cannot be changed here. Use Cloudflare.');
+        return hit;
+    }
+
+    async function handleEdit(r) {
+        setBusyKey(recordFqdn(r));
+        try {
+            const local = await localRecordFor(r);
+            setForm({
+                record_type: local.record_type || r.type,
+                name: local.name || recordRelativeName(r),
+                content: local.content || r.content || '',
+                ttl: local.ttl || r.ttl || 3600,
+                priority: local.priority ?? '',
+                proxied: !!local.proxied,
+            });
+            setEditingId(local.id);
+            setShowAdd(true);
+        } catch (e) {
+            toast.error(e.message || 'Could not open record');
+        } finally {
+            setBusyKey(null);
+        }
+    }
+
+    async function handleDeleteRecord(r) {
+        if (!await confirm({
+            title: 'Delete DNS record',
+            message: `Delete ${r.type} record ${recordFqdn(r)}? It is removed from Cloudflare too.`,
+            confirmText: 'Delete',
+        })) return;
+        setBusyKey(recordFqdn(r));
+        const pending = toast.info ? toast.info('Deleting record\u2026') : null;
+        try {
+            const local = await localRecordFor(r);
+            await api.deleteDNSRecord(local.id);
+            setRecords((rs) => rs.filter((x) => x.id !== r.id)); // gone from the list right away
+            toast.success('Record deleted');
+            await load();
+        } catch (e) {
+            toast.error(e.message || 'Failed to delete record');
+        } finally {
+            setBusyKey(null);
         }
     }
 
@@ -317,7 +379,17 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
             render: (r) => {
                 const host = hostFor(r);
                 const dynamicable = DYNAMIC_TYPES.includes(r.type);
-                return host ? (
+                const recBtns = (isAdmin && r.source === 'serverkit') ? (
+                    <span className="ddp__dynwrap">
+                        <Button variant="ghost" size="sm" className="ddp__iconbtn" title="Edit record" disabled={busyKey === recordFqdn(r)} onClick={() => handleEdit(r)}>
+                            {busyKey === recordFqdn(r) ? <RefreshCw size={13} className="animate-spin" /> : <Pencil size={13} />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="ddp__stopbtn" title="Delete record" disabled={busyKey === recordFqdn(r)} onClick={() => handleDeleteRecord(r)}>
+                            {busyKey === recordFqdn(r) ? <RefreshCw size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                        </Button>
+                    </span>
+                ) : null;
+                const main = host ? (
                     <span className="ddp__dynwrap">
                         <span className="ddp__dyn" title={host.last_ip ? t('app.domainDnsPanel.lastIp', 'Last IP {{lastip}}', { lastip: host.last_ip }) : t('app.domainDnsPanel.noUpdateYet', 'No update yet')}>
                             <Radio size={11} /> {t('app.domainDnsPanel.dynamic', 'Dynamic')}
@@ -345,6 +417,7 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
                         </Button>
                     )
                 );
+                return (<>{main}{recBtns}</>);
             },
         }] : []),
     ];
@@ -360,7 +433,7 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
                         <RefreshCw size={14} />
                     </Button>
                     {isAdmin && (state === 'ready' || state === 'none') && (
-                        <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
+                        <Button size="sm" onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setShowAdd((v) => !v); }}>
                             <Plus size={14} /> {t('app.domainDnsPanel.addRecord', 'Add record')}
                         </Button>
                     )}
@@ -387,7 +460,7 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
                 <div className="ddp__form">
                     <FormRow>
                         <FormField label={t('common.labels.type', 'Type')}>
-                            <Select value={form.record_type} onValueChange={(v) => setForm({ ...form, record_type: v })}>
+                            <Select value={form.record_type} disabled={!!editingId} onValueChange={(v) => setForm({ ...form, record_type: v })}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>{RECORD_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                             </Select>
@@ -416,9 +489,9 @@ export default function DomainDnsPanel({ domain, isAdmin }) {
                         </label>
                     )}
                     <div className="ddp__form-actions">
-                        <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
+                        <Button variant="outline" size="sm" onClick={() => { setShowAdd(false); setEditingId(null); }}>{t('common.actions.cancel', 'Cancel')}</Button>
                         <Button size="sm" disabled={!form.content || saving} onClick={handleAdd}>
-                            {saving ? 'Adding…' : 'Add record'}
+                            {saving ? (editingId ? 'Saving…' : 'Adding…') : (editingId ? 'Save changes' : 'Add record')}
                         </Button>
                     </div>
                 </div>
