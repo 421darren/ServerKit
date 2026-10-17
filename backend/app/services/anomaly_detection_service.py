@@ -187,6 +187,13 @@ class AnomalyDetectionService:
             is_new = ip_address not in known
             known.add(ip_address)
 
+        # The in-memory set is empty after every backend restart, so check the
+        # alert history too: an address that already has a new_ip alert for
+        # this server (in any status) is not new, and must not raise a fresh
+        # "First connection" alert on every restart.
+        if is_new and self._has_new_ip_history(server_id, ip_address):
+            is_new = False
+
         if is_new and self.THRESHOLDS['new_ip_alert']:
             self._create_alert(
                 alert_type='new_ip',
@@ -239,6 +246,18 @@ class AnomalyDetectionService:
                 'nonce_prefix': nonce[:8] if nonce else None
             }
         )
+
+    def _has_new_ip_history(self, server_id: str, ip_address: str) -> bool:
+        """True if a new_ip alert already exists for this server and address."""
+        try:
+            return SecurityAlert.query.filter(
+                SecurityAlert.alert_type == 'new_ip',
+                SecurityAlert.server_id == server_id,
+                SecurityAlert.source_ip == ip_address,
+            ).first() is not None
+        except Exception as e:
+            print(f"[AnomalyDetection] new_ip history lookup failed: {e}")
+            return False
 
     def _create_alert(
         self,
