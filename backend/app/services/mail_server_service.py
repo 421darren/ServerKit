@@ -5,9 +5,26 @@ transport details behind RemoteDockerService.  Local targets execute through
 DockerService; remote targets use the ServerKit agent.
 """
 
+import re
 from typing import Any, Dict
 
 from app.services.remote_docker_service import RemoteDockerService
+
+
+# Docker's raw (non-TTY) exec stream prefixes every chunk with an 8-byte header:
+# stream type (1=stdout, 2=stderr), three zero bytes, then a 4-byte length.
+# The remote agent can hand that stream back undecoded.
+_DOCKER_FRAME_HEADER = re.compile(r'[\x01\x02]\x00\x00\x00[\x00-\xff]{4}')
+_ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[A-Za-z]')
+
+
+def _clean_output(text: str) -> str:
+    """Return plain text from a container command's output."""
+    if not text:
+        return ''
+    text = _DOCKER_FRAME_HEADER.sub('', text)
+    text = _ANSI_ESCAPE.sub('', text)
+    return text.replace('\r\n', '\n').replace('\r', '\n')
 
 
 class MailServerService:
@@ -124,7 +141,7 @@ class MailServerService:
 
         return {
             'success': True,
-            'mailboxes_raw': data.get('stdout', ''),
+            'mailboxes_raw': _clean_output(data.get('stdout', '')),
         }
 
 
@@ -373,7 +390,7 @@ class MailServerService:
 
         return {
             'success': True,
-            'aliases_raw': data.get('stdout', ''),
+            'aliases_raw': _clean_output(data.get('stdout', '')),
         }
 
     @staticmethod
