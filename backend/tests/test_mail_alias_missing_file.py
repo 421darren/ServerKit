@@ -13,6 +13,9 @@ from app.services.mail_server_service import MailServerService
 MSG = ("2026-10-17 19:03:25+00:00 \x1b[1;31mERROR\x1b[0m listalias: "
        "'/tmp/docker-mailserver/postfix-virtual.cf' does not exist")
 
+EMPTY = ("\x1b[1;31mERROR\x1b[0m listalias: "
+         "'/tmp/docker-mailserver/postfix-virtual.cf' is empty, nothing to list")
+
 
 def _fake(monkeypatch, result):
     monkeypatch.setattr(mss.RemoteDockerService, 'exec_command',
@@ -25,6 +28,7 @@ def _fake(monkeypatch, result):
     {'success': False, 'error': MSG},                                          # agent error
     {'success': False, 'error': MSG, 'data': {'stderr': MSG, 'exit_code': 1}},  # local exec
     {'success': True, 'data': {'stdout': '', 'stderr': MSG, 'exit_code': 1}},   # stderr
+    {'success': True, 'data': {'stdout': EMPTY, 'exit_code': 1}},               # empty file
 ])
 def test_missing_alias_file_is_an_empty_list(monkeypatch, result):
     _fake(monkeypatch, result)

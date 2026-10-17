@@ -322,7 +322,8 @@ class MailServerService:
 
     @staticmethod
     def _is_missing_alias_file(result: Dict[str, Any]) -> bool:
-        """docker-mailserver has no postfix-virtual.cf until the first alias.
+        """docker-mailserver has no (or an empty) postfix-virtual.cf until the
+        first alias, and "setup alias list" then exits with an error.
 
         The 'does not exist' message comes back in different places: local
         exec puts it in stderr, the remote agent may put it in stdout, in a
@@ -333,7 +334,8 @@ class MailServerService:
             result.get('error'), data.get('stderr'), data.get('stdout'),
             data.get('output'),
         ) if x)
-        return 'postfix-virtual.cf' in text and 'does not exist' in text
+        return 'postfix-virtual.cf' in text and (
+            'does not exist' in text or 'is empty' in text)
 
     @staticmethod
     def list_aliases(
