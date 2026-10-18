@@ -129,7 +129,10 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
                     return {'success': False, 'error': f'Failed to install WP-CLI in container: {install.stderr}'}
 
             # Run wp-cli inside the WordPress container
-            cmd = ['docker', 'exec', container_name, 'wp', '--allow-root'] + command
+            # Run as the web user so files/dirs created by WP-CLI (uploads, caches)
+            # are not root-owned and stay writable by PHP/Apache.
+            cmd = ['docker', 'exec', '-u', 'www-data', '-e', 'HOME=/tmp',
+                   container_name, 'wp'] + command
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -591,6 +594,22 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
     def _is_docker_site(cls, path: str) -> bool:
         return bool(path) and os.path.exists(os.path.join(path, 'docker-compose.yml'))
 
+    _DB_IMAGE_NAMES = {'mysql', 'mariadb', 'percona', 'percona-server', 'mysql-server'}
+    _DB_SERVICE_NAMES = {'db', 'database', 'mysql', 'mariadb'}
+
+    @classmethod
+    def _is_db_image(cls, image: str) -> bool:
+        """True for MySQL/MariaDB server images, judged by the image name only.
+
+        'mysql:8.0', 'docker.io/library/mariadb:11' and
+        'registry:5000/percona/percona-server:8' match;
+        'serverkit-wordpress:6.4-php8.3-mysqlclient' does not.
+        """
+        ref = image.strip().lower().split('@', 1)[0]
+        last = ref.rsplit('/', 1)[-1]
+        name = last.split(':', 1)[0]
+        return name in cls._DB_IMAGE_NAMES
+
     @classmethod
     def _docker_db_container(cls, path: str) -> str:
         """Name/ID of the running database container of a Docker WordPress site."""
@@ -598,12 +617,20 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
         compose = os.path.join(path, 'docker-compose.yml')
         with open(compose) as fh:
             doc = yaml.safe_load(fh) or {}
-        for service, svc in (doc.get('services') or {}).items():
-            svc = svc or {}
-            image = str(svc.get('image', '')).lower()
-            if 'mysql' in image or 'mariadb' in image:
-                if svc.get('container_name'):
-                    return str(svc['container_name'])
+        services = doc.get('services') or {}
+        # Match the image's own name, not any substring: a WordPress image
+        # such as 'serverkit-wordpress:6.4-php8.3-mysqlclient' contains
+        # "mysql" but has only the client, so dumping there fails with
+        # "Can't connect to local server through socket". Fall back to a
+        # service conventionally called db/mysql/mariadb.
+        candidates = [n for n, v in services.items()
+                      if cls._is_db_image(str((v or {}).get('image', '')))]
+        candidates += [n for n in services
+                       if n.lower() in cls._DB_SERVICE_NAMES and n not in candidates]
+        for service in candidates:
+            svc = services.get(service) or {}
+            if svc.get('container_name'):
+                return str(svc['container_name'])
                 ps = subprocess.run(
                     ['docker', 'compose', '-f', compose, 'ps', '-q', service],
                     capture_output=True, text=True, timeout=30)
@@ -619,6 +646,7 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
             return cls.wp_cli(path, ['db', 'export', out_file])
         try:
             container = cls._docker_db_container(path)
+            cls._wait_for_db(container, timeout=120)
             with open(out_file, 'wb') as fh:
                 res = subprocess.run(
                     ['docker', 'exec', container, 'sh', '-c', cls._DB_DUMP_SH],
@@ -636,6 +664,37 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
+    _DB_READY_SH = (
+        _DB_ENV_SH +
+        'C=$(command -v mysql || command -v mariadb) || exit 127; '
+        'MYSQL_PWD="$P" "$C" --protocol=tcp -h127.0.0.1 -u"$U" '
+        '-e "SELECT 1" "${MYSQL_DATABASE:-wordpress}" >/dev/null 2>&1'
+    )
+
+    @classmethod
+    def _wait_for_db(cls, container: str, timeout: int = 240) -> bool:
+        """Wait until the DB container accepts TCP logins.
+
+        A freshly created MySQL container initialises on a temporary
+        socket-only server and then restarts; loading a dump during that window
+        fails with a broken pipe. TCP logins only work once the real server is up.
+        """
+        import time
+        deadline = time.time() + timeout
+        ok_in_a_row = 0
+        while time.time() < deadline:
+            try:
+                res = subprocess.run(
+                    ['docker', 'exec', container, 'sh', '-c', cls._DB_READY_SH],
+                    capture_output=True, timeout=30)
+                ok_in_a_row = ok_in_a_row + 1 if res.returncode == 0 else 0
+            except Exception:
+                ok_in_a_row = 0
+            if ok_in_a_row >= 2:
+                return True
+            time.sleep(3)
+        return False
+
     @classmethod
     def import_database(cls, path: str, sql_file: str) -> Dict:
         """Load a SQL dump into the site's database (works for Docker and classic sites)."""
@@ -643,6 +702,9 @@ define('WP_AUTO_UPDATE_CORE', 'minor');
             return cls.wp_cli(path, ['db', 'import', sql_file])
         try:
             container = cls._docker_db_container(path)
+            if not cls._wait_for_db(container):
+                return {'success': False,
+                        'error': 'Database import failed: the database container did not become ready in time'}
             with open(sql_file, 'rb') as fh:
                 res = subprocess.run(
                     ['docker', 'exec', '-i', container, 'sh', '-c', cls._DB_IMPORT_SH],
@@ -2127,6 +2189,16 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
             # 2) Overwrite the fresh DB with the user's dump. Root user, since a
             #    real dump issues DROP/CREATE on the wordpress DB.
             db_password = cls._read_env_value(root_path, 'DB_PASSWORD')
+            # The stack was only just created: wait for MySQL to accept TCP
+            # logins, or the streamed dump dies with a broken pipe.
+            try:
+                if not cls._wait_for_db(cls._docker_db_container(root_path)):
+                    return {'success': False,
+                            'error': 'Database import failed: the database container did not become ready in time',
+                            'site': wp_site.to_dict(), 'http_port': http_port}
+            except RuntimeError as exc:
+                return {'success': False, 'error': f'Database import failed: {exc}',
+                        'site': wp_site.to_dict(), 'http_port': http_port}
             imp = DatabaseSyncService.import_to_container(
                 compose_path=compose_file,
                 snapshot_path=sql_path,
@@ -2262,6 +2334,14 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
             cache_actions = []
             cache_warnings = []
             page_cache_on = False
+            # A fresh MySQL container initialises on a socket-only server and then
+            # restarts; installing during that window fails with a DB connection
+            # error, so wait for real TCP logins first (best-effort).
+            try:
+                if cls._is_docker_site(app.root_path):
+                    cls._wait_for_db(cls._docker_db_container(app.root_path))
+            except Exception:
+                pass
             if cls._wait_for_wp_ready(app.root_path):
                 install_res = cls.wp_cli(app.root_path, [
                     'core', 'install',
