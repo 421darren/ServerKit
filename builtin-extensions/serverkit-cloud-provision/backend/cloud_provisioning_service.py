@@ -20,6 +20,14 @@ def _check_delete(resp):
         raise RuntimeError(f'provider returned HTTP {resp.status_code} {detail}'.strip())
 
 
+def _do_public_ipv4(droplet):
+    """The droplet's public IPv4 address, or None while DigitalOcean assigns it."""
+    for net in ((droplet or {}).get('networks') or {}).get('v4') or []:
+        if net.get('type') == 'public' and _real_ip(net.get('ip_address')):
+            return net['ip_address']
+    return None
+
+
 def _real_ip(value):
     """Providers (Vultr) report 0.0.0.0 until the address is assigned."""
     if not value or value in ('0.0.0.0', '::', ''):
@@ -168,6 +176,12 @@ class CloudProvisioningService:
                 db.session.commit()
             except Exception as e:
                 logger.warning(f'Agent install failed for {server.name}: {e}')
+        if data.get('install_agent') and not server.agent_installed:
+            meta = dict(server.server_metadata or {})
+            meta['agent_note'] = ('The ServerKit agent was not installed automatically. '
+                                  'Add it from Servers, Add Server, once the server is reachable.')
+            server.server_metadata = meta
+            db.session.commit()
 
         return server
 
@@ -294,6 +308,44 @@ class CloudProvisioningService:
     }
 
     @staticmethod
+    def _do_account_key_ids(headers):
+        """IDs of all SSH keys stored in the DigitalOcean account.
+
+        The form has no key field, and a droplet created without keys gets a
+        root password by email instead. Sending the account's keys makes the
+        new server reachable with the keys the owner already registered.
+        """
+        import requests
+        try:
+            r = requests.get('https://api.digitalocean.com/v2/account/keys?per_page=200',
+                             headers=headers, timeout=15)
+            if r.ok:
+                return [k['id'] for k in r.json().get('ssh_keys', []) if k.get('id')]
+            logger.warning(f'DigitalOcean SSH key lookup failed: HTTP {r.status_code}')
+        except Exception as e:
+            logger.warning(f'DigitalOcean SSH key lookup failed: {e}')
+        return []
+
+    @staticmethod
+    def _do_wait_for_ip(droplet_id, headers, fallback, attempts=8, delay=5):
+        """Poll briefly for the public IPv4 DigitalOcean assigns after creation."""
+        import time
+        import requests
+        droplet = fallback
+        for _ in range(attempts):
+            time.sleep(delay)
+            try:
+                r = requests.get(f'https://api.digitalocean.com/v2/droplets/{droplet_id}',
+                                 headers=headers, timeout=15)
+                if r.ok:
+                    droplet = r.json().get('droplet', droplet)
+                    if _do_public_ipv4(droplet):
+                        break
+            except Exception:
+                pass
+        return droplet
+
+    @staticmethod
     def _vultr_wait_for_ip(instance_id, headers, fallback, attempts=8, delay=5):
         """Poll briefly for the main_ip Vultr assigns after creation."""
         import time
@@ -314,7 +366,7 @@ class CloudProvisioningService:
 
     @staticmethod
     def refresh_server(server_id):
-        """Re-read address/status from the provider (Vultr). Returns the server."""
+        """Re-read address/status from the provider (Vultr, DigitalOcean). Returns the server."""
         import requests
         server = CloudServer.query.get(server_id)
         if not server:
@@ -332,6 +384,18 @@ class CloudProvisioningService:
                 if server.status == CloudServer.STATUS_CREATING:
                     server.status = CloudServer.STATUS_ACTIVE
                 db.session.commit()
+        elif (server.provider and server.provider.provider_type == 'digitalocean'
+              and server.external_id):
+            headers = CloudProvisioningService._auth_headers(server.provider)
+            r = requests.get(f'https://api.digitalocean.com/v2/droplets/{server.external_id}',
+                             headers=headers, timeout=15)
+            r.raise_for_status()
+            ip = _do_public_ipv4(r.json().get('droplet', {}))
+            if ip:
+                server.ip_address = ip
+                if server.status == CloudServer.STATUS_CREATING:
+                    server.status = CloudServer.STATUS_ACTIVE
+                db.session.commit()
         return server
 
     # --- Provider API calls ---
@@ -344,17 +408,22 @@ class CloudProvisioningService:
         headers = CloudProvisioningService._auth_headers(provider)
 
         if ptype == 'digitalocean':
+            ssh_keys = ([data.get('ssh_key_id')] if data.get('ssh_key_id')
+                        else CloudProvisioningService._do_account_key_ids(headers))
             resp = requests.post('https://api.digitalocean.com/v2/droplets', json={
                 'name': server.name,
                 'region': server.region,
                 'size': server.size,
                 'image': server.image,
-                'ssh_keys': [data.get('ssh_key_id')] if data.get('ssh_key_id') else [],
+                'ssh_keys': ssh_keys,
             }, headers=headers, timeout=30)
             resp.raise_for_status()
             droplet = resp.json().get('droplet', {})
-            networks = droplet.get('networks', {})
-            ipv4 = next((n['ip_address'] for n in networks.get('v4', []) if n['type'] == 'public'), None)
+            ipv4 = _do_public_ipv4(droplet)
+            if droplet.get('id') and not ipv4:
+                droplet = CloudProvisioningService._do_wait_for_ip(
+                    droplet['id'], headers, droplet)
+                ipv4 = _do_public_ipv4(droplet)
             return {
                 'id': str(droplet.get('id')),
                 'ip_address': ipv4,
