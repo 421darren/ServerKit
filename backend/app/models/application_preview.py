@@ -27,6 +27,7 @@ class ApplicationPreview(TimestampMixin, JsonColumnMixin, db.Model):
     STATUS_RUNNING = 'running'
     STATUS_STOPPED = 'stopped'
     STATUS_FAILED = 'failed'
+    STATUS_UNAVAILABLE = 'unavailable'
     STATUS_DESTROYED = 'destroyed'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -60,16 +61,27 @@ class ApplicationPreview(TimestampMixin, JsonColumnMixin, db.Model):
         self._json_write('container_ids', list(ids or []), falsy='[]')
 
     def to_dict(self):
+        container_ids = self.get_container_ids()
+        # Older generic previews were marked running after config generation
+        # alone. Do not advertise those rows as a deployed runtime on reads.
+        status = self.status
+        if status == self.STATUS_RUNNING and not container_ids:
+            status = self.STATUS_UNAVAILABLE
         return {
             'id': self.id,
             'application_id': self.application_id,
             'pr_number': self.pr_number,
             'pr_title': self.pr_title,
             'branch': self.branch,
-            'status': self.status,
+            'status': status,
+            'status_reason': (
+                'No provisioned runtime is recorded for this preview.'
+                if status == self.STATUS_UNAVAILABLE else None
+            ),
             'domain': self.domain,
-            'url': (f'https://{self.domain}' if self.domain else None),
-            'container_ids': self.get_container_ids(),
+            'url': (f'https://{self.domain}'
+                    if self.domain and status == self.STATUS_RUNNING and container_ids else None),
+            'container_ids': container_ids,
             'commit_sha': self.commit_sha,
             'short_sha': self.commit_sha[:7] if self.commit_sha else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,

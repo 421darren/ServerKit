@@ -287,9 +287,12 @@ class PreviewService:
 
             # Best-effort provisioning — degrade gracefully when unavailable.
             provisioned = cls._provision(app, preview)
-            preview.status = (ApplicationPreview.STATUS_RUNNING
-                              if provisioned.get('ok')
-                              else ApplicationPreview.STATUS_FAILED)
+            if provisioned.get('unsupported'):
+                preview.status = ApplicationPreview.STATUS_UNAVAILABLE
+            elif provisioned.get('ok') and provisioned.get('container_ids'):
+                preview.status = ApplicationPreview.STATUS_RUNNING
+            else:
+                preview.status = ApplicationPreview.STATUS_FAILED
             if provisioned.get('container_ids'):
                 preview.set_container_ids(provisioned['container_ids'])
             db.session.commit()
@@ -306,11 +309,9 @@ class PreviewService:
     def _provision(cls, app, preview):
         """Best-effort real provisioning. Returns ``{'ok': bool, 'container_ids': [...]}``.
 
-        For WordPress apps, delegate to the WP preview hook. For other app types
-        we currently only record the row + domain (a deeper Docker clone is a
-        roadmap item); we still report ``ok`` so the preview shows as running in
-        environments where the row is all that's expected. All failures are
-        swallowed and surfaced as ``ok: False``.
+        WordPress delegates to its preview hook. Generic config generation is
+        not provisioning: until a runtime provisioner exists, report unsupported.
+        A provider must explicitly report success and return runtime identifiers.
         """
         try:
             if getattr(app, 'app_type', None) == 'wordpress':
@@ -323,7 +324,7 @@ class PreviewService:
                         res = WordPressService.create_preview_instance(
                             site, preview.pr_number, domain=preview.domain,
                             branch=preview.branch)
-                        return {'ok': bool(res.get('success', True)),
+                        return {'ok': bool(res.get('success', False)),
                                 'container_ids': res.get('container_ids', [])}
                 except Exception as exc:
                     logger.info('WP preview provisioning unavailable: %s', exc)
@@ -338,7 +339,7 @@ class PreviewService:
                 manifest_preview = ManifestPreviewService.build_preview_config(app, preview)
             except Exception as exc:
                 logger.info('manifest preview config unavailable: %s', exc)
-            return {'ok': True, 'container_ids': [],
+            return {'ok': False, 'unsupported': True, 'container_ids': [],
                     'manifest_preview': manifest_preview}
         except Exception as exc:
             logger.info('preview provisioning unavailable: %s', exc)

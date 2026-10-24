@@ -87,8 +87,12 @@ const PreviewList = ({ appId }) => {
     async function handleRedeploy(preview) {
         setBusyId(preview.id);
         try {
-            await api.redeployPreview(appId, preview.id);
-            toast?.success?.(t('app.previewList.redeployingPreviewForPr', 'Redeploying preview for PR #{{prnumber}}', { prnumber: preview.pr_number }));
+            const result = await api.redeployPreview(appId, preview.id);
+            if (result.status === 'unavailable' || result.status === 'failed') {
+                toastError(toast, t('app.previewList.previewNotDeployed', 'The preview was not deployed. Review its status below.'));
+            } else {
+                toast?.success?.(t('app.previewList.redeployingPreviewForPr', 'Redeploying preview for PR #{{prnumber}}', { prnumber: preview.pr_number }));
+            }
             await load();
         } catch (err) {
             toastError(toast, t('app.previewList.redeployFailed', "Couldn't redeploy the preview."), err);
@@ -133,7 +137,7 @@ const PreviewList = ({ appId }) => {
                         <div>
                             <h3>{t('app.previewList.prPreviewEnvironments', 'PR preview environments')}</h3>
                             <p className="preview-settings__hint">
-                                {t('app.previewList.deployAnIsolatedPreviewOfEach', 'Deploy an isolated preview of each open pull request to a temporary domain, and tear it down when the PR closes.')}
+                                {t('app.previewList.supportedProvisioners', 'Preview deployment requires a supported runtime provisioner. Generic application previews are not available yet. A domain alone does not mean a preview is deployed.')}
                             </p>
                         </div>
                     </div>
@@ -207,7 +211,7 @@ const PreviewList = ({ appId }) => {
                                 <div className="preview-item__meta">
                                     {p.branch && <span className="preview-item__branch mono">{p.branch}</span>}
                                     {p.short_sha && <span className="preview-item__sha mono">{p.short_sha}</span>}
-                                    {p.url && (
+                                    {p.url && p.status === 'running' && (
                                         <a
                                             className="preview-item__url"
                                             href={p.url}
@@ -218,9 +222,14 @@ const PreviewList = ({ appId }) => {
                                         </a>
                                     )}
                                 </div>
+                                {p.status === 'unavailable' && (
+                                    <p className="preview-settings__hint">
+                                        {t('app.previewList.noRuntime', 'No provisioned runtime is recorded for this preview. Its URL is unavailable.')}
+                                    </p>
+                                )}
                             </div>
                             <div className="preview-item__actions">
-                                {p.url && (
+                                {p.url && p.status === 'running' && (
                                     <Button variant="ghost" size="sm" asChild>
                                         <a href={p.url} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink size={15} />
