@@ -4431,7 +4431,6 @@
             "enabled": "Aktiviert",
             "loadingPreviews": "Vorschau wird geladen...",
             "noActivePreviews": "Keine aktiven Vorschauen",
-            "openAPullRequestToSpin": "Öffnen Sie eine Pull-Anfrage, um eine Vorschau zu starten, oder synchronisieren Sie sie, um sie jetzt abzugleichen.",
             "placeholders": "Platzhalter:",
             "pr": "PR-Nr.",
             "prPreviewEnvironments": "PR-Vorschauumgebungen",

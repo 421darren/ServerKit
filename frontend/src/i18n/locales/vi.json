@@ -4431,7 +4431,6 @@
             "enabled": "Đã bật",
             "loadingPreviews": "Đang tải bản xem trước...",
             "noActivePreviews": "Không có bản xem trước nào đang hoạt động",
-            "openAPullRequestToSpin": "Mở yêu cầu kéo để xem trước hoặc đồng bộ hóa để điều chỉnh ngay bây giờ.",
             "placeholders": "Phần giữ chỗ:",
             "pr": "PR #",
             "prPreviewEnvironments": "Môi trường xem trước PR",

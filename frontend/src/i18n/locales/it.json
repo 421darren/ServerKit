@@ -4431,7 +4431,6 @@
             "enabled": "Abilitato",
             "loadingPreviews": "Caricamento anteprime...",
             "noActivePreviews": "Nessuna anteprima attiva",
-            "openAPullRequestToSpin": "Apri una richiesta pull per avviare un'anteprima o sincronizza per riconciliare ora.",
             "placeholders": "Segnaposto:",
             "pr": "PR n.",
             "prPreviewEnvironments": "Ambienti di anteprima PR",

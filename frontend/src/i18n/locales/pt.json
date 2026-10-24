@@ -4431,7 +4431,6 @@
             "enabled": "Ativado",
             "loadingPreviews": "Carregando visualizações...",
             "noActivePreviews": "Nenhuma visualização ativa",
-            "openAPullRequestToSpin": "Abra uma solicitação pull para iniciar uma visualização ou sincronize para reconciliar agora.",
             "placeholders": "Espaços reservados:",
             "pr": "RP#",
             "prPreviewEnvironments": "Ambientes de visualização de relações públicas",

@@ -4431,7 +4431,6 @@
             "enabled": "Aktif",
             "loadingPreviews": "Memuat pratinjau...",
             "noActivePreviews": "Tidak ada pratinjau aktif",
-            "openAPullRequestToSpin": "Buka permintaan tarik untuk menjalankan pratinjau, atau sinkronkan untuk merekonsiliasi sekarang.",
             "placeholders": "Penampung:",
             "pr": "PR#",
             "prPreviewEnvironments": "Lingkungan pratinjau PR",

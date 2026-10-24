@@ -6,6 +6,7 @@ import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import PreviewCreateForm from './PreviewCreateForm';
 import { Pill, serviceStatusKind } from '../ds';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ const PreviewList = ({ appId }) => {
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [busyId, setBusyId] = useState(null);
+    const [creating, setCreating] = useState(false);
     const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
 
     const load = useCallback(async () => {
@@ -101,6 +103,19 @@ const PreviewList = ({ appId }) => {
         }
     }
 
+    async function handleCreate(pr) {
+        setCreating(true);
+        try {
+            await api.createPreview(appId, pr);
+            toast?.success?.(t('app.previewList.queued', 'Preview deployment queued. Refresh for status; execution details are in Jobs.'));
+            await load();
+        } catch (err) {
+            toastError(toast, t('app.previewList.createFailed', 'Could not queue the preview.'), err);
+        } finally {
+            setCreating(false);
+        }
+    }
+
     async function handleDestroy(preview) {
         const ok = await confirm({
             title: t('app.previewList.destroyPreview', 'Delete preview'),
@@ -111,8 +126,10 @@ const PreviewList = ({ appId }) => {
         if (!ok) return;
         setBusyId(preview.id);
         try {
-            await api.destroyPreview(appId, preview.id);
-            toast?.success?.(t('app.previewList.previewForPrDestroyed', 'Preview for PR #{{prnumber}} deleted', { prnumber: preview.pr_number }));
+            const result = await api.destroyPreview(appId, preview.id);
+            toast?.success?.(result.status === 'queued'
+                ? t('app.previewList.deletionQueued', 'Preview deletion queued. Refresh for status.')
+                : t('app.previewList.previewForPrDestroyed', 'Preview for PR #{{prnumber}} deleted', { prnumber: preview.pr_number }));
             await load();
         } catch (err) {
             toastError(toast, t('app.previewList.destroyFailed', "Couldn't delete the preview."), err);
@@ -137,7 +154,7 @@ const PreviewList = ({ appId }) => {
                         <div>
                             <h3>{t('app.previewList.prPreviewEnvironments', 'PR preview environments')}</h3>
                             <p className="preview-settings__hint">
-                                {t('app.previewList.supportedProvisioners', 'Preview deployment requires a supported runtime provisioner. Generic application previews are not available yet. A domain alone does not mean a preview is deployed.')}
+                                {t('app.previewList.genericSupport', 'Generic previews support local Git-backed Dockerfile and container-buildpack apps with nginx. Compose, remote targets and host-command builds are not supported. Configure preview DNS to point at this server.')}
                             </p>
                         </div>
                     </div>
@@ -179,9 +196,19 @@ const PreviewList = ({ appId }) => {
                 )}
             </div>
 
+            {enabled && <>
+                <div className="preview-settings__toggle">
+                    <Label htmlFor="preview-inherit">{t('app.previewList.inheritEnv', 'Inherit application environment (may grant access to production databases and services)')}</Label>
+                    <Switch id="preview-inherit" checked={!!settings?.inherit_environment} disabled={saving}
+                        onCheckedChange={inherit_environment => saveSettings({ inherit_environment })} />
+                </div>
+                <PreviewCreateForm onCreate={handleCreate} busy={creating} />
+            </>}
+
             {/* Active previews */}
             <div className="preview-list__toolbar">
                 <h4>{t('app.previewList.activePreviews', 'Active previews')}</h4>
+                <Button variant="ghost" onClick={load}>{t('app.previewList.refresh', 'Refresh status')}</Button>
                 <Button variant="ghost" onClick={handleSync} disabled={syncing}>
                     <RefreshCw size={15} className={syncing ? 'spin' : undefined} />
                     {t('app.previewList.syncWithOpenPrs', 'Sync with open PRs')}
@@ -194,7 +221,7 @@ const PreviewList = ({ appId }) => {
                     title={t('app.previewList.noActivePreviews', 'No active previews')}
                     description={
                         enabled
-                            ? t('app.previewList.openAPullRequestToSpin', 'Open a pull request to spin up a preview, or sync to reconcile now.')
+                            ? t('app.previewList.createOrWebhook', 'Deploy a pinned branch above, or connect a signed PR webhook to this application.')
                             : t('app.previewList.enablePrPreviewsAboveToStart', 'Enable PR previews above to start deploying preview environments.')
                     }
                 />
@@ -222,7 +249,8 @@ const PreviewList = ({ appId }) => {
                                         </a>
                                     )}
                                 </div>
-                                {p.status === 'unavailable' && (
+                                {p.status_reason && p.status !== 'running' && <p className="preview-settings__hint">{p.status_reason}</p>}
+                                {p.status === 'unavailable' && !p.status_reason && (
                                     <p className="preview-settings__hint">
                                         {t('app.previewList.noRuntime', 'No provisioned runtime is recorded for this preview. Its URL is unavailable.')}
                                     </p>

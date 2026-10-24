@@ -4431,7 +4431,6 @@
             "enabled": "সক্রিয়",
             "loadingPreviews": "পূর্বরূপ লোড হচ্ছে...",
             "noActivePreviews": "কোন সক্রিয় পূর্বরূপ",
-            "openAPullRequestToSpin": "একটি পূর্বরূপ স্পিন আপ করার জন্য একটি পুল অনুরোধ খুলুন, অথবা এখনই পুনর্মিলন করতে সিঙ্ক করুন৷",
             "placeholders": "স্থানধারক:",
             "pr": "পিআর #",
             "prPreviewEnvironments": "পিআর প্রিভিউ পরিবেশ",

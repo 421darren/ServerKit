@@ -24,3 +24,7 @@ export async function redeployPreview(appId, previewId) {
 export async function destroyPreview(appId, previewId) {
     return this.request(`/apps/${appId}/previews/${previewId}`, { method: 'DELETE' });
 }
+
+export async function createPreview(appId, pr) {
+    return this.request(`/apps/${appId}/previews`, { method: 'POST', body: pr });
+}

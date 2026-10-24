@@ -4431,7 +4431,6 @@
             "enabled": "Włączone",
             "loadingPreviews": "Ładowanie podglądów...",
             "noActivePreviews": "Brak aktywnych podglądów",
-            "openAPullRequestToSpin": "Otwórz żądanie ściągnięcia, aby wyświetlić podgląd, lub zsynchronizuj, aby teraz uzgodnić.",
             "placeholders": "Elementy zastępcze:",
             "pr": "PR#",
             "prPreviewEnvironments": "Środowiska podglądu PR",

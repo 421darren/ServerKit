@@ -4431,7 +4431,6 @@
             "enabled": "Activé",
             "loadingPreviews": "Chargement des aperçus...",
             "noActivePreviews": "Aucun aperçu actif",
-            "openAPullRequestToSpin": "Ouvrez une pull request pour afficher un aperçu ou synchronisez pour réconcilier maintenant.",
             "placeholders": "Espaces réservés :",
             "pr": "RP #",
             "prPreviewEnvironments": "Environnements de prévisualisation des relations publiques",

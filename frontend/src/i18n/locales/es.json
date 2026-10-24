@@ -4431,7 +4431,6 @@
             "enabled": "Activado",
             "loadingPreviews": "Cargando vistas previas...",
             "noActivePreviews": "No hay vistas previas activas",
-            "openAPullRequestToSpin": "Abre un pull request para crear una vista previa, o sincroniza para reconciliar ahora.",
             "placeholders": "Marcadores de posición:",
             "pr": "PR #",
             "prPreviewEnvironments": "Entornos de vista previa de PR",

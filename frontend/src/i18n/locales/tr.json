@@ -4431,7 +4431,6 @@
             "enabled": "Etkin",
             "loadingPreviews": "Önizlemeler yükleniyor...",
             "noActivePreviews": "Etkin önizleme yok",
-            "openAPullRequestToSpin": "Önizlemeyi başlatmak için bir çekme isteği açın veya şimdi mutabakata varmak için senkronize edin.",
             "placeholders": "Yer tutucular:",
             "pr": "Halkla ilişkiler numarası",
             "prPreviewEnvironments": "PR önizleme ortamları",

@@ -4431,7 +4431,6 @@
             "enabled": "已啟用",
             "loadingPreviews": "正在載入預覽…",
             "noActivePreviews": "沒有活動預覽",
-            "openAPullRequestToSpin": "開啟 Pull Request 即可建立預覽環境，或立即同步以更新現有環境。",
             "placeholders": "佔位符：",
             "pr": "PR #",
             "prPreviewEnvironments": "PR 預覽環境",

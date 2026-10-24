@@ -4431,7 +4431,6 @@
             "enabled": "已启用",
             "loadingPreviews": "正在加载预览...",
             "noActivePreviews": "没有活动预览",
-            "openAPullRequestToSpin": "打开拉取请求以启动预览，或立即同步以进行协调。",
             "placeholders": "占位符：",
             "pr": "公关号#",
             "prPreviewEnvironments": "PR 预览环境",

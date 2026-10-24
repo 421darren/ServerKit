@@ -4431,7 +4431,6 @@
             "enabled": "활성화됨",
             "loadingPreviews": "미리보기 로드 중...",
             "noActivePreviews": "활성 미리보기 없음",
-            "openAPullRequestToSpin": "끌어오기 요청을 열어 미리보기를 실행하거나 동기화하여 지금 조정하세요.",
             "placeholders": "자리 표시자:",
             "pr": "홍보번호",
             "prPreviewEnvironments": "PR 미리보기 환경",

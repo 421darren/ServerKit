@@ -24,6 +24,9 @@ window.testApi={
  getPreviews:()=>Promise.resolve({previews:[{id:1,pr_number:1,status:'unavailable',domain:'unavailable.test',url:'https://unavailable.test'},{id:2,pr_number:2,status:'running',domain:'running.test',url:'https://running.test'}]}),
  getPreviewSettings:()=>Promise.resolve({enabled:true}),
  redeployPreview:()=>Promise.resolve({status:'unavailable'}),
+ createPreview:(id,pr)=>{window.created=pr;return Promise.resolve({status:'queued',job_id:'job'});},
+ destroyPreview:()=>Promise.resolve({status:'queued'}),
+ updatePreviewSettings:(id,patch)=>{window.settingsPatch=patch;return Promise.resolve({enabled:true,...patch});},
 };
 createRoot(document.getElementById('root')).render(<MemoryRouter><ConfirmProvider>{location.search==='?preview'?<PreviewList appId={1}/>:<EnvironmentPanel appId={1}/>}</ConfirmProvider></MemoryRouter>);
 `;
@@ -112,6 +115,20 @@ try {
     assert.equal(await page.evaluate(()=>window.toasts.some(x=>x.startsWith('SUCCESS:'))),false);
     assert.deepEqual(errors,[]);
     console.log('PASS previews: unavailable links suppressed and unsuccessful redeploy has no success toast');
+    await page.getByLabel('PR number', {exact:true}).fill('23');
+    await page.getByLabel('Repository branch', {exact:true}).fill('feature/test');
+    await page.getByLabel('Full commit SHA', {exact:true}).fill('a'.repeat(40));
+    await page.getByRole('button',{name:'Deploy preview',exact:true}).click();
+    await page.waitForFunction(()=>window.created?.pr_number===23);
+    assert.deepEqual(await page.evaluate(()=>window.created),{pr_number:23,branch:'feature/test',commit_sha:'a'.repeat(40)});
+    await page.getByRole('switch',{name:/Inherit application environment/}).click();
+    await page.waitForFunction(()=>window.settingsPatch?.inherit_environment===true);
+    await page.getByRole('button',{name:'Delete',exact:true}).first().click();
+    await page.getByRole('alertdialog').getByRole('button',{name:'Delete',exact:true}).click();
+    await page.waitForFunction(()=>window.toasts.some(t=>t.includes('deletion queued')));
+    assert.deepEqual(errors,[]);
+    console.log('PASS previews: pinned create form, explicit inheritance and queued deletion');
+
 } finally {
     await browser?.close();
     await server.close();
