@@ -4422,7 +4422,6 @@
             "activePreviews": "活動預覽",
             "couldNotLoadPrPreviews": "無法載入 PR 預覽",
             "couldNotSaveSettings": "無法儲存設定",
-            "deployAnIsolatedPreviewOfEach": "為每個開啟的 Pull Request 在暫時網域部署獨立的預覽環境，並在 PR 關閉時移除。",
             "destroy": "銷毀",
             "destroyFailed": "銷毀失敗",
             "destroyPreview": "銷毀預覽",

@@ -218,6 +218,12 @@ export async function regeneratePrivateUrl(appId) {
 }
 
 // Environment Variables endpoints
+export async function getEffectiveEnvVars(appId, service = null) {
+    const params = new URLSearchParams({ view: 'effective' });
+    if (service) params.set('service', service);
+    return this.request(`/apps/${appId}/env?${params}`);
+}
+
 export async function getEnvVars(appId, maskSecrets = false) {
     const params = maskSecrets ? '?mask=true' : '';
     return this.request(`/apps/${appId}/env${params}`);

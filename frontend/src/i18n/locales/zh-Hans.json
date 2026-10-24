@@ -4422,7 +4422,6 @@
             "activePreviews": "活动预览",
             "couldNotLoadPrPreviews": "无法加载 PR 预览",
             "couldNotSaveSettings": "无法保存设置",
-            "deployAnIsolatedPreviewOfEach": "将每个开放拉取请求的独立预览部署到临时域，并在 PR 关闭时将其拆除。",
             "destroy": "销毁",
             "destroyFailed": "销毁失败",
             "destroyPreview": "销毁预览",

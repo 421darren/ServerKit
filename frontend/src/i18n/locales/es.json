@@ -4422,7 +4422,6 @@
             "activePreviews": "Vistas previas activas",
             "couldNotLoadPrPreviews": "No se pudieron cargar las vistas previas de PR",
             "couldNotSaveSettings": "No se pudo guardar la configuración",
-            "deployAnIsolatedPreviewOfEach": "Despliega una vista previa aislada de cada pull request abierto en un dominio temporal y elimínala cuando el PR se cierre.",
             "destroy": "Destruir",
             "destroyFailed": "No se pudo destruir",
             "destroyPreview": "Destruir vista previa",

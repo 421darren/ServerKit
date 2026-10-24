@@ -4422,7 +4422,6 @@
             "activePreviews": "การแสดงตัวอย่างที่ใช้งานอยู่",
             "couldNotLoadPrPreviews": "ไม่สามารถโหลดตัวอย่าง PR",
             "couldNotSaveSettings": "ไม่สามารถบันทึกการตั้งค่าได้",
-            "deployAnIsolatedPreviewOfEach": "ปรับใช้การแสดงตัวอย่างแบบแยกของแต่ละคำขอดึงแบบเปิดไปยังโดเมนชั่วคราว และรื้อถอนเมื่อ PR ปิด",
             "destroy": "ทำลาย",
             "destroyFailed": "การทำลายล้างล้มเหลว",
             "destroyPreview": "ทำลายการแสดงตัวอย่าง",

@@ -4422,7 +4422,6 @@
             "activePreviews": "Visualizações ativas",
             "couldNotLoadPrPreviews": "Não foi possível carregar as visualizações de PR",
             "couldNotSaveSettings": "Não foi possível salvar as configurações",
-            "deployAnIsolatedPreviewOfEach": "Implante uma visualização isolada de cada solicitação pull aberta em um domínio temporário e desative-a quando o PR for fechado.",
             "destroy": "Destruir",
             "destroyFailed": "Falha na destruição",
             "destroyPreview": "Destruir visualização",

@@ -7,7 +7,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useService } from '../hooks/useService';
 import useTabParam from '../hooks/useTabParam';
 import { getTabsForType } from '../utils/serviceTypes';
-import EnvironmentVariables from '../components/EnvironmentVariables';
+import EnvironmentVariables from '../components/environment/EnvironmentPanel';
 import EventsTab from '../components/service-detail/EventsTab';
 import LogsTab from '../components/service-detail/LogsTab';
 import ShellTab from '../components/service-detail/ShellTab';

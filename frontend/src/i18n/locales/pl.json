@@ -4422,7 +4422,6 @@
             "activePreviews": "Aktywne podglądy",
             "couldNotLoadPrPreviews": "Nie można wczytać podglądów PR",
             "couldNotSaveSettings": "Nie udało się zapisać ustawień",
-            "deployAnIsolatedPreviewOfEach": "Wdróż izolowany podgląd każdego otwartego żądania ściągnięcia w domenie tymczasowej i zniszcz go po zamknięciu PR.",
             "destroy": "Zniszczyć",
             "destroyFailed": "Zniszczenie nie powiodło się",
             "destroyPreview": "Zniszcz podgląd",

@@ -124,3 +124,43 @@ output change backed by semantic tests and, where relevant, real nginx parsing.
 These checks already run through the existing frontend/backend CI workflows.
 Do not raise a size ceiling or allow a new dependency just to make a check pass;
 first decide which existing owner should contain the behavior.
+
+
+## Effective environment and preview truthfulness
+
+`EnvService._effective_entries` owns the shared/local merge used by both
+single-container and per-service Compose deployment, and by the read-only
+`GET /api/v1/apps/<id>/env?view=effective&service=<name>` projection. Preserve
+workspace → project → environment → attached group → local precedence and
+filter service targets before merging. Shared interpolation precedes local
+overrides, as in the existing deployment path.
+
+The effective view is managed configuration for the next deploy/restart, not
+an inspection of the running container or of image/Compose-file defaults.
+Its explicit field allowlist excludes **all values**, including non-secret
+variables that could interpolate a secret. Local references are not resolved
+for this view. Existing app access checks apply; `mask=false` cannot enable
+values. A shared-resolution failure returns `complete: false`, with local
+rows only. Do not present that fallback as complete configuration.
+
+`components/environment/EnvironmentPanel` composes the existing local editor
+with `EffectiveEnvironment`. The view renders provenance; the hook owns service
+discovery, fetching and stale-response suppression. Keep precedence on the
+backend. A service-discovery request failure must not silently fall back to
+unfiltered winners. The existing discovery endpoint returns an empty list for
+both non-Compose apps and unreadable Compose files, so that case is explicitly
+labelled as unfiltered configuration.
+
+A preview can be advertised as running only after an explicit successful
+provider result with runtime IDs. Generic manifest configuration generation is
+not deployment and reports `unavailable`. Legacy running rows without IDs are
+projected as unavailable without mutating them on read. Only running previews
+with recorded IDs expose a URL. These checks establish provisioning evidence;
+they do not claim live container health or validate DNS reachability.
+
+Regression coverage: `test_effective_env.py`, `test_env_vars_api.py`,
+`test_compose_env_overlay.py`, `test_previews.py`, and
+`node scripts/effective-environment-browser.mjs` (in `frontend`). The browser
+check runs in frontend CI and covers service switching with late replies,
+failed discovery, masking, incomplete results, retry, the local editor, and
+preview link/toast behavior.

@@ -4422,7 +4422,6 @@
             "activePreviews": "معاينات نشطة",
             "couldNotLoadPrPreviews": "تعذر تحميل معاينات العلاقات العامة",
             "couldNotSaveSettings": "لا يمكن حفظ الإعدادات",
-            "deployAnIsolatedPreviewOfEach": "انشر معاينة معزولة لكل طلب سحب مفتوح إلى مجال مؤقت، وقم بتمزيقه عند إغلاق العلاقات العامة.",
             "destroy": "تدمير",
             "destroyFailed": "فشل التدمير",
             "destroyPreview": "تدمير المعاينة",

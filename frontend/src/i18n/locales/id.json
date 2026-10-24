@@ -4422,7 +4422,6 @@
             "activePreviews": "Pratinjau aktif",
             "couldNotLoadPrPreviews": "Tidak dapat memuat pratinjau PR",
             "couldNotSaveSettings": "Tidak dapat menyimpan setelan",
-            "deployAnIsolatedPreviewOfEach": "Terapkan pratinjau terisolasi dari setiap permintaan penarikan terbuka ke domain sementara, dan hancurkan saat PR ditutup.",
             "destroy": "Menghancurkan",
             "destroyFailed": "Penghancuran gagal",
             "destroyPreview": "Hancurkan pratinjau",

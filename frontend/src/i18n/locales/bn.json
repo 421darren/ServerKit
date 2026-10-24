@@ -4422,7 +4422,6 @@
             "activePreviews": "সক্রিয় পূর্বরূপ",
             "couldNotLoadPrPreviews": "পিআর প্রিভিউ লোড করা যায়নি",
             "couldNotSaveSettings": "সেটিংস সংরক্ষণ করা যায়নি৷",
-            "deployAnIsolatedPreviewOfEach": "একটি অস্থায়ী ডোমেনে প্রতিটি খোলা পুল অনুরোধের একটি বিচ্ছিন্ন পূর্বরূপ স্থাপন করুন এবং পিআর বন্ধ হয়ে গেলে এটিকে ভেঙে ফেলুন।",
             "destroy": "ধ্বংস করুন",
             "destroyFailed": "ধ্বংস ব্যর্থ হয়েছে",
             "destroyPreview": "পূর্বরূপ ধ্বংস",

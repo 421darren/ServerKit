@@ -4422,7 +4422,6 @@
             "activePreviews": "Aperçus actifs",
             "couldNotLoadPrPreviews": "Impossible de charger les aperçus PR",
             "couldNotSaveSettings": "Impossible d'enregistrer les paramètres",
-            "deployAnIsolatedPreviewOfEach": "Déployez un aperçu isolé de chaque demande d'extraction ouverte sur un domaine temporaire et supprimez-le à la fermeture du PR.",
             "destroy": "Détruire",
             "destroyFailed": "La destruction a échoué",
             "destroyPreview": "Détruire l'aperçu",

@@ -4422,7 +4422,6 @@
             "activePreviews": "Xem trước đang hoạt động",
             "couldNotLoadPrPreviews": "Không thể tải bản xem trước PR",
             "couldNotSaveSettings": "Không thể lưu cài đặt",
-            "deployAnIsolatedPreviewOfEach": "Triển khai bản xem trước riêng biệt của từng yêu cầu kéo mở tới một miền tạm thời và chia nhỏ nó khi PR đóng.",
             "destroy": "Hủy hoại",
             "destroyFailed": "Phá hủy thất bại",
             "destroyPreview": "Phá hủy bản xem trước",

@@ -124,6 +124,7 @@ class EnvService:
                         merged[key]['value'] = entry.get('value')
         except Exception:
             complete = False
+            merged.clear()
             logger.warning('Shared variable resolution failed for app %s', app.id)
 
         if local_vars is None:

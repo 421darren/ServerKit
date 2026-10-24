@@ -4422,7 +4422,6 @@
             "activePreviews": "Aktive Vorschauen",
             "couldNotLoadPrPreviews": "PR-Vorschauen konnten nicht geladen werden",
             "couldNotSaveSettings": "Die Einstellungen konnten nicht gespeichert werden",
-            "deployAnIsolatedPreviewOfEach": "Stellen Sie eine isolierte Vorschau jeder offenen Pull-Anfrage in einer temporären Domäne bereit und entfernen Sie sie, wenn der PR geschlossen wird.",
             "destroy": "Zerstören",
             "destroyFailed": "Die Zerstörung ist fehlgeschlagen",
             "destroyPreview": "Vorschau zerstören",

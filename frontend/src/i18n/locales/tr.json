@@ -4422,7 +4422,6 @@
             "activePreviews": "Etkin önizlemeler",
             "couldNotLoadPrPreviews": "PR önizlemeleri yüklenemedi",
             "couldNotSaveSettings": "Ayarlar kaydedilemedi",
-            "deployAnIsolatedPreviewOfEach": "Her açık çekme isteğinin yalıtılmış bir ön izlemesini geçici bir etki alanına dağıtın ve PR kapatıldığında onu yırtın.",
             "destroy": "Tahrip etmek",
             "destroyFailed": "Yok etme başarısız oldu",
             "destroyPreview": "Önizlemeyi yok et",

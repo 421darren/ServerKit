@@ -4422,7 +4422,6 @@
             "activePreviews": "Anteprime attive",
             "couldNotLoadPrPreviews": "Impossibile caricare le anteprime PR",
             "couldNotSaveSettings": "Impossibile salvare le impostazioni",
-            "deployAnIsolatedPreviewOfEach": "Distribuisci un'anteprima isolata di ogni richiesta pull aperta a un dominio temporaneo e rimuovila quando il PR si chiude.",
             "destroy": "Distruggere",
             "destroyFailed": "Distruzione fallita",
             "destroyPreview": "Distruggi l'anteprima",
