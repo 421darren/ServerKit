@@ -98,4 +98,3 @@ def register_http_handlers(app):
         if index and os.path.isfile(index):
             return _spa_page()
         return {'error': 'Not found'}, 404
-

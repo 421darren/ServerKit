@@ -81,4 +81,3 @@ def start_runtime(app):
         # panel is paired.
         from app.services import connect_client
         connect_client.start_client_if_paired(app)
-

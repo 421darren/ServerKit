@@ -62,7 +62,8 @@ def test_recovery_precedes_consumers_and_handlers_precede_jobs(monkeypatch, runt
                              'uptime', 'linked', 'relay']
 
 
-def test_factory_phase_order_and_context(monkeypatch):
+@pytest.mark.parametrize('failed_phase', [None, 'persistence', 'plugins'])
+def test_factory_phase_order_and_context(monkeypatch, failed_phase):
     import app as application
     from flask import has_app_context
     from app.bootstrap import configuration, persistence, plugins, http
@@ -76,6 +77,8 @@ def test_factory_phase_order_and_context(monkeypatch):
         def run(*args):
             assert has_app_context() is context
             calls.append(name)
+            if name == failed_phase:
+                raise RuntimeError('startup failed')
         return run
 
     monkeypatch.setattr(configuration, 'configure_application', phase('configuration'))
@@ -89,9 +92,25 @@ def test_factory_phase_order_and_context(monkeypatch):
     monkeypatch.setattr(runtime, 'start_runtime', phase('runtime', True))
     monkeypatch.setattr(http, 'register_http_handlers', phase('http'))
     monkeypatch.setattr(application, 'socketio', application.socketio)
-    application.create_app('testing')
-    assert calls == ['configuration', 'socket', 'gateway', 'routes', 'recycle',
-                     'restore', 'persistence', 'plugins', 'runtime', 'http']
+    expected = ['configuration', 'socket', 'gateway', 'routes', 'recycle',
+                'restore', 'persistence', 'plugins', 'runtime', 'http']
+    if failed_phase:
+        with pytest.raises(RuntimeError, match='startup failed'):
+            application.create_app('testing')
+        assert calls == expected[:expected.index(failed_phase) + 1]
+    else:
+        application.create_app('testing')
+        assert calls == expected
+
+
+def test_monitor_failure_does_not_prevent_other_runtime_services(runtime_calls):
+    def fail(_app):
+        raise RuntimeError('monitor unavailable')
+    sys.modules['app.services.monitoring_service'].MonitoringService.resume_if_enabled = fail
+    logger = Mock()
+    runtime.start_runtime(SimpleNamespace(config={}, logger=logger))
+    logger.exception.assert_called_once()
+    assert runtime_calls[-3:] == ['uptime', 'linked', 'relay']
 
 
 def test_bootstrap_is_an_assembly_layer_not_a_service_dependency():

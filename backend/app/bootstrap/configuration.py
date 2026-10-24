@@ -112,4 +112,3 @@ def configure_application(app, db, migrate, jwt, limiter):
     from app.middleware.rate_limit import get_rate_limit_key, register_rate_limit_headers
     limiter._key_func = get_rate_limit_key
     register_rate_limit_headers(app)
-

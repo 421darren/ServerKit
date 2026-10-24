@@ -51,5 +51,3 @@ def configure_logging(app):
         ))
         root.addHandler(handler)
         _logging_configured = True
-
-

@@ -12,6 +12,7 @@ test('File Manager keeps transport, orchestration and views separate', () => {
 test('boundary guard rejects dependencies that would recombine the feature', () => {
     for (const [path, source] of [
         ['pages/FileManager.jsx', 'async function load() { await api.browseFiles(); }'],
+        ['pages/FileManager.jsx', "fetch('/api/v1/files').then(render);"],
         ['components/file-manager/FileManagerListing.jsx', "import { api } from '@/services/api';"],
         ['components/file-manager/hooks/useFileEditor.js', "import Page from '@/pages/FileManager';"],
         ['components/file-manager/FileManagerSidebar.jsx', "import useFileTree from './hooks/useFileTree';"],

@@ -33,7 +33,7 @@ export function inspectFileManagerSource(path, source) {
         if ((page || view) && node.type === 'CallExpression' && node.callee?.object?.name === 'api') {
             errors.push(`${path}: views must not call API methods`);
         }
-        if (view && node.type === 'CallExpression' && node.callee?.name === 'fetch') {
+        if ((page || view) && node.type === 'CallExpression' && node.callee?.name === 'fetch') {
             errors.push(`${path}: views must not fetch`);
         }
         for (const value of Object.values(node)) {
