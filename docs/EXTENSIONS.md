@@ -775,6 +775,33 @@ def register(reg):                       # reg is a PluginToolBinder
 Tools are namespaced `<slug>__<name>`, RBAC-gated per tool, and write tools
 (`is_write=True`) always route through confirmation.
 
+### Built-in deployment workflow
+
+Administrators can use the Assistant tab in the bottom console to ask, for
+example, "Deploy nginx as demo-web on the panel host." The assistant discovers
+templates, inspects the selected server, and prepares a deployment preview.
+Approval displays server-derived application, target, and public input details.
+The proposal expires after 15 minutes and is bound to the approving user and
+the template contents; changed templates require a new preview.
+
+Execution creates a persistent Recipe operation using the existing template
+installer. **Open in Operations** follows its logs and verification after chat
+closes. Reusing the same proposal reconnects to the same operation. Retrying a
+failed verification skips completed installation steps; an interrupted or
+failed child installation requires inspection in Operations before proceeding.
+
+The built-in Recipe capabilities are `apply:template.install` and
+`verify:application.health`. Verification checks running containers and any
+configured Docker health checks; it does not test HTTP endpoints or logins.
+Catalog recipes with missing capability handlers are reported as unsupported.
+Repository templates still use the repository deployment form. Credentials
+must be supplied through deployment forms or Recipe handoffs, never chat.
+
+The tool implementations live in `backend/app/services/ai_operations.py` and
+the durable handlers in `backend/app/services/recipe_builtin_steps.py`.
+Prompture continues to supply the assistant's model/provider layer; these
+tools reuse ServerKit's execution and authorization services.
+
 ---
 
 ## Install sources

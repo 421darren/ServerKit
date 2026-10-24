@@ -40,6 +40,8 @@ class DeploymentJobService:
         server_id: Optional[str] = None,
         wait: bool = False,
         auto_domain: Optional[bool] = None,
+        job_id: Optional[str] = None,
+        expected_template_digest: Optional[str] = None,
     ) -> Dict:
         """Create a template installation job and optionally run it synchronously."""
         normalized_server_id = cls._normalize_server_id(server_id)
@@ -69,6 +71,10 @@ class DeploymentJobService:
         )
         if not plan_result.get('success'):
             return plan_result
+        if expected_template_digest is not None:
+            from app.services.ai_operations import _digest
+            if _digest(plan_result['template']) != expected_template_digest:
+                return {'success': False, 'error': 'Template changed after approval; prepare a new proposal.'}
 
         app_path = plan_result['app_path']
         if not normalized_server_id and os.path.exists(app_path):
@@ -85,7 +91,7 @@ class DeploymentJobService:
             logger.info('Reusing abandoned install directory %s', app_path)
 
         job = DeploymentJob(
-            id=str(uuid.uuid4()),
+            id=job_id or str(uuid.uuid4()),
             kind='template_install',
             status='pending',
             target_server_id=normalized_server_id,
@@ -556,7 +562,8 @@ class DeploymentJobService:
 
     @classmethod
     def start_registered(cls, kind: str, *, steps=None, app_id=None, server_id=None,
-                         user_id=None, trigger='manual', plan=None, wait=False) -> Dict:
+                         user_id=None, trigger='manual', plan=None, wait=False,
+                         job_id=None) -> Dict:
         """Create and queue a DeploymentJob for a registered (plugin) kind.
 
         The public entry point behind ``app.plugins_sdk.deploys.start`` — the
@@ -568,7 +575,7 @@ class DeploymentJobService:
             return {'success': False, 'error': f'No handler registered for deployment kind "{kind}"'}
 
         job = DeploymentJob(
-            id=str(uuid.uuid4()),
+            id=job_id or str(uuid.uuid4()),
             kind=kind,
             status='pending',
             app_id=app_id,

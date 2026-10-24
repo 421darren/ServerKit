@@ -21,7 +21,7 @@ const ConfirmActionCard = () => {
     }, [pendingConfirm]);
 
     if (!pendingConfirm) return null;
-    const params = formatParams(pendingConfirm.params);
+    const params = formatParams(pendingConfirm.display_params || pendingConfirm.params);
 
     return (
         <div className="sk-ai-confirm" role="group" aria-label={t('app.confirmActionCard.confirmAction', 'Confirm action')}>

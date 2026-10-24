@@ -117,6 +117,7 @@
             "unknownPrice": "Pricing unknown",
             "vision": "Vision"
         },
+        "openOperation": "Open in Operations",
         "settings": {
             "costHint": "Used by the budget behavior in Task models and behavior. A call can exceed the remaining amount; models with unknown pricing need a provider-side limit. Set 0 for no limit.",
             "disabled": "Assistant disabled",
