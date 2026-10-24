@@ -9,9 +9,12 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkFileManagerBoundaries } from './check-file-manager-boundaries.mjs';
-
-checkFileManagerBoundaries();
+// Inventory is also consumed by backend-only CI without npm dependencies.
+// The AST architecture guard runs with the normal frontend lint toolchain.
+if (!process.argv.includes('--inventory')) {
+    const { checkFileManagerBoundaries } = await import('./check-file-manager-boundaries.mjs');
+    checkFileManagerBoundaries();
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -122,7 +125,8 @@ function walk(dir) {
     });
 }
 
-const files = walk(src).filter((path) => ['.js', '.jsx'].includes(extname(path)));
+const files = walk(src).filter((path) => ['.js', '.jsx'].includes(extname(path))
+    && !relative(src, path).replaceAll('\\', '/').split('/').includes('__tests__'));
 const failures = [];
 const seenClipboard = new Set();
 const seenPollers = new Set();

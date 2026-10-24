@@ -29,6 +29,9 @@ def start_runtime(app):
                 import logging
                 logging.getLogger(__name__).exception('Interrupted-job recovery failed')
 
+        from app.bootstrap.agents import start_agent_runtime
+        start_agent_runtime(app)
+
         # Start metrics history collection in background
         from app.services.metrics_history_service import MetricsHistoryService
         if not MetricsHistoryService.is_running():

@@ -183,7 +183,9 @@ export default function useDirectoryBrowser({
         loadSeqRef.current++;
         setSearchResults(null);
         setSearchQuery('');
-        setLoading(false);
+        // A directory browse may also be pending. Restore the current listing
+        // instead of revealing entries from the previously visited folder.
+        loadDirectory(currentPath);
     };
     const handleSearch = async () => {
         if (remoteGuard('search')) {

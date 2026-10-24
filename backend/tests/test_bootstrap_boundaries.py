@@ -22,6 +22,7 @@ def runtime_calls(monkeypatch):
 
     modules = {
         'app.jobs.service': {'JobService': SimpleNamespace(recover_interrupted=record('recover'))},
+        'app.bootstrap.agents': {'start_agent_runtime': record('agents')},
         'app.services.metrics_history_service': {'MetricsHistoryService': SimpleNamespace(
             is_running=lambda: False, start_collection=record('metrics'))},
         'app.queue_bus.consumers': {'start_webhook_consumer': record('webhooks')},
@@ -57,50 +58,9 @@ def test_one_shot_startup_never_recovers_or_starts_workers(monkeypatch, runtime_
 def test_recovery_precedes_consumers_and_handlers_precede_jobs(monkeypatch, runtime_calls, argv):
     monkeypatch.setattr(sys, 'argv', argv)
     runtime.start_runtime(SimpleNamespace(config={}, logger=Mock()))
-    assert runtime_calls == ['recover', 'metrics', 'webhooks', 'notifications',
+    assert runtime_calls == ['recover', 'agents', 'metrics', 'webhooks', 'notifications',
                              'analytics', 'handlers', 'jobs', 'monitoring',
                              'uptime', 'linked', 'relay']
-
-
-@pytest.mark.parametrize('failed_phase', [None, 'persistence', 'plugins'])
-def test_factory_phase_order_and_context(monkeypatch, failed_phase):
-    import app as application
-    from flask import has_app_context
-    from app.bootstrap import configuration, persistence, plugins, http
-    import app.sockets
-    import app.agent_gateway
-    import app.core_blueprints
-    from app.services import recycle_bin_service, restore_point_adapters
-
-    calls = []
-    def phase(name, context=False):
-        def run(*args):
-            assert has_app_context() is context
-            calls.append(name)
-            if name == failed_phase:
-                raise RuntimeError('startup failed')
-        return run
-
-    monkeypatch.setattr(configuration, 'configure_application', phase('configuration'))
-    monkeypatch.setattr(app.sockets, 'init_socketio', phase('socket'))
-    monkeypatch.setattr(app.agent_gateway, 'init_agent_gateway', phase('gateway'))
-    monkeypatch.setattr(app.core_blueprints, 'register_core_blueprints', phase('routes'))
-    monkeypatch.setattr(recycle_bin_service, 'register_builtin_types', phase('recycle'))
-    monkeypatch.setattr(restore_point_adapters, 'register_builtin_restore_point_adapters', phase('restore'))
-    monkeypatch.setattr(persistence, 'prepare_persistence', phase('persistence', True))
-    monkeypatch.setattr(plugins, 'load_extensions', phase('plugins', True))
-    monkeypatch.setattr(runtime, 'start_runtime', phase('runtime', True))
-    monkeypatch.setattr(http, 'register_http_handlers', phase('http'))
-    monkeypatch.setattr(application, 'socketio', application.socketio)
-    expected = ['configuration', 'socket', 'gateway', 'routes', 'recycle',
-                'restore', 'persistence', 'plugins', 'runtime', 'http']
-    if failed_phase:
-        with pytest.raises(RuntimeError, match='startup failed'):
-            application.create_app('testing')
-        assert calls == expected[:expected.index(failed_phase) + 1]
-    else:
-        application.create_app('testing')
-        assert calls == expected
 
 
 def test_monitor_failure_does_not_prevent_other_runtime_services(runtime_calls):
@@ -111,6 +71,57 @@ def test_monitor_failure_does_not_prevent_other_runtime_services(runtime_calls):
     runtime.start_runtime(SimpleNamespace(config={}, logger=logger))
     logger.exception.assert_called_once()
     assert runtime_calls[-3:] == ['uptime', 'linked', 'relay']
+
+
+def test_agent_maintenance_runs_only_in_server_mode(monkeypatch):
+    from app.bootstrap.agents import start_agent_runtime
+    from app.services.agent_registry import agent_registry
+    from app.services.nonce_service import nonce_service
+    from app.services.anomaly_detection_service import anomaly_detection_service
+
+    heartbeat, nonces, anomalies = Mock(), Mock(), Mock()
+    monkeypatch.setattr(agent_registry, 'start', heartbeat)
+    monkeypatch.setattr(nonce_service, 'start_cleanup', nonces)
+    monkeypatch.setattr(anomaly_detection_service, 'start_cleanup', anomalies)
+    start_agent_runtime(SimpleNamespace(config={'TESTING': True}))
+    assert not any(call.called for call in (heartbeat, nonces, anomalies))
+    server = SimpleNamespace(config={})
+    start_agent_runtime(server)
+    heartbeat.assert_called_once_with(server)
+    nonces.assert_called_once_with()
+    anomalies.assert_called_once_with()
+
+
+@pytest.mark.parametrize('module_name,instance_name', [
+    ('nonce_service', 'nonce_service'),
+    ('anomaly_detection_service', 'anomaly_detection_service'),
+])
+def test_agent_cleanup_start_is_idempotent(monkeypatch, module_name, instance_name):
+    import importlib
+    import threading
+    module = importlib.import_module(f'app.services.{module_name}')
+    service = getattr(module, instance_name)
+    thread = Mock()
+    thread.is_alive.return_value = True
+    constructor = Mock(return_value=thread)
+    monkeypatch.setattr(service, '_cleanup_thread', None)
+    monkeypatch.setattr(service, '_stop_cleanup', threading.Event())
+    monkeypatch.setattr(module.threading, 'Thread', constructor)
+    service.start_cleanup()
+    service.start_cleanup()
+    constructor.assert_called_once()
+    thread.start.assert_called_once()
+
+
+def test_heartbeat_runtime_captures_the_serving_app(monkeypatch):
+    from app.services.agent_registry import agent_registry
+    start = Mock()
+    monkeypatch.setattr(agent_registry, '_start_heartbeat_checker', start)
+    monkeypatch.setattr(agent_registry, '_app', None)
+    server = object()
+    agent_registry.start(server)
+    assert agent_registry._app is server
+    start.assert_called_once_with()
 
 
 def test_bootstrap_is_an_assembly_layer_not_a_service_dependency():

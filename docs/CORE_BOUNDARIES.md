@@ -23,14 +23,18 @@ context. Database preparation precedes extension queries; interrupted-job
 recovery precedes consumers; job handlers precede the job consumer. One-shot
 Flask commands and `SERVERKIT_SKIP_BACKGROUND` suppress runtime startup.
 The existing individual services retain their testing and singleton guards.
+Agent heartbeat, nonce retention and anomaly retention are explicitly started
+by `bootstrap/agents.py`; importing services or binding the gateway does not
+launch those threads. The heartbeat runtime receives the serving Flask app.
 
 Bootstrap may depend on services, models, middleware and jobs. Those layers
 must not import bootstrap. A feature exposes a registration/initialization
 function; its appropriate bootstrap phase invokes it. Existing migration
 policy and fail-soft extension behavior are preserved by this split.
 
-`backend/tests/test_bootstrap_boundaries.py` enforces dependency direction,
-factory composition, startup order, context, and CLI suppression. The core
+`backend/tests/test_bootstrap_boundaries.py` and `test_no_background_threads.py`
+enforce dependency direction, factory composition, startup order, context,
+worker lifecycle, and CLI suppression. The core
 blueprint registry and API-error tests verify the assembled application.
 
 ## File Manager
@@ -77,6 +81,7 @@ adapter but does not issue API calls or await requests.
   target switching, late results, editing, confirmations and uploads.
 - `npm run build`: verify the complete production import graph.
 - `python -m pytest tests/test_bootstrap_boundaries.py
+  tests/test_no_background_threads.py
   tests/test_core_blueprint_registry.py tests/test_cli_skips_background.py
   tests/test_api_error_shape.py` in `backend`: focused startup coverage.
 - Run the full backend suite for application assembly changes.

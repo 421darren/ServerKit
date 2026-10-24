@@ -339,6 +339,21 @@ try {
     assert.equal(await deepLink.getByText('projects', { exact: true }).count(), 0);
     assert.equal(await deepLink.getByTitle('Back', { exact: true }).isDisabled(), true);
     console.log('PASS initial deep links retain their directory and history');
+
+    const clearing = await browser.newPage();
+    await clearing.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await clearing.getByText('projects', { exact: true }).first().waitFor();
+    await clearing.getByPlaceholder('Search files…').fill('draft query');
+    await clearing.getByText('projects', { exact: true }).first().dblclick();
+    await clearing.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await clearing.locator('.search-field-clear').click();
+    assert.equal(await clearing.locator('.file-manager-main').getByText('projects', { exact: true }).count(), 0,
+        'clearing a query must not expose the previous directory listing while browsing');
+    await clearing.evaluate(() => {
+        while (window.pending.some(x => x.path === '/home/projects')) window.release('/home/projects');
+    });
+    await clearing.getByText('inside-projects.txt', { exact: true }).waitFor();
+    console.log('PASS clearing a query during navigation preserves the pending directory load');
 } finally {
     await browser?.close();
     await server.close();
