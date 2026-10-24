@@ -13,6 +13,10 @@ from app.models.application_preview import ApplicationPreview
 from app.services.preview_service import PreviewService
 from app.api._access import require_app
 from app.api._request import json_object
+from app.middleware.rbac import developer_required
+from app.services.previews.requests import enqueue, validate_request
+from app.services.previews.plan import PreviewError
+from app.exceptions import ValidationError
 
 previews_bp = Blueprint('previews', __name__)
 
@@ -44,7 +48,10 @@ def update_preview_settings(app_id):
     """Enable/disable previews and set the domain template + TTL for an app."""
     app = require_app(app_id, write=True, conceal=True)
     data = json_object(optional=True)
-    result = PreviewService.enable_previews(app_id, data)
+    try:
+        result = PreviewService.enable_previews(app_id, data)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
     return jsonify(result), 200
 
 
@@ -67,14 +74,12 @@ def redeploy_preview(app_id, preview_id):
         id=preview_id, application_id=app_id).first()
     if not preview:
         return jsonify({'error': 'Preview not found'}), 404
-    result = PreviewService.create_preview(app, {
-        'pr_number': preview.pr_number,
-        'branch': preview.branch,
-        'pr_title': preview.pr_title,
-        'commit_sha': preview.commit_sha,
+    job = enqueue(app_id, {
+        'pr_number': preview.pr_number, 'branch': preview.branch,
+        'pr_title': preview.pr_title, 'commit_sha': preview.commit_sha,
     })
-    status = 400 if result.get('error') else 200
-    return jsonify(result), status
+    return jsonify({'status': 'queued', 'job_id': job.id}), 202
+
 
 
 @previews_bp.route('/<int:app_id>/previews/<int:preview_id>', methods=['DELETE'])
@@ -86,6 +91,18 @@ def destroy_preview(app_id, preview_id):
         id=preview_id, application_id=app_id).first()
     if not preview:
         return jsonify({'error': 'Preview not found'}), 404
-    result = PreviewService.destroy_preview(preview_id)
-    status = 400 if result.get('error') else 200
-    return jsonify(result), status
+    job = enqueue(app_id, {'pr_number': preview.pr_number}, action='destroy')
+    return jsonify({'status': 'queued', 'job_id': job.id}), 202
+
+
+@previews_bp.route('/<int:app_id>/previews', methods=['POST'])
+@developer_required
+def create_preview(app_id):
+    """Queue a pinned same-repository preview (also supports API-key CI callers)."""
+    app = require_app(app_id, write=True, conceal=True)
+    data = json_object()
+    try:
+        job = enqueue(app_id, validate_request(app, data))
+    except (PreviewError, TypeError, ValueError) as exc:
+        raise ValidationError(str(exc) or 'Invalid preview request') from exc
+    return jsonify({'status': 'queued', 'job_id': job.id}), 202

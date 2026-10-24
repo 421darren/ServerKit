@@ -26,7 +26,7 @@ def check_domain(preview):
             raise PreviewError('Preview domain is already configured in nginx.')
 
 
-def provision(app, preview, settings):
+def provision(app, preview, settings, log_callback=None):
     config = GitService.get_app_config(app.id)
     request_token = preview.request_token
     try:
@@ -42,11 +42,15 @@ def provision(app, preview, settings):
         name = identity(preview.id, state['token'])
         state['source'] = True
         runtime.save(preview, state)
+        if log_callback:
+            log_callback('Preparing an isolated checkout at the requested commit.')
         source.prepare(app, preview, target, config['repo_url'])
         state['image'] = True
         runtime.save(preview, state)
-        source.build(app, preview, target, name + ':preview')
-        runtime.start(app, preview, state)
+        source.build(app, preview, target, name + ':preview', log_callback=log_callback)
+        if log_callback:
+            log_callback('Starting preview and checking HTTP health before publishing.')
+        runtime.start(app, preview, state, inherit_environment=bool(settings.inherit_environment))
         db.session.refresh(preview, ['request_token', 'requested_action'])
         db.session.refresh(app, ['deleted_at'])
         if app.deleted_at or preview.request_token != request_token or preview.requested_action == 'destroy':

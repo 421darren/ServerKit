@@ -26,9 +26,10 @@ def prepare(app, preview, target, repo_url):
     shutil.rmtree(target / '.git')
 
 
-def build(app, preview, target, image):
+def build(app, preview, target, image, log_callback=None):
     config = dict(BuildService.get_app_build_config(app.id) or {})
     config['app_path'] = str(target)
+    config['dockerfile_path'] = config.get('dockerfile_path') or 'Dockerfile'
     method = config.get('build_method', 'auto')
     if method == 'auto':
         method = BuildService.detect_build_method(str(target))['build_method']
@@ -43,7 +44,7 @@ def build(app, preview, target, image):
     config['build_args'] = {}
     config['env_vars'] = {}
     result = BuildService.build_from_config(
-        f'preview-{preview.id}', config, image_tag=image,
+        f'preview-{preview.id}', config, image_tag=image, log_callback=log_callback,
     )
     if not result.get('success'):
-        raise PreviewError('Preview image build failed. See the preview build logs.')
+        raise PreviewError('Preview image build failed. See the preview job logs.')

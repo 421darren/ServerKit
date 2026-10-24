@@ -221,4 +221,6 @@ def suspend_application(app, user_id=None):
     app.soft_delete(user_id)
     app.status = 'stopped'
     db.session.commit()
+    from app.services.previews.lifecycle import cleanup_application
+    results['previews'] = cleanup_application(app.id)
     return results

@@ -38,3 +38,23 @@ def current(payload):
         return False
     db.session.refresh(row, ['request_token'])
     return row.request_token == payload['request_token']
+
+
+def validate_request(app, data):
+    from types import SimpleNamespace
+    from app.services.preview_service import PreviewService
+    from app.services.git_service import GitService
+    from .plan import validate
+    settings = PreviewService.get_settings(app.id)
+    if not settings.enabled:
+        raise PreviewError('Enable previews before deploying.')
+    try:
+        number = int(data.get('pr_number'))
+    except (TypeError, ValueError):
+        raise PreviewError('A positive PR number is required.')
+    candidate = SimpleNamespace(pr_number=number, branch=data.get('branch'),
+                                commit_sha=data.get('commit_sha'),
+                                domain=PreviewService._domain_for(app, settings, number, data.get('branch')))
+    validate(app, candidate, settings, GitService.get_app_config(app.id))
+    return {'pr_number': number, 'branch': candidate.branch,
+            'commit_sha': candidate.commit_sha, 'pr_title': data.get('pr_title')}

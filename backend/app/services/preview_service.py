@@ -246,16 +246,16 @@ class PreviewService:
     # ------------------------------------------------------------------ #
 
     @classmethod
-    def create_preview(cls, app, pr_payload, request_payload=None):
+    def create_preview(cls, app, pr_payload, request_payload=None, log_callback=None):
         from app.services.deploy_lock import deploy_lock
         with deploy_lock(app.id, 'preview deploy'):
             from app.services.previews.requests import current
             if request_payload and not current(request_payload):
                 return {'skipped': True, 'reason': 'superseded'}
-            return cls._create_preview_locked(app, pr_payload)
+            return cls._create_preview_locked(app, pr_payload, manual=not request_payload, log_callback=log_callback)
 
     @classmethod
-    def _create_preview_locked(cls, app, pr_payload):
+    def _create_preview_locked(cls, app, pr_payload, manual=True, log_callback=None):
         """Create (or update-in-place) a preview for a PR. Best-effort.
 
         Writes/updates an :class:`ApplicationPreview` row, renders the domain,
@@ -290,6 +290,8 @@ class PreviewService:
                 preview = ApplicationPreview(application_id=app.id, pr_number=pr_number)
                 db.session.add(preview)
 
+            if manual:
+                preview.requested_action = 'create'
             preview.branch = branch
             preview.pr_title = pr_title
             preview.commit_sha = commit_sha
@@ -304,7 +306,7 @@ class PreviewService:
             db.session.commit()
 
             # Best-effort provisioning — degrade gracefully when unavailable.
-            provisioned = cls._provision(app, preview)
+            provisioned = cls._provision(app, preview, log_callback=log_callback)
             if provisioned.get('unsupported'):
                 preview.status = ApplicationPreview.STATUS_UNAVAILABLE
             elif provisioned.get('ok') and provisioned.get('container_ids'):
@@ -326,7 +328,7 @@ class PreviewService:
             return {'error': str(exc)}
 
     @classmethod
-    def _provision(cls, app, preview):
+    def _provision(cls, app, preview, log_callback=None):
         """Best-effort real provisioning. Returns ``{'ok': bool, 'container_ids': [...]}``.
 
         WordPress delegates to its preview hook; generic runtimes have a separate
@@ -350,7 +352,7 @@ class PreviewService:
                     logger.info('WP preview provisioning unavailable: %s', exc)
                     return {'ok': False, 'container_ids': []}
             from app.services.previews.provisioner import provision
-            return provision(app, preview, cls.get_settings(app.id))
+            return provision(app, preview, cls.get_settings(app.id), log_callback=log_callback)
         except Exception as exc:
             logger.info('preview provisioning unavailable: %s', exc)
             return {'ok': False, 'container_ids': []}
@@ -368,6 +370,11 @@ class PreviewService:
                 return {'skipped': True, 'reason': 'superseded'}
             from app import db
             db.session.refresh(row)
+            if not request_payload:
+                import uuid
+                row.request_token = uuid.uuid4().hex
+                row.requested_action = 'destroy'
+                db.session.commit()
             return cls._destroy_preview_locked(preview_id)
 
     @classmethod
@@ -380,7 +387,7 @@ class PreviewService:
             preview = ApplicationPreview.query.get(preview_id)
             if not preview:
                 return {'error': 'preview not found'}
-            if preview.status == ApplicationPreview.STATUS_DESTROYED:
+            if preview.status == ApplicationPreview.STATUS_DESTROYED and not preview.get_runtime_state():
                 return preview.to_dict()
 
             app = None
@@ -453,20 +460,23 @@ class PreviewService:
             ).all()
 
             plan = cls.reconcile(open_prs, active)
-            created = destroyed = updated = 0
+            created = destroyed = updated = failed = 0
             for pr in plan['to_create']:
-                cls.create_preview(app, pr)
-                created += 1
+                result = cls.create_preview(app, pr)
+                created += result.get('status') == 'running'
+                failed += result.get('status') != 'running'
             for pr in plan['to_update']:
-                cls.create_preview(app, pr)  # idempotent update-in-place
-                updated += 1
+                result = cls.create_preview(app, pr)
+                updated += result.get('status') == 'running'
+                failed += result.get('status') != 'running'
             for preview in plan['to_destroy']:
                 pid = preview.get('id') if isinstance(preview, dict) else getattr(preview, 'id', None)
-                cls.destroy_preview(pid)
-                destroyed += 1
+                result = cls.destroy_preview(pid)
+                destroyed += result.get('status') == 'destroyed'
+                failed += result.get('status') != 'destroyed'
 
-            return {'success': True, 'created': created,
-                    'updated': updated, 'destroyed': destroyed}
+            return {'success': failed == 0, 'created': created,
+                    'updated': updated, 'destroyed': destroyed, 'failed': failed}
         except Exception as exc:
             logger.warning('sync_previews failed for app %s: %s', application_id, exc)
             return {'error': str(exc)}
@@ -480,8 +490,8 @@ class PreviewService:
             from app.services.source_connection_service import SourceConnectionService
             fn = getattr(SourceConnectionService, 'list_open_pull_requests', None)
             if callable(fn):
-                prs = fn(app.id) or []
-                return prs if isinstance(prs, list) else []
+                prs = fn(app.id)
+                return prs if isinstance(prs, list) else None
         except Exception as exc:
             logger.debug('open-PR listing unavailable for app %s: %s', app.id, exc)
         return None
@@ -517,8 +527,15 @@ class PreviewService:
         app = Application.query_active().filter_by(
             id=payload.get('application_id')).first()
         if not app:
-            return {'error': 'Service not found'}
-        result = cls.create_preview(app, payload.get('pr') or payload, request_payload=payload)
+            return {'skipped': True, 'reason': 'application_deleted'}
+        stream = None
+        if getattr(job, 'id', None):
+            from app.services.run_log_service import stream_for
+            stream = stream_for(job)
+        result = cls.create_preview(app, payload.get('pr') or payload, request_payload=payload,
+                                    log_callback=(lambda line: stream.log('info', line)) if stream else None)
+        if stream:
+            stream.flush()
         if result.get('skipped'):
             return result
         if result.get('error') or result.get('status') != 'running':
@@ -539,8 +556,8 @@ class PreviewService:
         if payload.get('pr'):
             return cls._job_create(job)
         result = cls.sync_previews(payload.get('application_id'))
-        if result.get('error'):
-            raise RuntimeError(result['error'])
+        if result.get('error') or result.get('failed'):
+            raise RuntimeError(result.get('error') or 'Some preview operations failed')
         return result
 
     @classmethod

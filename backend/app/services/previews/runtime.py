@@ -28,14 +28,13 @@ def inspect(kind, name):
     raise PreviewError('Cannot inspect preview resources; cleanup must be retried.')
 
 
-def start(app, preview, state):
+def start(app, preview, state, inherit_environment=False):
     name = identity(preview.id, state['token'])
     state['container'] = True
     save(preview, state)  # intent before docker run, even if it partially fails
     env = {'SERVERKIT_PREVIEW': 'true', 'SERVERKIT_PR_NUMBER': str(preview.pr_number),
            'SERVERKIT_PREVIEW_BRANCH': preview.branch}
-    from app.services.preview_service import PreviewService
-    if PreviewService.get_settings(app.id).inherit_environment:
+    if inherit_environment:
         from app.services.env_service import EnvService
         entries, complete = EnvService._effective_entries(app)
         if not complete:

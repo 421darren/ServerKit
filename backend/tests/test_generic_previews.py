@@ -25,7 +25,7 @@ def host(app, monkeypatch, tmp_path):
         resources['calls'].append(('clone', str(path), url))
         path.mkdir()
         (path / 'Dockerfile').write_text('FROM scratch')
-    def build(parent, preview, path, image):
+    def build(parent, preview, path, image, **kwargs):
         resources['calls'].append(('build', image))
         resources['images'].add(image)
     monkeypatch.setattr(source, 'prepare', prepare)
@@ -192,8 +192,8 @@ def test_close_during_build_cleans_up_without_publishing(host, monkeypatch):
     parent, resources = host
     monkeypatch.setattr(JobService, 'enqueue', lambda *a, **kw: None)
     original = source.build
-    def build(*args):
-        original(*args)
+    def build(*args, **kwargs):
+        original(*args, **kwargs)
         enqueue(parent.id, PR, action='destroy')
     monkeypatch.setattr(source, 'build', build)
     result = PreviewService.create_preview(parent, PR)
@@ -206,3 +206,165 @@ def test_cleanup_paths_cannot_escape(tmp_path):
         workspace(tmp_path, 1, '../escape')
     with pytest.raises(PreviewError):
         identity(-1, 'a' * 32)
+
+
+def test_failed_cleanup_blocks_purge_and_retention_sweep(host, monkeypatch):
+    from datetime import datetime, timedelta
+    from app.services import recycle_bin_service
+    parent, resources = host
+    result = PreviewService.create_preview(parent, PR)
+    parent.deleted_at = datetime.utcnow() - timedelta(days=90)
+    db.session.commit()
+    monkeypatch.setattr(runtime.DockerService, 'remove_container', lambda *a, **kw: {'success': False})
+    ok, reason = recycle_bin_service.purge('application', parent.id)
+    assert not ok and 'Preview cleanup' in reason
+    assert db.session.get(ApplicationPreview, result['id']).get_runtime_state()
+    counts = recycle_bin_service.purge_expired()
+    assert counts.get('application', 0) == 0
+    assert resources['containers']
+
+
+def test_environment_inheritance_is_opt_in(host):
+    from app.services.env_service import EnvService
+    parent, resources = host
+    EnvService.set_env_var(parent.id, 'DATABASE_URL', 'production-credential', is_secret=True)
+    PreviewService.create_preview(parent, PR)
+    run = [call[1] for call in resources['calls'] if call[0] == 'run'][-1]
+    assert 'DATABASE_URL' not in run['env']
+    PreviewService.enable_previews(parent.id, {'inherit_environment': True})
+    PreviewService.create_preview(parent, PR)
+    run = [call[1] for call in resources['calls'] if call[0] == 'run'][-1]
+    assert run['env']['DATABASE_URL'] == 'production-credential'
+
+
+def test_nginx_reload_failure_keeps_runtime_and_failed_status(host, monkeypatch):
+    parent, resources = host
+    result = PreviewService.create_preview(parent, PR)
+    monkeypatch.setattr(runtime.NginxService, 'disable_site', lambda _: {'success': False})
+    assert PreviewService.destroy_preview(result['id']).get('error')
+    row = db.session.get(ApplicationPreview, result['id'])
+    assert row.get_runtime_state()['vhost']
+    assert row.deleted_at is None and resources['containers']
+
+
+def test_container_daemon_outage_is_not_treated_as_already_removed(host, monkeypatch):
+    parent, resources = host
+    result = PreviewService.create_preview(parent, PR)
+    monkeypatch.setattr(runtime.DockerService, 'run', lambda *a, **kw: {'success': False, 'error': 'daemon unavailable'})
+    assert PreviewService.destroy_preview(result['id']).get('error')
+    assert db.session.get(ApplicationPreview, result['id']).get_runtime_state()['container']
+
+
+def test_api_queues_without_building_and_requires_app_write(host, client, monkeypatch):
+    from factories import headers_for, make_user
+    from app.models import User
+    from app.jobs.service import JobService
+    parent, resources = host
+    owner = db.session.get(User, parent.user_id)
+    queued = []
+    monkeypatch.setattr(JobService, 'enqueue', lambda *a, **kw: queued.append((a, kw)) or SimpleNamespace(id='job-id'))
+    url = f'/api/v1/apps/{parent.id}/previews'
+    result = client.post(url, headers=headers_for(owner), json=PR)
+    assert result.status_code == 202 and result.json['job_id'] == 'job-id'
+    assert not resources['calls'] and len(queued) == 1
+    assert client.post(url, headers=headers_for(owner), json={**PR, 'commit_sha': '-bad'}).status_code == 400
+    stranger = make_user(db, role='developer')
+    assert client.post(url, headers=headers_for(stranger), json=PR).status_code in (403, 404)
+    viewer = make_user(db, role='viewer')
+    assert client.post(url, headers=headers_for(viewer), json=PR).status_code == 403
+    assert len(queued) == 1
+
+
+def test_source_checkout_is_pinned_and_removes_git_credentials(tmp_path, monkeypatch):
+    calls = []
+    target = tmp_path / 'checkout'
+    def clone(path, url, branch):
+        (target / '.git').mkdir(parents=True)
+        (target / '.git' / 'config').write_text('credential')
+        calls.append(('clone', path, url, branch))
+        return {'success': True}
+    monkeypatch.setattr(source.GitService, 'clone_repository', clone)
+    monkeypatch.setattr(source, 'run_checked', lambda argv, **kw: calls.append(argv) or {'success': True})
+    source.prepare(None, SimpleNamespace(**PR), target, 'https://example.test/repo.git')
+    assert any('--is-ancestor' in call and SHA in call for call in calls)
+    assert any('--detach' in call and SHA in call for call in calls)
+    assert not (target / '.git').exists()
+
+
+def test_build_uses_isolated_namespace_and_existing_dispatcher(tmp_path, monkeypatch):
+    from app.services.build_service import BuildService
+    calls = []
+    config = {'app_path': '/production', 'build_method': 'dockerfile',
+              'env_vars': {'SECRET': 'private'}, 'build_args': {'TOKEN': 'private'}}
+    monkeypatch.setattr(BuildService, 'get_app_build_config', lambda _: config)
+    monkeypatch.setattr(BuildService, 'build_from_config', lambda *a, **kw: calls.append((a, kw)) or {'success': True})
+    source.build(SimpleNamespace(id=1), SimpleNamespace(id=2), tmp_path, 'isolated:tag')
+    args, kwargs = calls[0]
+    assert args[0] == 'preview-2'
+    assert args[1]['app_path'] == str(tmp_path)
+    assert args[1]['env_vars'] == args[1]['build_args'] == {}
+    assert config['app_path'] == '/production' and config['env_vars']['SECRET'] == 'private'
+    assert kwargs['image_tag'] == 'isolated:tag'
+
+
+def test_preview_migration_round_trip_and_existing_schema():
+    import importlib.util
+    from pathlib import Path
+    import sqlalchemy as sa
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    file = Path(__file__).parents[1] / 'migrations/versions/111_preview_runtime.py'
+    spec = importlib.util.spec_from_file_location('preview_migration', file)
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    engine = sa.create_engine('sqlite://')
+    with engine.begin() as connection:
+        connection.exec_driver_sql('CREATE TABLE application_previews (id INTEGER PRIMARY KEY)')
+        connection.exec_driver_sql('CREATE TABLE application_preview_settings (application_id INTEGER PRIMARY KEY)')
+        connection.exec_driver_sql('INSERT INTO application_preview_settings VALUES (1)')
+        with Operations.context(MigrationContext.configure(connection)):
+            migration.upgrade()
+            migration.upgrade()
+            assert connection.exec_driver_sql('SELECT inherit_environment FROM application_preview_settings').scalar() == 0
+            assert 'runtime_state' in {c['name'] for c in sa.inspect(connection).get_columns('application_previews')}
+            migration.downgrade()
+            assert {c['name'] for c in sa.inspect(connection).get_columns('application_previews')} == {'id'}
+
+
+def test_partial_docker_run_is_compensated(host, monkeypatch):
+    parent, resources = host
+    original = runtime.DockerService.run_container
+    def partial(**kwargs):
+        original(**kwargs)
+        return {'success': False, 'error': 'start failed after create'}
+    monkeypatch.setattr(runtime.DockerService, 'run_container', partial)
+    result = PreviewService.create_preview(parent, PR)
+    assert result['status'] == 'failed'
+    assert not resources['containers'] and not resources['images']
+
+
+def test_partial_nginx_publish_is_compensated(host, monkeypatch):
+    parent, resources = host
+    original = runtime.NginxService.create_site
+    def partial(*args, **kwargs):
+        original(*args, **kwargs)
+        return {'success': False}
+    monkeypatch.setattr(runtime.NginxService, 'create_site', partial)
+    result = PreviewService.create_preview(parent, PR)
+    assert result['status'] == 'failed'
+    assert not resources['routes'] and not resources['containers']
+
+
+def test_purge_cleans_preview_before_deleting_ownership_record(host, monkeypatch):
+    from datetime import datetime
+    from app.services import recycle_bin_service
+    parent, resources = host
+    result = PreviewService.create_preview(parent, PR)
+    parent.deleted_at = datetime.utcnow()
+    db.session.commit()
+    # Parent host lifecycle has its own suite; only previews touch Docker here.
+    monkeypatch.setattr(recycle_bin_service, '_run_purge_hook', lambda *a: None)
+    ok, warning = recycle_bin_service.purge('application', parent.id)
+    assert ok, warning
+    assert not resources['containers'] and not resources['images']
+    assert db.session.get(ApplicationPreview, result['id']) is None

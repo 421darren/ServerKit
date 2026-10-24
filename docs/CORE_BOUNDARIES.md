@@ -152,11 +152,11 @@ both non-Compose apps and unreadable Compose files, so that case is explicitly
 labelled as unfiltered configuration.
 
 A preview can be advertised as running only after an explicit successful
-provider result with runtime IDs. Generic manifest configuration generation is
-not deployment and reports `unavailable`. Legacy running rows without IDs are
-projected as unavailable without mutating them on read. Only running previews
-with recorded IDs expose a URL. These checks establish provisioning evidence;
-they do not claim live container health or validate DNS reachability.
+provider result with runtime IDs. Generic previews additionally gate on HTTP
+health before publishing nginx. Legacy running rows without IDs are projected
+as unavailable without mutating them on read. The generic URL scheme reflects
+whether a covering single-label wildcard certificate was actually selected;
+otherwise it is HTTP. DNS must point to the preview host.
 
 Regression coverage: `test_effective_env.py`, `test_env_vars_api.py`,
 `test_compose_env_overlay.py`, `test_previews.py`, and
@@ -164,3 +164,57 @@ Regression coverage: `test_effective_env.py`, `test_env_vars_api.py`,
 check runs in frontend CI and covers service switching with late replies,
 failed discovery, masking, incomplete results, retry, the local editor, and
 preview link/toast behavior.
+
+
+## Generic preview deployment ownership
+
+`services/previews/` separates six concerns:
+
+- `plan.py`: pure eligibility, resource identities and path containment.
+- `requests.py`: short request reservations and queued desired state. PR closes
+  supersede queued/in-flight creates; old jobs cannot revive a newer request.
+- `source.py`: independent Git clone, exact reachable commit checkout, credential
+  metadata removal, and delegation to `BuildService.build_from_config`.
+- `runtime.py`: persisted resource intent, Docker start/inspection/cleanup,
+  existing HTTP health gate, and nginx publication/removal.
+- `provisioner.py`: validation, sequencing and compensation on failure.
+- `lifecycle.py`: cleanup when deleting or purging the parent application.
+
+Generic support currently means local Git-backed single-container apps using
+Dockerfiles or container buildpacks with nginx ingress. Compose, remote targets,
+proxy-stack ingress, and host-command builds are rejected. Fork commits must
+be reachable from the selected branch in the parent's configured repository;
+arbitrary fork repositories are not fetched. Redeploy is stop/recreate, not a
+zero-downtime switch. Signed PR update webhooks deploy their supplied commit;
+full open-PR discovery remains unavailable and fails without deleting anything.
+
+Production deployment records, source trees, container identities, ports,
+volumes, networks and build configuration are never repurposed. Each preview
+attempt has a random generation name, an isolated image and checkout, and a
+Docker-assigned loopback host port. Parent build secrets are not copied.
+Runtime environment inheritance defaults off and is an explicit setting; when
+on, it can grant preview code access to production services. Use only trusted
+PR code and credentials appropriate to its intended environment.
+
+Migration `111_preview_runtime` records the cleanup ledger, request token,
+desired action, error and environment opt-in. Persist each resource intent
+before touching the host, and clear it only after successful cleanup. Docker
+inspection failure is not evidence that a resource is gone. Failed deletion
+retains the ledger and reports failure; retry deletion to finish. Application
+purge/retention must keep the parent row when preview cleanup fails so the
+ownership record is not lost. Interrupted builds can likewise be deleted or
+redeployed using their persisted ledger.
+
+Create, redeploy and delete return 202 with a unified job ID; build output goes
+to the existing Jobs log stream. The new create endpoint deliberately supports
+API-key CI automation through `developer_required`, plus app write access.
+Existing JWT-only endpoints retain their authentication boundary. UI refresh is
+manual and queued deletion never claims cleanup already finished.
+
+Run `test_generic_previews.py`, `test_preview_boundaries.py`, existing preview,
+buildpack, recycle-bin, authorization and migration suites. For a disposable
+real Git/Docker smoke run, set `SERVERKIT_REAL_PREVIEWS=1` and run
+`tests/test_real_generic_preview.py`: it builds two exact commits, checks their
+HTTP responses and cleanup, while rendering rather than installing nginx sites.
+The existing frontend browser check covers the pinned create form, environment
+opt-in, and queued deletion. No new UI styling system is introduced.
