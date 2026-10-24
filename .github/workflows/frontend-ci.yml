@@ -83,6 +83,12 @@ jobs:
       - name: Effective environment and preview browser regressions
         working-directory: frontend
         run: node scripts/effective-environment-browser.mjs
+      - name: Search focus browser regressions
+        working-directory: frontend
+        run: npm run test:search-focus
+      - name: Assistant deployment browser regressions
+        working-directory: frontend
+        run: npm run test:ai-operations
       - name: Upload Settings screenshots
         if: always()
         uses: actions/upload-artifact@v4
