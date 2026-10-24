@@ -20,9 +20,16 @@ export function useTopbarActions(actions, deps = []) {
     useEffect(() => {
         if (!setTopbarActions) return undefined;
         setTopbarActions(typeof actions === 'function' ? actions() : actions);
-        return () => setTopbarActions(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [setTopbarActions, ...deps]);
+
+    // Clear only when this page leaves the tab group. Dependency changes
+    // republish the actions in place; a transient clear is unnecessary and
+    // can disrupt controls hosted in the bar.
+    useEffect(() => {
+        if (!setTopbarActions) return undefined;
+        return () => setTopbarActions(null);
+    }, [setTopbarActions]);
 }
 
 // The SECOND top-bar slot: a table's own chrome — search, the filter button and

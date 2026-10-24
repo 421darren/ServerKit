@@ -17,15 +17,24 @@ export function SearchField({
     const timer = useRef(null);
 
     // Sync when the parent resets/changes the value programmatically (e.g. a
-    // "Reset filters" action). Typing keeps text ahead of the debounced value,
-    // and setting to an equal string is a no-op, so this won't fight the user.
-    useEffect(() => { setText(value); }, [value]);
+    // "Reset filters" action). Cancel any pending search so it cannot restore
+    // the old query after the parent has cleared it.
+    useEffect(() => {
+        if (timer.current) {
+            clearTimeout(timer.current);
+            timer.current = null;
+        }
+        setText(value);
+    }, [value]);
     useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
     const handleChange = (next) => {
         setText(next);
         if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => onSearch?.(next), debounce);
+        timer.current = setTimeout(() => {
+            timer.current = null;
+            onSearch?.(next);
+        }, debounce);
     };
 
     return (
