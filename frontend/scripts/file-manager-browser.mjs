@@ -15,6 +15,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {MemoryRouter} from 'react-router-dom';
 import FileManager from '/src/pages/FileManager.jsx';
+import {ConfirmProvider} from '/src/contexts/ConfirmContext.jsx';
 window.pending=[];
 const listing=(p)=>({path:p,parent:p==='/'?null:p.replace(/\\/[^/]+$/,'')||'/',entries:p==='/home'?[{name:'projects',path:'/home/projects',is_dir:true,type:'directory',size:0,permissions:'drwxr-xr-x',permissions_octal:'750'}]:[{name:'inside-'+p.split('/').pop()+'.txt',path:p+'/x.txt',is_dir:false,type:'file',size:1}]});
 window.release=(p)=>{const i=window.pending.findIndex(x=>x.path===p);const x=window.pending.splice(i,1)[0];x.resolve(listing(p));};
@@ -26,7 +27,7 @@ window.testApi={
  renameFile:(p,n)=>{(window.ops=window.ops||[]).push(['rename',p,n]);return Promise.resolve({});},
  changeFilePermissions:(p,m)=>{(window.ops=window.ops||[]).push(['chmod',p,m]);return Promise.resolve({});},
 };
-createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/files']}><FileManager/></MemoryRouter>);
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/files']}><ConfirmProvider><FileManager/></ConfirmProvider></MemoryRouter>);
 `;
 const server = await createServer({
     root, configFile: false, logLevel: 'error', resolve: { alias: { '@': path.join(root, 'src') } },
@@ -150,6 +151,155 @@ try {
     assert.equal(await sw.getByText('projects', { exact: true }).count(), 0, 'the panel host listing is still shown');
     assert.deepEqual(swErrors, []);
     console.log('PASS switching to a remote agent reloads the listing from that agent');
+
+    // A local request still in flight must not replace the agent's listing.
+    const late = await browser.newPage();
+    await late.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await late.getByText('projects', { exact: true }).first().waitFor();
+    await late.getByText('projects', { exact: true }).first().dblclick();
+    await late.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await late.getByRole('button', { name: 'pick-agent' }).click();
+    await late.getByText('on-agent.txt').first().waitFor();
+    await late.evaluate(() => window.release('/home/projects'));
+    await late.waitForTimeout(100);
+    assert.equal(await late.getByText('inside-projects.txt').count(), 0);
+    assert.equal(await late.getByTitle('Back', { exact: true }).isDisabled(), true,
+        'navigation history must not cross storage targets');
+    console.log('PASS late local responses and history cannot cross a target switch');
+
+    // Search responses and canceled searches must not overwrite navigation.
+    const search = await browser.newPage();
+    await search.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await search.getByText('projects', { exact: true }).first().waitFor();
+    await search.evaluate(() => {
+        window.testApi.searchFiles = () => new Promise(resolve => { window.finishSearch = resolve; });
+    });
+    await search.getByPlaceholder('Search files…').fill('old');
+    await search.getByPlaceholder('Search files…').press('Enter');
+    await search.waitForFunction(() => Boolean(window.finishSearch));
+    await search.getByTitle('Home', { exact: true }).click();
+    // Home is already the current folder, so explicitly refresh it.
+    await search.locator('.file-manager-toolbar').getByTitle('Refresh', { exact: true }).click();
+    await search.getByText('projects', { exact: true }).first().waitFor();
+    await search.evaluate(() => window.finishSearch({ results: [{ name: 'stale-result.txt', path: '/old', is_dir: false }] }));
+    await search.waitForTimeout(100);
+    assert.equal(await search.getByText('stale-result.txt').count(), 0);
+    console.log('PASS a late search cannot overwrite a refreshed directory');
+    await search.getByPlaceholder('Search files…').fill('cancel me');
+    await search.getByPlaceholder('Search files…').press('Enter');
+    await search.locator('.search-field-clear').click();
+    await search.evaluate(() => window.finishSearch({ results: [{ name: 'canceled-result.txt', path: '/old', is_dir: false }] }));
+    await search.waitForTimeout(100);
+    assert.equal(await search.getByText('canceled-result.txt').count(), 0);
+    console.log('PASS clearing search invalidates its pending response');
+
+    // Read A, then B; A arriving last must not become B's editable contents.
+    const editor = await browser.newPage();
+    const editorErrors = [];
+    editor.on('pageerror', error => editorErrors.push(error.message));
+    await editor.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await editor.getByText('projects', { exact: true }).first().waitFor();
+    await editor.evaluate(() => {
+        window.reads = {};
+        window.testApi.browseFiles = p => Promise.resolve({ path: p, parent: '/', entries:
+            ['a.txt', 'b.txt'].map(name => ({ name, path: p + '/' + name, is_dir: false, is_editable: true, size: 1 })) });
+        window.testApi.readFile = p => new Promise(resolve => { window.reads[p] = resolve; });
+        window.testApi.writeFile = () => Promise.reject(new Error('disk full'));
+    });
+    await editor.locator('.file-manager-toolbar').getByTitle('Refresh', { exact: true }).click();
+    await editor.getByText('a.txt', { exact: true }).first().dblclick();
+    await editor.waitForFunction(() => Boolean(window.reads['/home/a.txt']));
+    await editor.getByText('b.txt', { exact: true }).first().dblclick();
+    await editor.waitForFunction(() => Boolean(window.reads['/home/b.txt']));
+    await editor.evaluate(() => window.reads['/home/b.txt']({ content: 'new-content' }));
+    await editor.getByLabel('File contents').getByText('new-content', { exact: true }).waitFor();
+    await editor.evaluate(() => window.reads['/home/a.txt']({ content: 'old-content' }));
+    await editor.waitForTimeout(100);
+    assert.equal(await editor.getByText('old-content', { exact: true }).count(), 0);
+    const preview = editor.getByRole('complementary', { name: 'File preview' });
+    await preview.getByRole('button', { name: 'Edit', exact: true }).click();
+    await preview.locator('textarea').fill('unsaved draft');
+    await preview.getByRole('button', { name: 'Save', exact: true }).click();
+    await editor.waitForFunction(() => (window.toasts || []).length > 0);
+    assert.equal(await preview.locator('textarea').inputValue(), 'unsaved draft');
+    await editor.getByRole('button', { name: 'pick-agent' }).click();
+    await editor.getByText('on-agent.txt').first().waitFor();
+    assert.equal(await preview.count(), 0, 'the previous target preview stayed open');
+    assert.deepEqual(editorErrors, []);
+    console.log('PASS preview read races, failed-save draft retention and target reset');
+
+    // Shared confirmation must preserve cancel semantics and partial failures.
+    const deletion = await browser.newPage();
+    await deletion.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await deletion.getByText('projects', { exact: true }).first().waitFor();
+    await deletion.evaluate(() => {
+        window.deleted = [];
+        window.testApi.deleteFile = p => { window.deleted.push(p); return Promise.resolve({}); };
+    });
+    await deletion.getByTitle('Delete', { exact: true }).first().click();
+    await deletion.getByRole('alertdialog').getByRole('button', { name: 'Cancel', exact: true }).click();
+    assert.deepEqual(await deletion.evaluate(() => window.deleted), []);
+    await deletion.getByTitle('Delete', { exact: true }).first().click();
+    await deletion.getByRole('alertdialog').getByRole('button', { name: 'Delete', exact: true }).click();
+    await deletion.waitForFunction(() => window.deleted.length === 1);
+    assert.deepEqual(await deletion.evaluate(() => window.deleted), ['/home/projects']);
+    console.log('PASS shared delete confirmation cancels or executes the intended path');
+
+    // Back/forward still works after moving the toolbar into its own component.
+    const nav = await browser.newPage();
+    await nav.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await nav.getByText('projects', { exact: true }).first().waitFor();
+    await nav.getByText('projects', { exact: true }).first().dblclick();
+    await nav.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await nav.evaluate(() => window.release('/home/projects'));
+    await nav.getByText('inside-projects.txt').waitFor();
+    await nav.getByTitle('Back', { exact: true }).click();
+    await nav.getByText('projects', { exact: true }).first().waitFor();
+    assert.equal(await nav.getByTitle('Forward', { exact: true }).isDisabled(), false);
+    await nav.getByTitle('Forward', { exact: true }).click();
+    await nav.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await nav.evaluate(() => window.release('/home/projects'));
+    await nav.getByText('inside-projects.txt').waitFor();
+    console.log('PASS directory back and forward navigation');
+
+    const transfer = await browser.newPage();
+    await transfer.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await transfer.getByText('projects', { exact: true }).first().waitFor();
+    await transfer.evaluate(() => {
+        window.uploadPaths = [];
+        window.testApi.uploadFile = (p, file, progress) => {
+            window.uploadPaths.push([p, file.name]);
+            progress(50);
+            return new Promise(resolve => { window.finishUpload = resolve; });
+        };
+    });
+    await transfer.locator('input[type="file"]').setInputFiles({ name: 'upload.txt', mimeType: 'text/plain', buffer: Buffer.from('test') });
+    await transfer.waitForFunction(() => Boolean(window.finishUpload));
+    await transfer.getByText('projects', { exact: true }).first().dblclick();
+    await transfer.waitForFunction(() => window.pending.some(x => x.path === '/home/projects'));
+    await transfer.evaluate(() => window.release('/home/projects'));
+    await transfer.getByText('inside-projects.txt').waitFor();
+    const callsBeforeUpload = await transfer.evaluate(() => window.calls.length);
+    await transfer.evaluate(() => window.finishUpload({}));
+    await transfer.getByText('Uploads complete', { exact: true }).waitFor();
+    assert.deepEqual(await transfer.evaluate(() => window.uploadPaths), [['/home', 'upload.txt']]);
+    assert.equal(await transfer.evaluate(() => window.calls.length), callsBeforeUpload,
+        'finishing an upload must not reload or navigate to the previous directory');
+    console.log('PASS uploads retain their destination without disrupting later navigation');
+
+    const images = await browser.newPage();
+    await images.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await images.getByText('projects', { exact: true }).first().waitFor();
+    await images.evaluate(() => {
+        window.blobCalls = [];
+        window.testApi.getFileBlob = p => { window.blobCalls.push(p); return Promise.resolve(new Blob(['x'])); };
+        window.testApi.browseRemoteFiles = (_id, p) => Promise.resolve({ path: p, entries: [{ name: 'remote.png', path: p + '/remote.png', is_dir: false }] });
+    });
+    await images.getByRole('button', { name: 'pick-agent' }).click();
+    await images.getByText('remote.png', { exact: true }).first().dblclick();
+    await images.getByText('Image preview unavailable', { exact: true }).waitFor();
+    assert.deepEqual(await images.evaluate(() => window.blobCalls), []);
+    console.log('PASS agent image previews never fetch files from the panel host');
 } finally {
     await browser?.close();
     await server.close();

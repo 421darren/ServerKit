@@ -29,7 +29,7 @@ export default function PreviewDrawer({
     // When true, render as a flush inline pane (file-manager 3rd column)
     // instead of a fixed-position drawer-over-scrim.
     inline = false,
-    isS3 = false,
+    fileApi,
 }) {
     const { t } = useTranslation();
     // Lock body scroll only for the overlay drawer; the inline pane scrolls
@@ -114,7 +114,7 @@ export default function PreviewDrawer({
                         <div className="preview-image-wrap">
                             <ImageThumb
                                 path={file.path}
-                                isS3={isS3}
+                                fileApi={fileApi}
                                 fallback={
                                     <div className="preview-unavailable">
                                         <EyeOff size={48} strokeWidth={1.5} />

@@ -24,7 +24,7 @@ for (const kind of ['agent', 's3']) {
     test(`${kind} unsupported operations never reach the panel host`, () => {
         const { adapter, calls } = fixture({ kind, server_id: 7 });
         const unsupported = ['search', 'create folder', 'rename', 'change permissions'];
-        if (kind === 'agent') unsupported.push('delete', 'download', 'upload');
+        if (kind === 'agent') unsupported.push('delete', 'download', 'upload', 'preview');
         for (const operation of unsupported) {
             assert.equal(adapter.supports(operation), false);
             assert.throws(() => adapter[operation]('/home/a'), /unavailable/);

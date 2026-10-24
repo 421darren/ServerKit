@@ -9,6 +9,9 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkFileManagerBoundaries } from './check-file-manager-boundaries.mjs';
+
+checkFileManagerBoundaries();
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');

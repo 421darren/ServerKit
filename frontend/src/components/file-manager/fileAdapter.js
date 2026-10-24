@@ -1,7 +1,7 @@
 // All file operations cross this boundary. Unsupported targets never fall back
 // to the panel host, even if a caller forgets to disable a control.
 const OPERATIONS = ['browse', 'read', 'write', 'delete', 'download', 'upload',
-    'search', 'create folder', 'rename', 'change permissions'];
+    'search', 'create folder', 'rename', 'change permissions', 'preview'];
 
 function unwrapAgentData(result) {
     return result && typeof result === 'object' && 'success' in result && 'data' in result
@@ -20,6 +20,7 @@ export function createFileAdapter(api, target) {
         'create folder': (path) => api.createDirectory(path),
         rename: (path, name) => api.renameFile(path, name),
         'change permissions': (path, mode) => api.changeFilePermissions(path, mode),
+        preview: async (path) => ({ blob: await api.getFileBlob(path) }),
     };
     const agent = {
         browse: async (path) => unwrapAgentData(await api.browseRemoteFiles(target.server_id, path)),
@@ -33,6 +34,7 @@ export function createFileAdapter(api, target) {
         delete: (path) => api.deleteS3(path),
         download: (entry) => api.downloadS3File(entry.path),
         upload: (path, file, progress) => api.uploadS3(path, file, progress),
+        preview: (path) => api.getS3DownloadUrl(path),
     };
     const methods = { local, agent, s3 }[target.kind];
     if (!methods) throw new Error(`Unknown file target: ${target.kind}`);
