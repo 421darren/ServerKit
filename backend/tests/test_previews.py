@@ -156,12 +156,12 @@ def test_create_and_destroy_writes_rows_and_flips_status(app):
             'pr_title': 'Add X',
         })
         assert created.get('pr_number') == 12
-        assert created.get('status') == ApplicationPreview.STATUS_UNAVAILABLE
+        assert created.get('status') == ApplicationPreview.STATUS_FAILED
         assert created['url'] is None
         assert created.get('domain')  # a domain was rendered
 
         row = ApplicationPreview.query.filter_by(application_id=a.id, pr_number=12).first()
-        assert row is not None and row.status == ApplicationPreview.STATUS_UNAVAILABLE
+        assert row is not None and row.status == ApplicationPreview.STATUS_FAILED
 
         destroyed = PreviewService.destroy_preview(row.id)
         assert destroyed.get('status') == ApplicationPreview.STATUS_DESTROYED

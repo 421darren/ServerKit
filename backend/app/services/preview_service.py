@@ -171,6 +171,10 @@ class PreviewService:
             row = ApplicationPreviewSettings(application_id=application_id)
             db.session.add(row)
 
+        if 'inherit_environment' in settings:
+            if not isinstance(settings['inherit_environment'], bool):
+                raise ValueError('inherit_environment must be a boolean')
+            row.inherit_environment = settings['inherit_environment']
         if 'enabled' in settings:
             row.enabled = bool(settings['enabled'])
         if 'domain_template' in settings and settings['domain_template']:
@@ -242,7 +246,16 @@ class PreviewService:
     # ------------------------------------------------------------------ #
 
     @classmethod
-    def create_preview(cls, app, pr_payload):
+    def create_preview(cls, app, pr_payload, request_payload=None):
+        from app.services.deploy_lock import deploy_lock
+        with deploy_lock(app.id, 'preview deploy'):
+            from app.services.previews.requests import current
+            if request_payload and not current(request_payload):
+                return {'skipped': True, 'reason': 'superseded'}
+            return cls._create_preview_locked(app, pr_payload)
+
+    @classmethod
+    def _create_preview_locked(cls, app, pr_payload):
         """Create (or update-in-place) a preview for a PR. Best-effort.
 
         Writes/updates an :class:`ApplicationPreview` row, renders the domain,
@@ -254,10 +267,15 @@ class PreviewService:
         from app.models.application_preview import ApplicationPreview
 
         try:
+            db.session.refresh(app)
+            if app.deleted_at is not None:
+                return {'error': 'Service not found'}
             pr_number = cls._pr_field(pr_payload, 'pr_number', 'number')
             if pr_number is None:
                 return {'error': 'pr_number is required'}
             pr_number = int(pr_number)
+            if pr_number <= 0:
+                return {'error': 'PR number must be positive'}
             branch = cls._pr_field(pr_payload, 'branch', 'head_ref', 'head')
             pr_title = cls._pr_field(pr_payload, 'pr_title', 'title')
             commit_sha = cls._pr_field(pr_payload, 'commit_sha', 'sha', 'head_sha')
@@ -280,8 +298,8 @@ class PreviewService:
             preview.deleted_at = None
 
             ttl_days = getattr(settings, 'ttl_days', None)
-            if ttl_days:
-                preview.expires_at = datetime.utcnow() + timedelta(days=int(ttl_days))
+            preview.expires_at = (datetime.utcnow() + timedelta(days=int(ttl_days))
+                                  if ttl_days else None)
 
             db.session.commit()
 
@@ -295,6 +313,8 @@ class PreviewService:
                 preview.status = ApplicationPreview.STATUS_FAILED
             if provisioned.get('container_ids'):
                 preview.set_container_ids(provisioned['container_ids'])
+            elif not preview.get_runtime_state().get('container'):
+                preview.set_container_ids([])
             db.session.commit()
             return preview.to_dict()
         except Exception as exc:
@@ -309,8 +329,8 @@ class PreviewService:
     def _provision(cls, app, preview):
         """Best-effort real provisioning. Returns ``{'ok': bool, 'container_ids': [...]}``.
 
-        WordPress delegates to its preview hook. Generic config generation is
-        not provisioning: until a runtime provisioner exists, report unsupported.
+        WordPress delegates to its preview hook; generic runtimes have a separate
+        journalled provisioner reusing the standard container builders.
         A provider must explicitly report success and return runtime identifiers.
         """
         try:
@@ -329,24 +349,29 @@ class PreviewService:
                 except Exception as exc:
                     logger.info('WP preview provisioning unavailable: %s', exc)
                     return {'ok': False, 'container_ids': []}
-            # Non-WP: clone the manifest-resolved config (env + per-preview
-            # overrides + domain) when the app is manifest-managed (#20). The
-            # resolved config is the portable unit; a full Docker clone for
-            # generic apps remains best-effort future work.
-            manifest_preview = None
-            try:
-                from app.services.manifest_preview_service import ManifestPreviewService
-                manifest_preview = ManifestPreviewService.build_preview_config(app, preview)
-            except Exception as exc:
-                logger.info('manifest preview config unavailable: %s', exc)
-            return {'ok': False, 'unsupported': True, 'container_ids': [],
-                    'manifest_preview': manifest_preview}
+            from app.services.previews.provisioner import provision
+            return provision(app, preview, cls.get_settings(app.id))
         except Exception as exc:
             logger.info('preview provisioning unavailable: %s', exc)
             return {'ok': False, 'container_ids': []}
 
     @classmethod
-    def destroy_preview(cls, preview_id):
+    def destroy_preview(cls, preview_id, request_payload=None):
+        from app.models.application_preview import ApplicationPreview
+        from app.services.deploy_lock import deploy_lock
+        row = ApplicationPreview.query.get(preview_id)
+        if not row:
+            return {'error': 'preview not found'}
+        with deploy_lock(row.application_id, 'preview cleanup'):
+            from app.services.previews.requests import current
+            if request_payload and not current(request_payload):
+                return {'skipped': True, 'reason': 'superseded'}
+            from app import db
+            db.session.refresh(row)
+            return cls._destroy_preview_locked(preview_id)
+
+    @classmethod
+    def _destroy_preview_locked(cls, preview_id):
         """Tear down a preview and mark it destroyed. Best-effort; never raises."""
         from app import db
         from app.models.application_preview import ApplicationPreview
@@ -367,6 +392,10 @@ class PreviewService:
                 app = Application.query.get(preview.application_id)
             except Exception:
                 pass
+
+            if preview.runtime_state:
+                from app.services.previews.runtime import cleanup
+                cleanup(preview)
 
             # Best-effort WordPress teardown.
             if app is not None and getattr(app, 'app_type', None) == 'wordpress':
@@ -391,7 +420,11 @@ class PreviewService:
                 db.session.rollback()
             except Exception:
                 pass
-            return {'error': str(exc)}
+            if preview:
+                preview.status = ApplicationPreview.STATUS_FAILED
+                preview.error_message = 'Preview cleanup failed; retry deletion.'
+                db.session.commit()
+            return {'error': 'Preview cleanup failed; retry deletion.'}
 
     @classmethod
     def sync_previews(cls, application_id):
@@ -412,6 +445,8 @@ class PreviewService:
                 return {'error': 'Service not found'}
 
             open_prs = cls._fetch_open_prs(app)
+            if open_prs is None:
+                return {'error': 'Open PR discovery is unavailable; existing previews were left unchanged.'}
             active = ApplicationPreview.query.filter(
                 ApplicationPreview.application_id == application_id,
                 ApplicationPreview.status != ApplicationPreview.STATUS_DESTROYED,
@@ -449,7 +484,7 @@ class PreviewService:
                 return prs if isinstance(prs, list) else []
         except Exception as exc:
             logger.debug('open-PR listing unavailable for app %s: %s', app.id, exc)
-        return []
+        return None
 
     @classmethod
     def expire_stale(cls):
@@ -464,9 +499,8 @@ class PreviewService:
                 ApplicationPreview.expires_at < now,
                 ApplicationPreview.status != ApplicationPreview.STATUS_DESTROYED,
             ).all()
-            for preview in stale:
-                cls.destroy_preview(preview.id)
-            return {'expired': len(stale)}
+            expired = sum(cls.destroy_preview(p.id).get('status') == 'destroyed' for p in stale)
+            return {'expired': expired, 'failed': len(stale) - expired}
         except Exception as exc:
             logger.warning('expire_stale failed: %s', exc)
             return {'expired': 0, 'error': str(exc)}
@@ -484,17 +518,30 @@ class PreviewService:
             id=payload.get('application_id')).first()
         if not app:
             return {'error': 'Service not found'}
-        return cls.create_preview(app, payload.get('pr') or payload)
+        result = cls.create_preview(app, payload.get('pr') or payload, request_payload=payload)
+        if result.get('skipped'):
+            return result
+        if result.get('error') or result.get('status') != 'running':
+            raise RuntimeError(result.get('error') or result.get('status_reason') or 'Preview was not deployed')
+        return result
 
     @classmethod
     def _job_destroy(cls, job):
         payload = job.get_payload() or {}
-        return cls.destroy_preview(payload.get('preview_id'))
+        result = cls.destroy_preview(payload.get('preview_id'), request_payload=payload)
+        if result.get('error'):
+            raise RuntimeError(result['error'])
+        return result
 
     @classmethod
     def _job_sync(cls, job):
         payload = job.get_payload() or {}
-        return cls.sync_previews(payload.get('application_id'))
+        if payload.get('pr'):
+            return cls._job_create(job)
+        result = cls.sync_previews(payload.get('application_id'))
+        if result.get('error'):
+            raise RuntimeError(result['error'])
+        return result
 
     @classmethod
     def _job_expire(cls, _job):

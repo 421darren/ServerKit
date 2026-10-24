@@ -48,6 +48,12 @@ class ApplicationPreview(TimestampMixin, JsonColumnMixin, db.Model):
     # when Docker isn't available, e.g. dev/test).
     container_ids = db.Column(db.Text, nullable=True)
 
+    # Durable intent ledger: written before external effects, retained on cleanup failure.
+    request_token = db.Column(db.String(32), nullable=True)
+    requested_action = db.Column(db.String(16), nullable=True)
+    runtime_state = db.Column(db.Text, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
     commit_sha = db.Column(db.String(64), nullable=True)
     expires_at = db.Column(db.DateTime, nullable=True)
 
@@ -59,6 +65,12 @@ class ApplicationPreview(TimestampMixin, JsonColumnMixin, db.Model):
 
     def set_container_ids(self, ids):
         self._json_write('container_ids', list(ids or []), falsy='[]')
+
+    def get_runtime_state(self):
+        return self._json_read('runtime_state', {}, expect=dict)
+
+    def set_runtime_state(self, state):
+        self._json_write('runtime_state', state, falsy='{}')
 
     def to_dict(self):
         container_ids = self.get_container_ids()
@@ -75,11 +87,11 @@ class ApplicationPreview(TimestampMixin, JsonColumnMixin, db.Model):
             'branch': self.branch,
             'status': status,
             'status_reason': (
-                'No provisioned runtime is recorded for this preview.'
-                if status == self.STATUS_UNAVAILABLE else None
+                self.error_message or ('No provisioned runtime is recorded for this preview.'
+                if status == self.STATUS_UNAVAILABLE else None)
             ),
             'domain': self.domain,
-            'url': (f'https://{self.domain}'
+            'url': (f"{self.get_runtime_state().get('scheme', 'https')}://{self.domain}"
                     if self.domain and status == self.STATUS_RUNNING and container_ids else None),
             'container_ids': container_ids,
             'commit_sha': self.commit_sha,
@@ -107,6 +119,7 @@ class ApplicationPreviewSettings(TimestampMixin, db.Model):
     application = db.relationship('Application',
                                   backref=db.backref('preview_settings', uselist=False))
 
+    inherit_environment = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
     enabled = db.Column(db.Boolean, default=False, nullable=False)
     domain_template = db.Column(
         db.String(255), default=DEFAULT_DOMAIN_TEMPLATE, nullable=False)
@@ -120,6 +133,7 @@ class ApplicationPreviewSettings(TimestampMixin, db.Model):
         return {
             'application_id': self.application_id,
             'enabled': bool(self.enabled),
+            'inherit_environment': bool(self.inherit_environment),
             'domain_template': self.domain_template or self.DEFAULT_DOMAIN_TEMPLATE,
             'target_server_id': self.target_server_id,
             'ttl_days': self.ttl_days,

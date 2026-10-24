@@ -622,6 +622,17 @@ class BuildService:
         if not build_config:
             return {'success': False, 'error': 'Build is not set up for this service'}
 
+        return cls.build_from_config(app_id, build_config, no_cache=no_cache,
+                                     log_callback=log_callback, image_tag=image_tag)
+
+    @classmethod
+    def build_from_config(cls, app_id, build_config, no_cache=False,
+                          log_callback=None, image_tag=None):
+        """Build an explicit workspace without changing an app's saved config.
+
+        Isolated consumers must supply their own log namespace and image tag.
+        The production build() entry point delegates here too.
+        """
         app_path = build_config['app_path']
         build_method = build_config.get('build_method', 'auto')
         timeout = build_config.get('timeout', cls.DEFAULT_TIMEOUT)
