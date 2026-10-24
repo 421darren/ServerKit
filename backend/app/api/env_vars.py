@@ -26,6 +26,13 @@ def get_env_vars(app_id):
     user = get_current_user()
     app = require_app(app_id)
 
+    if request.args.get('view') == 'effective':
+        service = request.args.get('service') or None
+        if service is not None and (len(service) > 255 or not all(
+                c.isalnum() or c in '._-' for c in service)):
+            return jsonify({'error': 'Invalid service name'}), 400
+        return jsonify(EnvService.get_effective_env_view(app_id, service=service)), 200
+
     # A read-only grant never sees secret values, whatever ?mask says.
     mask_secrets = (request.args.get('mask', 'false').lower() == 'true'
                     or not ResourceGrantService.can_edit_app(user, app))

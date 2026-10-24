@@ -135,3 +135,59 @@ def test_deploy_docker_injects_effective_env(app, monkeypatch):
         assert env['SHARED_ONLY'] == 'from_group'    # shared var reached the container
         assert env['OVERRIDE_ME'] == 'local_value'   # local won the collision
         assert env['LOCAL_ONLY'] == 'local_only'
+
+
+def test_effective_view_matches_winners_without_values(app):
+    from app import db
+    from app.services.env_service import EnvService
+    with app.app_context():
+        a = _make_app(workspace_id=7)
+        _make_scoped_group('workspace', 7, 'SHARED', 'inherited-secret')
+        _make_scoped_group('workspace', 7, 'OVERRIDE', 'old-secret')
+        _set_local(a.id, 'OVERRIDE', 'new-secret', is_secret=True)
+        local = _set_local(a.id, 'TARGET', 'target-secret')
+        local.target_service = 'web'
+        db.session.commit()
+        for service in ('web', 'worker'):
+            view = EnvService.get_effective_env_view(a.id, service)
+            deployed = EnvService.get_effective_env_for_services(a.id, [service])[service]
+            assert view['complete'] and view['values_hidden']
+            assert {row['key'] for row in view['env_vars']} == set(deployed)
+            rows = {row['key']: row for row in view['env_vars']}
+            assert rows['SHARED']['source_scope'] == 'workspace'
+            assert rows['OVERRIDE']['source_scope'] == 'local'
+            assert rows['OVERRIDE']['overrides']['group_name'] == 'workspace-grp'
+            assert 'secret' not in str(view).replace('is_secret', '')
+            assert all('value' not in row for row in rows.values())
+
+
+def test_effective_view_reports_incomplete_shared_resolution(app, monkeypatch):
+    from app.services.env_service import EnvService
+    from app.services.shared_resource_service import SharedResourceService
+    with app.app_context():
+        a = _make_app()
+        _set_local(a.id, 'LOCAL', 'private')
+        def fail(*args, **kwargs):
+            raise RuntimeError('sensitive connection details')
+        monkeypatch.setattr(SharedResourceService, 'resolve_hierarchical', fail)
+        view = EnvService.get_effective_env_view(a.id)
+        assert view['complete'] is False
+        assert [row['key'] for row in view['env_vars']] == ['LOCAL']
+        assert 'sensitive' not in str(view)
+        assert EnvService.get_effective_env(a.id) == {'LOCAL': 'private'}
+
+
+def test_effective_view_never_resolves_local_references(app, monkeypatch):
+    from app import db
+    from app.services.env_service import EnvService
+    with app.app_context():
+        a = _make_app()
+        ev = _set_local(a.id, 'REF', '')
+        ev.set_reference({'kind': 'secret', 'secret': 'credential'})
+        db.session.commit()
+        def fail(*args):
+            raise AssertionError('metadata must not decrypt or resolve local values')
+        monkeypatch.setattr(EnvService, '_resolve_var_value', fail)
+        view = EnvService.get_effective_env_view(a.id)
+        assert view['env_vars'][0]['is_reference'] is True
+        assert 'credential' not in str(view)

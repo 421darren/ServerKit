@@ -43,3 +43,24 @@ def test_null_description_clears_but_omitted_leaves_it(app, client):
                      headers=headers)
     assert res.status_code == 200
     assert res.get_json()['env_var']['description'] is None
+
+
+def test_effective_view_is_value_free_and_app_scoped(app, client):
+    from factories import headers_for, make_user
+    with app.app_context():
+        application, owner = _seed_var(app)
+        app_id = application.id
+        owner_headers = headers_for(owner)
+        stranger = make_user(db, role='viewer')
+        stranger_headers = headers_for(stranger)
+    url = f'/api/v1/apps/{app_id}/env?view=effective'
+    response = client.get(url, headers=owner_headers)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['values_hidden'] and data['complete']
+    assert data['env_vars'][0]['key'] == 'API_URL'
+    assert 'https://api.example.test' not in response.get_data(as_text=True)
+    assert 'value' not in data['env_vars'][0]
+    assert client.get(url, headers=stranger_headers).status_code in (403, 404)
+    assert client.get(url).status_code == 401
+    assert client.get(url + '&service=bad/name', headers=owner_headers).status_code == 400

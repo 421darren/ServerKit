@@ -4419,6 +4419,9 @@
             "rename": "Rename"
         },
         "previewList": {
+            "supportedProvisioners": "Preview deployment requires a supported runtime provisioner. Generic application previews are not available yet. A domain alone does not mean a preview is deployed.",
+            "noRuntime": "No provisioned runtime is recorded for this preview. Its URL is unavailable.",
+            "previewNotDeployed": "The preview was not deployed. Review its status below.",
             "activePreviews": "Active previews",
             "couldNotLoadPrPreviews": "Couldn't load PR previews.",
             "couldNotSaveSettings": "Couldn't save the settings.",

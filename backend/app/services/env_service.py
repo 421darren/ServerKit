@@ -87,34 +87,78 @@ class EnvService:
         if not app:
             return {}
 
-        merged = {}
+        entries, _ = EnvService._effective_entries(app)
+        return {key: entry['value'] for key, entry in entries.items()}
 
-        # 1) Shared variable groups — the base layer (lowest precedence).
+    @staticmethod
+    def _effective_entries(app, service=None, metadata_only=False, local_vars=None):
+        """One precedence seam for deployment and the read-only provenance view.
+
+        Metadata mode never resolves local references or returns values. Shared
+        interpolation remains before local overrides, matching deployment.
+        """
+        merged = {}
+        complete = True
+        context = {
+            name: str(getattr(app, name)) if getattr(app, name) is not None else None
+            for name in ('workspace_id', 'project_id', 'environment_id')
+        }
         try:
             from app.services.shared_resource_service import SharedResourceService
-            context = {
-                # scope_id is stored as a string when groups are created, so
-                # coerce the app's numeric ids to match on lookup.
-                'workspace_id': str(app.workspace_id) if app.workspace_id is not None else None,
-                'project_id': str(app.project_id) if app.project_id is not None else None,
-                'environment_id': str(app.environment_id) if app.environment_id is not None else None,
-            }
             resolved = SharedResourceService.resolve_hierarchical(
-                'application', application_id, context=context,
-                mask_secrets=False, interpolate=True,
+                'application', app.id, context=context, service=service,
+                mask_secrets=metadata_only, interpolate=not metadata_only,
             )
             for entry in resolved or []:
                 key = entry.get('key')
                 if key:
-                    merged[key] = entry.get('value')
-        except Exception as e:  # best-effort — never block a deploy on shared vars
-            logger.warning('Shared variable resolution failed for app %s: %s', application_id, e)
+                    # Explicit projection: never carry resolver values or future
+                    # sensitive fields into the metadata API.
+                    merged[key] = {
+                        field: entry.get(field) for field in (
+                            'key', 'source_scope', 'group_id', 'group_name',
+                            'target_service', 'is_secret',
+                        )
+                    }
+                    if not metadata_only:
+                        merged[key]['value'] = entry.get('value')
+        except Exception:
+            complete = False
+            logger.warning('Shared variable resolution failed for app %s', app.id)
 
-        # 2) Local env vars — the override layer (highest precedence wins).
-        for ev in EnvironmentVariable.query.filter_by(application_id=application_id).all():
-            merged[ev.key] = EnvService._resolve_var_value(app, ev)
+        if local_vars is None:
+            local_vars = EnvironmentVariable.query.filter_by(application_id=app.id).all()
+        for ev in local_vars:
+            if service is not None and ev.target_service not in (None, '', service):
+                continue
+            inherited = merged.get(ev.key)
+            entry = {
+                'key': ev.key, 'source_scope': 'local',
+                'group_id': None, 'group_name': None,
+                'target_service': ev.target_service,
+                'is_secret': bool(ev.is_secret),
+                'is_reference': bool(ev.value_from),
+                'overrides': ({field: inherited.get(field) for field in
+                               ('source_scope', 'group_id', 'group_name')}
+                              if inherited else None),
+            }
+            if not metadata_only:
+                entry['value'] = EnvService._resolve_var_value(app, ev)
+            merged[ev.key] = entry
+        return merged, complete
 
-        return merged
+    @staticmethod
+    def get_effective_env_view(application_id, service=None):
+        """Managed configuration provenance, not a live container inspection."""
+        app = Application.query_active().filter_by(id=application_id).first()
+        if not app:
+            return {'env_vars': [], 'count': 0, 'complete': False}
+        entries, complete = EnvService._effective_entries(
+            app, service=service, metadata_only=True,
+        )
+        rows = [entries[key] for key in sorted(entries)]
+        return {'env_vars': rows, 'count': len(rows), 'complete': complete,
+                'service': service, 'values_hidden': True}
 
     @staticmethod
     def _resolve_var_value(app, ev):
@@ -203,36 +247,11 @@ class EnvService:
         if not app or not service_names:
             return {}
 
-        context = {
-            'workspace_id': str(app.workspace_id) if app.workspace_id is not None else None,
-            'project_id': str(app.project_id) if app.project_id is not None else None,
-            'environment_id': str(app.environment_id) if app.environment_id is not None else None,
-        }
         local_vars = EnvironmentVariable.query.filter_by(application_id=application_id).all()
-
         result = {}
         for svc in service_names:
-            env = {}
-            # Shared groups applicable to this service (NULL-target + this svc).
-            try:
-                from app.services.shared_resource_service import SharedResourceService
-                resolved = SharedResourceService.resolve_hierarchical(
-                    'application', application_id, context=context,
-                    mask_secrets=False, interpolate=True, service=svc,
-                )
-                for entry in resolved or []:
-                    key = entry.get('key')
-                    if key:
-                        env[key] = entry.get('value')
-            except Exception as e:  # best-effort
-                logger.warning('Shared resolution failed for app %s svc %s: %s',
-                               application_id, svc, e)
-            # Local vars override; include all-services + this-service targets.
-            for ev in local_vars:
-                tgt = ev.target_service
-                if tgt in (None, '') or tgt == svc:
-                    env[ev.key] = EnvService._resolve_var_value(app, ev)
-            result[svc] = env
+            entries, _ = EnvService._effective_entries(app, service=svc, local_vars=local_vars)
+            result[svc] = {key: entry['value'] for key, entry in entries.items()}
         return result
 
     @staticmethod
