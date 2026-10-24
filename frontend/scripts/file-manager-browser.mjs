@@ -228,7 +228,7 @@ try {
     assert.deepEqual(editorErrors, []);
     console.log('PASS preview read races, failed-save draft retention and target reset');
 
-    // Shared confirmation must preserve cancel semantics and partial failures.
+    // Shared confirmation must preserve cancel/confirm semantics.
     const deletion = await browser.newPage();
     await deletion.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
     await deletion.getByText('projects', { exact: true }).first().waitFor();
@@ -300,6 +300,35 @@ try {
     await images.getByText('Image preview unavailable', { exact: true }).waitFor();
     assert.deepEqual(await images.evaluate(() => window.blobCalls), []);
     console.log('PASS agent image previews never fetch files from the panel host');
+
+    const tree = await browser.newPage();
+    await tree.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await tree.getByText('projects', { exact: true }).first().waitFor();
+    await tree.evaluate(() => {
+        const browse = window.testApi.browseFiles;
+        window.testApi.browseFiles = p => p === '/srv'
+            ? new Promise(resolve => { window.finishTree = resolve; }) : browse(p);
+    });
+    const treeRow = tree.locator('.tree-row').filter({ has: tree.locator('.tree-name[title="/srv"]') });
+    await treeRow.getByRole('button', { name: 'Expand', exact: true }).click();
+    await tree.waitForFunction(() => Boolean(window.finishTree));
+    await tree.getByRole('button', { name: 'pick-agent' }).click();
+    await tree.getByText('on-agent.txt').first().waitFor();
+    await tree.evaluate(() => window.finishTree({ entries: [{ name: 'local-tree-child', path: '/srv/local-tree-child', is_dir: true }] }));
+    await tree.waitForTimeout(100);
+    assert.equal(await tree.getByText('local-tree-child', { exact: true }).count(), 0);
+    console.log('PASS late tree responses cannot populate another target cache');
+
+    const failed = await browser.newPage();
+    await failed.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await failed.getByText('projects', { exact: true }).first().waitFor();
+    await failed.evaluate(() => {
+        window.testApi.browseFiles = () => Promise.reject(new Error('permission denied'));
+    });
+    await failed.locator('.file-manager-toolbar').getByTitle('Refresh', { exact: true }).click();
+    await failed.getByText("Couldn't open this folder.", { exact: true }).waitFor();
+    assert.equal(await failed.getByText('This folder is empty', { exact: true }).count(), 0);
+    console.log('PASS listing failures remain errors rather than empty folders');
 } finally {
     await browser?.close();
     await server.close();
