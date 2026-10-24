@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { errorReason } from '@/utils/errorMessage';
 
 export default function useFileEditor({ fileApi, toast, t, onSaved }) {
-    const [previewFile, setPreview] = useState(null);
+    const [preview, setPreview] = useState(null);
+    // A target change must hide the old file immediately, before navigation
+    // effects or the new listing finish. Never save its draft through a new adapter.
+    const previewFile = preview?.fileApi === fileApi ? preview.entry : null;
     const [fileContent, setFileContent] = useState('');
     const [editing, setEditing] = useState(false);
     const generation = useRef(0);
@@ -17,7 +20,7 @@ export default function useFileEditor({ fileApi, toast, t, onSaved }) {
 
     const setPreviewFile = (entry) => {
         generation.current++;
-        setPreview(entry);
+        setPreview(entry ? { fileApi, entry } : null);
         setFileContent('');
         setEditing(false);
     };

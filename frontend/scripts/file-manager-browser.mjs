@@ -222,7 +222,16 @@ try {
     await preview.getByRole('button', { name: 'Save', exact: true }).click();
     await editor.waitForFunction(() => (window.toasts || []).length > 0);
     assert.equal(await preview.locator('textarea').inputValue(), 'unsaved draft');
+    await editor.evaluate(() => {
+        const browse = window.testApi.browseRemoteFiles;
+        window.testApi.browseRemoteFiles = (...args) => new Promise(resolve => {
+            window.releaseEditorTarget = () => resolve(browse(...args));
+        });
+    });
     await editor.getByRole('button', { name: 'pick-agent' }).click();
+    await editor.waitForFunction(() => Boolean(window.releaseEditorTarget));
+    await preview.waitFor({ state: 'detached' });
+    await editor.evaluate(() => window.releaseEditorTarget());
     await editor.getByText('on-agent.txt').first().waitFor();
     assert.equal(await preview.count(), 0, 'the previous target preview stayed open');
     assert.deepEqual(editorErrors, []);
