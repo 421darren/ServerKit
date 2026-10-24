@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { api } from '../services/api';
+import { createFileAdapter } from '../components/file-manager/fileAdapter';
 import { useToast } from '../contexts/useToast.js';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
@@ -68,16 +69,6 @@ const QUICK_ACCESS_AGENT = {
     ],
 };
 
-// File manager operations that the agent can serve over file:* commands.
-// Anything else (mkdir, delete, rename, copy, chmod, search, disk usage,
-// upload/download) is panel-host-only until the matching agent verbs land.
-const REMOTE_SUPPORTED = new Set(['browse', 'read', 'write']);
-
-// Operations the S3 target can't serve (no real directories, permissions, or
-// in-place rename). Everything else — browse/read/write/delete/upload/download —
-// works against the bucket.
-const S3_BLOCKED = new Set(['create file', 'create folder', 'rename', 'change permissions']);
-
 function deriveParent(path) {
     if (!path || path === '/' || path === '') return null;
     // A Windows drive root ("C:/" or "C:") sits directly under the agent's
@@ -92,16 +83,6 @@ function deriveParent(path) {
     // up doesn't hit Windows' "current directory on C:" semantics.
     if (/^[A-Za-z]:$/.test(parent)) return parent + '/';
     return parent;
-}
-
-function unwrapAgentData(res) {
-    // Remote endpoints return the agent payload directly
-    // (RemoteFileService → _agent_result unwraps {data}). Defensive
-    // unwrap covers both shapes for older agent responses.
-    if (res && typeof res === 'object' && 'success' in res && 'data' in res) {
-        return res.data;
-    }
-    return res;
 }
 
 function mountDisplayName(mount) {
@@ -310,50 +291,19 @@ function FileManager() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPath]);
 
-    // ─── file API adapter ────────────────────────────────
-    // Routes the three verbs the agent supports through the remote
-    // endpoints when target is an agent; falls back to the panel-local
-    // FileService otherwise. Other ops keep going to panel-local — the
-    // remoteGuard helper short-circuits them with a toast when the user
-    // is on a remote target so we don't accidentally write to the panel
-    // host while they think they're editing a remote server.
-    const fileApi = useMemo(() => ({
-        browse: async (path, hidden) => {
-            if (isS3) return api.browseS3(path);
-            if (isRemote) {
-                return unwrapAgentData(await api.browseRemoteFiles(target.server_id, path));
-            }
-            return api.browseFiles(path, hidden);
-        },
-        read: async (path) => {
-            if (isS3) return api.readS3(path);
-            if (isRemote) {
-                return unwrapAgentData(await api.readRemoteFile(target.server_id, path));
-            }
-            return api.readFile(path);
-        },
-        write: async (path, content) => {
-            if (isS3) return api.writeS3(path, content);
-            if (isRemote) {
-                return unwrapAgentData(await api.writeRemoteFile(target.server_id, path, content));
-            }
-            return api.writeFile(path, content);
-        },
-        del: async (path) => (isS3 ? api.deleteS3(path) : api.deleteFile(path)),
-        download: (entry) => (isS3 ? api.downloadS3File(entry.path) : api.downloadFile(entry.path)),
-    }), [isRemote, isS3, target]);
+    const fileApi = useMemo(() => createFileAdapter(api, target), [target]);
 
     const remoteGuard = useCallback((op) => {
-        if (isRemote && !REMOTE_SUPPORTED.has(op)) {
+        if (isRemote && !fileApi.supports(op)) {
             toast.error(t('app.fileManager.isNotYetSupportedOnRemote', '{{op}} is not yet supported on remote agents', { op: op }));
             return true;
         }
-        if (isS3 && S3_BLOCKED.has(op)) {
+        if (isS3 && !fileApi.supports(op)) {
             toast.error(t('app.fileManager.isnTAvailableOnS3Buckets', '{{op}} isn\'t available on S3 buckets', { op: op }));
             return true;
         }
         return false;
-    }, [isRemote, isS3, t, toast]);
+    }, [isRemote, isS3, fileApi, t, toast]);
 
     // When the user switches to a remote target, jump to its first
     // advertised allowed_path so they don't see a "panel /home" view
@@ -497,7 +447,7 @@ function FileManager() {
         if (!searchQuery.trim()) { setSearchResults(null); return; }
         setLoading(true);
         try {
-            const data = await api.searchFiles(currentPath, searchQuery);
+            const data = await fileApi.search(currentPath, searchQuery);
             setSearchResults(data.results || []);
         } catch (error) {
             toast.error(t('app.fileManager.searchFailed', "Couldn't search. {{message}}", { message: errorReason(error) }));
@@ -590,7 +540,7 @@ function FileManager() {
     const handleCreateFolder = async (name) => {
         if (remoteGuard('create folder')) return;
         try {
-            await api.createDirectory(`${currentPath}/${name}`);
+            await fileApi['create folder'](`${currentPath}/${name}`);
             toast.success(t('app.fileManager.folderCreated', 'Folder created'));
             closeDialog();
             loadDirectory(currentPath);
@@ -598,7 +548,7 @@ function FileManager() {
             const parent = currentPath;
             if (treeCache.has(parent)) {
                 try {
-                    const data = await api.browseFiles(parent, false);
+                    const data = await fileApi.browse(parent, false);
                     const folders = (data.entries || []).filter((e) => e.is_dir).map((e) => ({ path: e.path, name: e.name }));
                     setTreeCache((c) => { const n = new Map(c); n.set(parent, folders); return n; });
                 } catch { /* ignore */ }
@@ -643,7 +593,7 @@ function FileManager() {
     const handleRename = async (entry, name) => {
         if (remoteGuard('rename')) return;
         try {
-            await api.renameFile(entry.path, name);
+            await fileApi.rename(entry.path, name);
             toast.success(t('app.fileManager.renamed', 'Renamed'));
             closeDialog();
             loadDirectory(currentPath);
@@ -655,7 +605,7 @@ function FileManager() {
     const handleChangePermissions = async (entry, mode) => {
         if (remoteGuard('change permissions')) return;
         try {
-            await api.changeFilePermissions(entry.path, mode);
+            await fileApi['change permissions'](entry.path, mode);
             toast.success(t('app.fileManager.permissionsUpdated', 'Permissions updated'));
             closeDialog();
             loadDirectory(currentPath);
@@ -687,7 +637,7 @@ function FileManager() {
             const itemId = queue[i].id;
             try {
                 setUploads((p) => p.map((u) => u.id === itemId ? { ...u, status: 'uploading' } : u));
-                const doUpload = isS3 ? api.uploadS3 : api.uploadFile;
+                const doUpload = fileApi.upload;
                 await doUpload(currentPath, file, (progress) => {
                     setUploads((p) => p.map((u) => u.id === itemId ? { ...u, progress } : u));
                 });
@@ -871,7 +821,8 @@ function FileManager() {
     const rowOpen = useStableHandler(handleOpen);
     const rowToggleSelect = useStableHandler(handleToggleSelect);
     const rowContext = useStableHandler(openContextMenu);
-    const rowDownload = useStableHandler((entry) => fileApi.download(entry));
+    const handleDownload = (entry) => { if (!remoteGuard('download')) fileApi.download(entry); };
+    const rowDownload = useStableHandler(handleDownload);
     const rowRename = useStableHandler(openRenameModal);
     const rowPermissions = useStableHandler(openPermissionsModal);
     const rowDelete = useStableHandler((entry) => handleDelete(entry));
@@ -879,7 +830,7 @@ function FileManager() {
     const copyPathToClipboard = (path) => copyText(path);
 
     const downloadSelected = () => {
-        selectedEntries.filter((e) => !e.is_dir).forEach((e) => fileApi.download(e));
+        if (!remoteGuard('download')) selectedEntries.filter((e) => !e.is_dir).forEach((e) => fileApi.download(e));
     };
 
     const getDiskColor = (percent) => {
@@ -1384,7 +1335,7 @@ function FileManager() {
                     onCancelEdit={() => setEditing(false)}
                     onSave={handleSaveFile}
                     onClose={() => { setPreviewFile(null); setEditing(false); }}
-                    onDownload={(e) => fileApi.download(e)}
+                    onDownload={handleDownload}
                     onRename={openRenameModal}
                     onPermissions={openPermissionsModal}
                     onCopyPath={copyPathToClipboard}
@@ -1434,7 +1385,7 @@ function FileManager() {
                 selectionCount={selectedEntries.length}
                 onClose={() => setContextMenu(null)}
                 onOpen={handleOpen}
-                onDownload={(e) => fileApi.download(e)}
+                onDownload={handleDownload}
                 onRename={openRenameModal}
                 onPermissions={openPermissionsModal}
                 onCopyPath={copyPathToClipboard}
