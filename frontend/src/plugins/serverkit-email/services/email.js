@@ -28,6 +28,7 @@ const emailApi = {
     createEmailAccount: (domainId, data) => api.request(`/email/domains/${domainId}/accounts`, { method: 'POST', body: JSON.stringify(data) }),
     getEmailAccount: (accountId) => api.request(`/email/accounts/${accountId}`),
     updateEmailAccount: (accountId, data) => api.request(`/email/accounts/${accountId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    getWebmailLogin: (accountId) => api.request(`/email/accounts/${accountId}/webmail-login`, { method: 'POST' }),
     deleteEmailAccount: (accountId) => api.request(`/email/accounts/${accountId}`, { method: 'DELETE' }),
     changeEmailPassword: (accountId, password) => api.request(`/email/accounts/${accountId}/password`, { method: 'POST', body: JSON.stringify({ password }) }),
 

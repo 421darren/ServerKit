@@ -399,7 +399,7 @@ const me = x("Users", [
   createEmailAccount: (e, t) => m.request(`/email/domains/${e}/accounts`, { method: "POST", body: JSON.stringify(t) }),
   getEmailAccount: (e) => m.request(`/email/accounts/${e}`),
   updateEmailAccount: (e, t) => m.request(`/email/accounts/${e}`, { method: "PUT", body: JSON.stringify(t) }),
-  deleteEmailAccount: (e) => m.request(`/email/accounts/${e}`, { method: "DELETE" }),
+  getWebmailLogin: (e) => m.request(`/email/accounts/${e}/webmail-login`, { method: "POST" }), deleteEmailAccount: (e) => m.request(`/email/accounts/${e}`, { method: "DELETE" }),
   changeEmailPassword: (e, t) => m.request(`/email/accounts/${e}/password`, { method: "POST", body: JSON.stringify({ password: t }) }),
   // Aliases
   getEmailAliases: (e) => m.request(`/email/domains/${e}/aliases`),
@@ -442,7 +442,7 @@ function Ie(e) {
 function Le(e, t) {
   const i = {};
   for (const { key: l } of ue)
-    t && t[l] ? i[l] = t[l].valid || t[l].present ? "ok" : "missing" : l === "spf" ? i[l] = e != null && e.spf_record ? "ok" : "unknown" : l === "dkim" ? i[l] = e != null && e.dkim_public_key ? "ok" : "unknown" : l === "dmarc" ? i[l] = e != null && e.dmarc_record ? "ok" : "unknown" : i[l] = "unknown";
+    t && t[l] ? i[l] = t[l].valid || t[l].present || t[l].found ? "ok" : "missing" : l === "spf" ? i[l] = e != null && e.spf_record ? "ok" : "unknown" : l === "dkim" ? i[l] = e != null && e.dkim_public_key ? "ok" : "unknown" : l === "dmarc" ? i[l] = e != null && e.dmarc_record ? "ok" : "unknown" : i[l] = "unknown";
   return i;
 }
 function Oe({ state: e }) {
@@ -780,6 +780,18 @@ function We({ domains: e }) {
       } catch {
         i.error(t("app.email.deleteFailed", "Delete failed"));
       }
+  }, [skId, skSetId] = S(null), skOpen = async (n) => {
+    const q = window.open("about:blank", "_blank");
+    skSetId(n.id);
+    try {
+      const r = await v.getWebmailLogin(n.id);
+      if (!(r != null && r.url)) throw new Error((r == null ? void 0 : r.error) || "No link");
+      q ? q.location.href = r.url : window.location.href = r.url;
+    } catch (e) {
+      q && q.close(), i.error((e == null ? void 0 : e.message) || "Could not open webmail");
+    } finally {
+      skSetId(null);
+    }
   }, T = W(() => {
     const n = f.trim().toLowerCase();
     return n ? h.filter((I) => (I.email || "").toLowerCase().includes(n)) : h;
@@ -839,11 +851,17 @@ function We({ domains: e }) {
         hideable: !1,
         className: "sk-email__actions-col",
         cellClassName: "sk-email__actions-cell",
-        render: (n) => /* @__PURE__ */ a("div", { className: "sk-email__actions", children: /* @__PURE__ */ s(w, { variant: "ghost", size: "sm", onClick: () => K(n), children: [
-          /* @__PURE__ */ a(J, { size: 14 }),
-          " ",
-          t("common.actions.delete", "Delete")
-        ] }) })
+        render: (n) => /* @__PURE__ */ s("div", { className: "sk-email__actions", children: [
+          /* @__PURE__ */ s(w, { variant: "ghost", size: "sm", disabled: !n.is_active || skId === n.id, title: "Open this mailbox in webmail, no password needed", onClick: () => skOpen(n), children: [
+            skId === n.id ? /* @__PURE__ */ a(ze, { size: 14, className: "animate-spin" }) : /* @__PURE__ */ a(Ae, { size: 14 }),
+            " Webmail"
+          ] }),
+          /* @__PURE__ */ s(w, { variant: "ghost", size: "sm", onClick: () => K(n), children: [
+            /* @__PURE__ */ a(J, { size: 14 }),
+            " ",
+            t("common.actions.delete", "Delete")
+          ] })
+        ] })
       }
     ],
     rows: T,
@@ -1074,7 +1092,7 @@ function je() {
   const { t: e } = R(), t = M(), [i, l] = S(null), [b, k] = S(!0), h = A(async () => {
     try {
       const g = await v.getWebmailStatus();
-      l((g == null ? void 0 : g.status) || g || null);
+      l(g && typeof g.status === "object" ? g.status : g || null);
     } catch {
       l(null);
     } finally {

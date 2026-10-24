@@ -51,7 +51,7 @@ function deriveDnsStatus(domain, verify) {
     const out = {};
     for (const { key } of DNS_RECORDS) {
         if (verify && verify[key]) {
-            out[key] = verify[key].valid || verify[key].present ? 'ok' : 'missing';
+            out[key] = verify[key].valid || verify[key].present || verify[key].found ? 'ok' : 'missing';
         } else if (key === 'spf') {
             out[key] = domain?.spf_record ? 'ok' : 'unknown';
         } else if (key === 'dkim') {
@@ -520,6 +520,24 @@ function AccountsTab({ domains }) {
         }
     };
 
+    // One-click webmail: the panel makes a link that works once for ~30 seconds,
+    // so no mailbox password is typed, stored or shown.
+    const [openingId, setOpeningId] = useState(null);
+    const openWebmail = async (account) => {
+        const tab = window.open('about:blank', '_blank'); // opened now so the browser allows it
+        setOpeningId(account.id);
+        try {
+            const res = await api.getWebmailLogin(account.id);
+            if (!res?.url) throw new Error(res?.error || 'No link');
+            if (tab) tab.location.href = res.url; else window.location.href = res.url;
+        } catch (e) {
+            if (tab) tab.close();
+            toast.error(e?.message || 'Could not open webmail');
+        } finally {
+            setOpeningId(null);
+        }
+    };
+
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return accounts;
@@ -579,6 +597,10 @@ function AccountsTab({ domains }) {
             cellClassName: 'sk-email__actions-cell',
             render: (a) => (
                 <div className="sk-email__actions">
+                    <Button variant="ghost" size="sm" disabled={!a.is_active || openingId === a.id}
+                        title="Open this mailbox in webmail, no password needed" onClick={() => openWebmail(a)}>
+                        {openingId === a.id ? <RefreshCw size={14} className="animate-spin" /> : <ExternalLink size={14} />} Webmail
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => remove(a)}>
                         <Trash2 size={14} /> {t('common.actions.delete', 'Delete')}
                     </Button>
@@ -828,7 +850,7 @@ function WebmailTab() {
     const load = useCallback(async () => {
         try {
             const res = await api.getWebmailStatus();
-            setState(res?.status || res || null);
+            setState(res && typeof res.status === 'object' ? res.status : (res || null));
         } catch {
             setState(null);
         } finally {

@@ -181,6 +181,32 @@ def delete_account(account_id):
     return jsonify(result), 200 if result.get('success') else 400
 
 
+@email_bp.route('/accounts/<int:account_id>/webmail-login', methods=['POST'])
+@admin_required
+def account_webmail_login(account_id):
+    """One-click webmail login for a mailbox: returns a signed link that works
+    once and expires after about 30 seconds. No password is stored or shown."""
+    from flask import current_app
+    from flask_jwt_extended import get_jwt_identity
+    from app.models.email import EmailAccount
+    account = EmailAccount.query.get(account_id)
+    if not account or not account.is_active:
+        return jsonify({'success': False, 'error': 'Account not found or disabled'}), 404
+    if not RoundcubeService.get_status().get('running'):
+        return jsonify({'success': False, 'error': 'Webmail is not running'}), 400
+    base = RoundcubeService.public_url()
+    if not base:
+        return jsonify({'success': False, 'error': 'Webmail has no public address yet'}), 400
+    try:
+        RoundcubeService.ensure_sso()
+        url = RoundcubeService.sso_login_url(account.email, base)
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    current_app.logger.info('Webmail one-click login issued for %s by user id %s',
+                            account.email, get_jwt_identity())
+    return jsonify({'success': True, 'url': url, 'expires_in': RoundcubeService.SSO_TTL}), 200
+
+
 @email_bp.route('/accounts/<int:account_id>/password', methods=['POST'])
 @admin_required
 def change_password(account_id):
@@ -358,8 +384,8 @@ def webmail_install():
     """Install Roundcube webmail."""
     data = request.get_json() or {}
     result = RoundcubeService.install(
-        imap_host=data.get('imap_host', 'host.docker.internal'),
-        smtp_host=data.get('smtp_host', 'host.docker.internal'),
+        imap_host=data.get('imap_host') or None,
+        smtp_host=data.get('smtp_host') or None,
         domain=(data.get('domain') or '').strip() or None,
     )
     return jsonify(result), 200 if result.get('success') else 400

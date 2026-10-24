@@ -320,10 +320,10 @@ class WpSshImportService:
         wp_version = None
         site_url = cfg.get('wp_home') or cfg.get('wp_siteurl')
         if has_wp_cli:
-            r = cls._ssh_exec(conn, kh, f'wp core version --path={q} 2>/dev/null')
+            r = cls._ssh_exec(conn, kh, f'wp core version --allow-root --path={q} 2>/dev/null')
             if r['code'] == 0:
                 wp_version = r['stdout'].decode('utf-8', 'replace').strip() or None
-            r = cls._ssh_exec(conn, kh, f'wp option get siteurl --path={q} 2>/dev/null')
+            r = cls._ssh_exec(conn, kh, f'wp option get siteurl --allow-root --path={q} 2>/dev/null')
             if r['code'] == 0:
                 site_url = r['stdout'].decode('utf-8', 'replace').strip() or site_url
         if not wp_version:
@@ -469,7 +469,7 @@ class WpSshImportService:
 
         old_url = options.get('old_url')
         if not old_url and has_wp_cli:
-            r = cls._ssh_exec(conn, kh, f'wp option get siteurl --path={q} 2>/dev/null')
+            r = cls._ssh_exec(conn, kh, f'wp option get siteurl --allow-root --path={q} 2>/dev/null')
             if r['code'] == 0:
                 old_url = r['stdout'].decode('utf-8', 'replace').strip() or None
         if not old_url:
@@ -483,7 +483,10 @@ class WpSshImportService:
         tar_path = os.path.join(workdir, 'docroot.tar.gz')
         pull = cls._ssh_exec(conn, kh, f'tar czf - -C {q} .',
                              timeout=cls.TRANSFER_TIMEOUT, stdout_path=tar_path)
-        if pull['code'] != 0 or not os.path.getsize(tar_path):
+        # tar exits 1 when a file changed while it was being read; on a live site
+        # (logs, caches, uploads) that is normal and the archive is still usable.
+        # Only 2+ (fatal) or an empty archive is a real failure.
+        if pull['code'] not in (0, 1) or not os.path.getsize(tar_path):
             err = (pull.get('stderr') or b'').decode('utf-8', 'replace').strip()
             raise WpSshImportError('Docroot pull failed'
                                    + (f': {err.splitlines()[-1]}' if err else ''))
@@ -509,7 +512,7 @@ class WpSshImportService:
         cls._step(job, state, 'dump_db', 'Dumping the source database over SSH')
         sql_path = os.path.join(workdir, 'source.sql')
         if has_wp_cli:
-            dump = cls._ssh_exec(conn, kh, f'wp db export - --path={q} --single-transaction',
+            dump = cls._ssh_exec(conn, kh, f'wp db export - --allow-root --path={q} --single-transaction',
                                  timeout=cls.TRANSFER_TIMEOUT, stdout_path=sql_path)
         else:
             db_host = cfg.get('db_host') or 'localhost'
