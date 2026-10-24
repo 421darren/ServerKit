@@ -341,6 +341,15 @@ def test_recompute_uptime_counts_only_up_samples(app):
     assert monitor.uptime_24h == 75.0
 
 
+def test_a_monitor_without_checks_reports_no_uptime_not_100(app):
+    """The columns defaulted to 100.0, so a brand-new monitor (and the
+    public status page built from it) claimed a perfect month."""
+    monitor = _monitor()
+    MonitorService.recompute_uptime(monitor)
+    assert (monitor.uptime_24h, monitor.uptime_7d,
+            monitor.uptime_30d, monitor.uptime_90d) == (None, None, None, None)
+
+
 def test_uptime_days_marks_unwatched_days_as_none(app):
     monitor = _monitor()
     db.session.add(HealthCheck(component_id=monitor.id, status='up',

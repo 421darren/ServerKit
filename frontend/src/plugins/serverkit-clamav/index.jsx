@@ -5,7 +5,7 @@
 // tabs here (components/ScannerTab.jsx + components/QuarantineTab.jsx + the
 // extension's own API client). Imports go through 'serverkit-sdk' so the
 // same source works baked in-tree (the panel's build-time glob) and as a
-// runtime-ESM bundle once the extension leaves the tree (plan 52 Phase 2).
+// runtime-ESM bundle once the extension leaves the tree.
 //
 // The scan-history log, the security config store and the notification
 // fan-out stay core (SecurityService) — this extension only adds the

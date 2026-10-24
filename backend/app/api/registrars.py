@@ -5,11 +5,12 @@ available to any authenticated user so the Domains page and Connections cards
 can show "what we own and when it lapses".
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.registrar_service import RegistrarService
 from app.middleware.rbac import admin_required, get_current_user
+from app.api._request import json_object
 
 registrars_bp = Blueprint('registrars', __name__)
 
@@ -27,7 +28,7 @@ def add_connection():
     user = get_current_user()
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
-    data = request.get_json() or {}
+    data = json_object()
     try:
         conn = RegistrarService.add_connection(data, user.id)
     except ValueError as e:

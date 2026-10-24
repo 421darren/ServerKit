@@ -1,14 +1,16 @@
-# Bucket: PER-APP (plan 29 #9). Private-URL routes gate on the shared app-access
+# Bucket: PER-APP. Private-URL routes gate on the shared app-access
 # seam (can_access_app for reads, can_edit_app for mutations).
 """API endpoints for managing private URLs for applications."""
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Application, User
 from app.services.private_url_service import PrivateURLService
 from app.services.nginx_service import NginxService
 from app.services.resource_grant_service import ResourceGrantService
+from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 private_urls_bp = Blueprint('private_urls', __name__)
 
@@ -31,10 +33,10 @@ def enable_private_url(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     # Check if already enabled
     if app.private_url_enabled:
@@ -44,7 +46,7 @@ def enable_private_url(app_id):
             'private_url': f'/p/{app.private_slug}'
         }), 400
 
-    data = request.get_json() or {}
+    data = json_object()
     custom_slug = data.get('slug')
 
     if custom_slug:
@@ -93,10 +95,10 @@ def get_private_url(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     return jsonify({
         'private_url_enabled': app.private_url_enabled,
@@ -123,15 +125,15 @@ def update_private_url(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     if not app.private_url_enabled:
-        return jsonify({'error': 'Private URL is not enabled for this app'}), 400
+        return jsonify({'error': 'Private URL is not enabled for this service'}), 400
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'slug' not in data:
         return jsonify({'error': 'Slug is required'}), 400
 
@@ -175,13 +177,13 @@ def disable_private_url(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     if not app.private_url_enabled:
-        return jsonify({'error': 'Private URL is not enabled for this app'}), 400
+        return jsonify({'error': 'Private URL is not enabled for this service'}), 400
 
     old_slug = app.private_slug
     app.private_slug = None
@@ -212,13 +214,13 @@ def regenerate_private_url(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     if not app.private_url_enabled:
-        return jsonify({'error': 'Private URL is not enabled for this app'}), 400
+        return jsonify({'error': 'Private URL is not enabled for this service'}), 400
 
     old_slug = app.private_slug
     new_slug = PrivateURLService.generate_unique_slug()

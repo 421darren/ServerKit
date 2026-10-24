@@ -4,6 +4,8 @@ from app.services.server_template_service import ServerTemplateService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import admin_required, get_current_user
+from app.exceptions import not_found
+from app.api._request import json_object
 
 server_templates_bp = Blueprint('server_templates', __name__)
 
@@ -40,7 +42,7 @@ def create_from_library(key):
 def get_template(template_id):
     template = ServerTemplateService.get_template(template_id)
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        raise not_found('template')
     return jsonify(template.to_dict())
 
 
@@ -51,7 +53,7 @@ def create_template():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'name' not in data:
         return jsonify({'error': 'name required'}), 400
 
@@ -74,10 +76,10 @@ def update_template(template_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     template = ServerTemplateService.update_template(template_id, data)
     if not template:
-        return jsonify({'error': 'Template not found'}), 404
+        raise not_found('template')
     return jsonify(template.to_dict())
 
 
@@ -105,7 +107,7 @@ def assign_template(template_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     server_id = data.get('server_id')
     if not server_id:
         return jsonify({'error': 'server_id required'}), 400
@@ -124,7 +126,7 @@ def bulk_assign(template_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     server_ids = data.get('server_ids', [])
     results = ServerTemplateService.bulk_assign(template_id, server_ids)
     return jsonify({'results': results})

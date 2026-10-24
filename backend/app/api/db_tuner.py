@@ -20,6 +20,7 @@ from flask import Blueprint, request, jsonify
 
 from app.middleware.rbac import admin_required
 from app.services.db_config_tuner_service import DbConfigTunerService
+from app.api._request import json_object
 
 db_tuner_bp = Blueprint('db_tuner', __name__)
 
@@ -72,7 +73,7 @@ def inspect_target(target):
 @admin_required
 def apply_target(target):
     """Apply an explicit operator-chosen settings dict (restarts the engine)."""
-    data = request.get_json() or {}
+    data = json_object()
     if not data.get('settings'):
         return jsonify({'error': 'settings is required'}), 400
     resolved, err = _build_target(target, data)
@@ -85,7 +86,7 @@ def apply_target(target):
 @admin_required
 def rollback_target(target):
     """Restore the pre-apply config and restart the engine."""
-    data = request.get_json() or {}
+    data = json_object()
     resolved, err = _build_target(target, data)
     if err:
         return err

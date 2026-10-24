@@ -146,7 +146,7 @@ bantime = {bantime}
 
     @staticmethod
     def _write_file(path, content):
-        """Write *content* to *path* with privilege — the shared door (plan 75 §G2)."""
+        """Write *content* to *path* with privilege — the shared door."""
         return write_privileged_file(path, content)
 
     @staticmethod
@@ -430,7 +430,7 @@ bantime = {bantime}
         return cls.unban_ip(ip, cls.jail_name(app))
 
     # ------------------------------------------------------------------
-    # Fail2ban status probing + unban (plan 47 Ph3c inversion). These are
+    # Fail2ban status probing + unban (inversion). These are
     # the read/undo half core keeps when the management surface moves to
     # the serverkit-fail2ban extension: Setup Health, the security audit
     # and the per-site jail status above all probe through here, and the

@@ -1,4 +1,4 @@
-"""Theme model (plan 60).
+"""Theme model.
 
 A theme is DATA, not code: a validated map of CSS custom-property tokens plus
 gallery metadata. Installed themes (imported, studio-authored, or pulled from

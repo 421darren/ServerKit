@@ -1,9 +1,10 @@
 import { Children, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Button as SharedButton } from '@/components/ui/button';
 
 // KpiBand — the one responsive grid wrapper for KPI/stat tiles (design-system
-// primitive, plan 20). Lays a row of <MetricCard> tiles into a single grid so
+// primitive). Lays a row of <MetricCard> tiles into a single grid so
 // every page's summary strip shares the same spacing + collapse behaviour
 // instead of ~20 hand-rolled `*-kpis` grids.
 //
@@ -36,6 +37,7 @@ export function KpiBand({
     className,
     children,
 }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const cap = Math.min(dense ? 5 : max, 5);
 
@@ -93,7 +95,9 @@ export function KpiBand({
                         aria-expanded={expanded}
                         onClick={() => setExpanded((v) => !v)}
                     >
-                        {expanded ? 'Fewer stats' : `More stats (${secondary.length})`}
+                        {expanded
+                            ? t('app.kpiBand.fewerStats', 'Fewer stats')
+                            : t('app.kpiBand.moreStats', 'More stats ({{count}})', { count: secondary.length })}
                     </SharedButton>
                     {expanded && (
                         <div className="sk-kpiband__strip">

@@ -14,8 +14,8 @@ Action mapping (panel → agent):
     cron:remove   -> {success: true}
     cron:toggle   -> {success: true, enabled}
 
-cron:update is the first cron verb gated on a v2 capability (cron.update,
-plan 28): agents older than 1.2.0 never advertise it, so we refuse cleanly
+cron:update is the first cron verb gated on a v2 capability (cron.update):
+agents older than 1.2.0 never advertise it, so we refuse cleanly
 with a friendly "agent too old" 503 rather than dispatching a command the
 agent will reject as unknown.
 

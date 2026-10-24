@@ -58,7 +58,8 @@ AUTHORIZATION_PRIMITIVES = frozenset({
     'require_workspace_role',
     # workspace / app / server access checks
     'get_user_role',
-    'check_app_access',
+    'require_app',  # app/api/_access.py
+    'get_app_for',
     'can_access_app',
     'can_edit_app',
     'can_operate_app',
@@ -74,7 +75,6 @@ AUTHORIZATION_PRIMITIVES = frozenset({
     '_endpoint_gate',
     '_vault_gate',
     '_ensure_group_accessible',
-    '_load_app_for',
     '_require_admin',
 })
 
@@ -299,7 +299,7 @@ def test_every_mutating_route_carries_an_authorization_decision(app):
         '\n  - add a gate decorator (@admin_required / @developer_required /'
         ' @permission_required), or'
         '\n  - call an inline authorization primitive (require_admin_user,'
-        ' check_app_access, _check_scope, ...), or'
+        ' require_app, _check_scope, ...), or'
         '\n  - if the route is genuinely self-scoped / public-with-alt-auth /'
         ' stateless, add it to the matching allowlist in this file with a'
         ' specific justification.'

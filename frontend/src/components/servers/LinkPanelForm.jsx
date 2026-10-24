@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { Unlink } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
@@ -9,13 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
+import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 const POLL_INTERVAL = 5000;
 
 function formatTimestamp(iso) {
     if (!iso) return '—';
     const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? '—' : formatDateTime(date);
 }
 
 // "Link panel" tab of the Add Server modal — the inverse of the other two
@@ -25,6 +27,7 @@ function formatTimestamp(iso) {
 // badge flips to Connected live.
 const LinkPanelForm = ({ onClose }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const [status, setStatus] = useState(null); // null = still loading
     const [masterUrl, setMasterUrl] = useState('');
@@ -73,7 +76,7 @@ const LinkPanelForm = ({ onClose }) => {
             setUnlinkOpen(false);
             setStatus({ linked: false });
         } catch (err) {
-            toast.error(err?.data?.error || err.message || t('app.linkPanelForm.failedToUnlinkPanel', 'Failed to unlink panel'));
+            toastError(toast, t('app.linkPanelForm.failedToUnlinkPanel', "Couldn't unlink the panel."), err);
         }
     }
 
@@ -128,14 +131,15 @@ const LinkPanelForm = ({ onClose }) => {
         <form className="server-setup-form" onSubmit={handleLink}>
             <div className="server-setup-form__body">
                 <p className="section-description">
-                    {t('app.linkPanelForm.linkThisPanelToAMaster', 'Link this panel to a master ServerKit so it can manage this server — no separate agent install needed. Generate a registration token on the master: Servers → Add Server / regenerate token.')}
+                    {t('app.linkPanelForm.linkThisPanelToAMaster', 'Link this panel to a master ServerKit so it can manage this server. No separate agent install is needed. Generate a registration token on the master: Servers → Add server / regenerate token.')}
                 </p>
 
                 {linkError && <div className="error-message">{linkError}</div>}
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.masterUrl', 'Master URL *')}</label>
+                    <label htmlFor={`${fieldId}-master-url`}>{t('app.linkPanelForm.masterUrl', 'Master URL *')}</label>
                     <Input
+                        id={`${fieldId}-master-url`}
                         type="url"
                         value={masterUrl}
                         onChange={(e) => setMasterUrl(e.target.value)}
@@ -145,8 +149,9 @@ const LinkPanelForm = ({ onClose }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.registrationToken', 'Registration token *')}</label>
+                    <label htmlFor={`${fieldId}-token`}>{t('app.linkPanelForm.registrationToken', 'Registration token *')}</label>
                     <Input
+                        id={`${fieldId}-token`}
                         type="password"
                         value={token}
                         onChange={(e) => setToken(e.target.value)}
@@ -156,8 +161,9 @@ const LinkPanelForm = ({ onClose }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.linkPanelForm.displayName', 'Display name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.linkPanelForm.displayName', 'Display name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -172,7 +178,7 @@ const LinkPanelForm = ({ onClose }) => {
                     {t('common.actions.cancel', 'Cancel')}
                 </Button>
                 <Button type="submit" disabled={submitting || status === null}>
-                    {submitting ? 'Linking…' : 'Link panel'}
+                    {submitting ? t('app.linkPanelForm.linking', 'Linking…') : t('app.linkPanelForm.linkPanel', 'Link panel')}
                 </Button>
             </div>
         </form>

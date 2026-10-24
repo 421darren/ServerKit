@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Settings, PanelLeft, Check, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
 import { useToast } from '../../contexts/useToast.js';
@@ -10,6 +10,7 @@ import { SIDEBAR_ITEMS } from '../sidebarItems';
 import api from '../../services/api';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
+import { toastError } from '@/utils/errorMessage';
 
 const SETTINGS_GROUPS = [
     {
@@ -21,7 +22,7 @@ const SETTINGS_GROUPS = [
     {
         labelKey: 'common.labels.permissions', label: 'Permissions',
         items: [
-            { id: 'navigation', labelKey: 'app.workspaceSettingsTab.navigationPermissions', label: 'Navigation Permissions', icon: PanelLeft },
+            { id: 'navigation', labelKey: 'app.workspaceSettingsTab.navigationPermissions', label: 'Navigation permissions', icon: PanelLeft },
         ],
     },
     {
@@ -36,21 +37,24 @@ const SETTINGS_ITEMS = SETTINGS_GROUPS.flatMap((g) => g.items);
 
 const GeneralSection = ({ form, setForm }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     return (
         <div className="ws-settings__section">
             <h3 className="ws-settings__section-title">{t('app.workspaceSettingsTab.general', 'General')}</h3>
             <SharedCard variant="legacy" className="card settings-section">
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         value={form.name}
                         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder={t('app.workspaceSettingsTab.myTeam', 'My Team')}
+                        placeholder={t('app.workspaceSettingsTab.myTeam', 'My team')}
                     />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
+                    <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
                     <Textarea
+                        id={`${fieldId}-description`}
                         value={form.description}
                         onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                         rows={2}
@@ -58,16 +62,18 @@ const GeneralSection = ({ form, setForm }) => {
                 </div>
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.workspaceSettingsTab.maxServers0Unlimited', 'Max Servers (0 = unlimited)')}</label>
+                        <label htmlFor={`${fieldId}-max-servers`}>{t('app.workspaceSettingsTab.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
                         <Input
+                            id={`${fieldId}-max-servers`}
                             type="number"
                             value={form.max_servers}
                             onChange={(e) => setForm((f) => ({ ...f, max_servers: parseInt(e.target.value) || 0 }))}
                         />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.workspaceSettingsTab.maxUsers0Unlimited', 'Max Users (0 = unlimited)')}</label>
+                        <label htmlFor={`${fieldId}-max-users`}>{t('app.workspaceSettingsTab.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
                         <Input
+                            id={`${fieldId}-max-users`}
                             type="number"
                             value={form.max_users}
                             onChange={(e) => setForm((f) => ({ ...f, max_users: parseInt(e.target.value) || 0 }))}
@@ -75,8 +81,9 @@ const GeneralSection = ({ form, setForm }) => {
                     </div>
                 </div>
                 <div className="form-group">
-                    <label>{t('app.workspaceSettingsTab.brandColor', 'Brand Color')}</label>
+                    <label htmlFor={`${fieldId}-brand-color`}>{t('app.workspaceSettingsTab.brandColor', 'Brand color')}</label>
                     <input
+                        id={`${fieldId}-brand-color`}
                         type="color"
                         className="workspace-color-input"
                         value={form.primary_color}
@@ -129,7 +136,7 @@ const NavigationPermissionsSection = ({ form, setForm }) => {
     const roles = ['owner', 'admin', 'member', 'viewer'];
     return (
         <div className="ws-settings__section">
-            <h3 className="ws-settings__section-title">{t('app.workspaceSettingsTab.navigationPermissions', 'Navigation Permissions')}</h3>
+            <h3 className="ws-settings__section-title">{t('app.workspaceSettingsTab.navigationPermissions', 'Navigation permissions')}</h3>
             <SharedCard variant="legacy" className="card settings-section">
                 <p className="form-hint">{t('app.workspaceSettingsTab.limitWhichSidebarItemsEachWorkspace', 'Limit which sidebar items each workspace role can see. Empty = no restrictions.')}</p>
                 {roles.map((role) => (
@@ -201,7 +208,7 @@ const WorkspaceSettingsTab = ({ wsId, ws, onUpdate, user, isCurrent, onSetActive
             toast.success(t('app.workspaceSettingsTab.workspaceUpdated', 'Workspace updated'));
             onUpdate();
         } catch (err) {
-            toast.error(err.message || t('app.workspaceSettingsTab.failedToUpdateWorkspace', 'Failed to update workspace'));
+            toastError(toast, t('app.workspaceSettingsTab.failedToUpdateWorkspace', "Couldn't update the workspace."), err);
         } finally {
             setSaving(false);
         }
@@ -245,7 +252,7 @@ const WorkspaceSettingsTab = ({ wsId, ws, onUpdate, user, isCurrent, onSetActive
                     <div className="ws-settings__actions">
                         <Button variant="outline" onClick={() => navigate(`/workspaces/${id}`)}>{t('common.actions.cancel', 'Cancel')}</Button>
                         <Button onClick={handleSave} disabled={saving || !form.name}>
-                            {saving ? 'Saving…' : 'Save'}
+                            {saving ? t('common.saving', 'Saving…') : t('common.actions.save', 'Save')}
                         </Button>
                     </div>
                 )}

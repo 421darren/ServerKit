@@ -1,4 +1,4 @@
-"""Every Socket.IO room name is built HERE (plan 77 E3).
+"""Every Socket.IO room name is built HERE.
 
 The room grammar used to live in ~25 scattered f-strings across sockets.py,
 agent_gateway.py and the notification bus — and was re-derived by hand in
@@ -11,7 +11,7 @@ Grammar:
 
     user_<user_id>                      per-user notification fan-out
     deploy_<job_id>                     Deploy Console (legacy run envelope)
-    run_<kind>_<run_id>                 generalized run envelope (plan 77 E1)
+    run_<kind>_<run_id>                 generalized run envelope
     logs_<app_id>                       container log streaming for an app
     server_<id>_<channel>               generic agent-stream rebroadcast
     server_<id>_metrics                 agent metrics fan-out
@@ -29,7 +29,7 @@ def deploy_room(job_id) -> str:
 
 
 def run_room(run_kind, run_id) -> str:
-    """The plan 77 E1 run envelope room — one grammar for every run kind."""
+    """The run envelope room — one grammar for every run kind."""
     return f'run_{run_kind}_{run_id}'
 
 

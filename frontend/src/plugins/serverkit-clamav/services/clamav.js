@@ -1,8 +1,7 @@
 // Malware scanner endpoints — the extension's own client for the ClamAV /
 // scan / YARA / quarantine surface under /api/v1/security, built on the
 // panel's ApiClient via the SDK singleton. Moved out of the host's
-// services/api/security.js with the Scanner + Quarantine tabs (plan 47 Ph3d /
-// plan 55 Phase 3). Same paths and bodies as the host client had, so the
+// services/api/security.js with the Scanner + Quarantine tabs. Same paths and bodies as the host client had, so the
 // backend blueprint (same url_prefix) is a drop-in. Generic core calls the
 // tabs also make (getApps, getJob) stay on the core client — import those
 // from 'serverkit-sdk' directly.

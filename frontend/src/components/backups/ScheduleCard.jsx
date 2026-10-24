@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { SegControl } from '@/components/ds';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ const toNum = (value) => {
 
 const ScheduleCard = ({ policy, remoteConfigured, onSave, saving }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     // All hooks run unconditionally, before any early return (Rules of Hooks).
     // The form is only shown once a policy exists, so the seed values used when
     // `policy` is null are throwaway and get re-seeded by the effect on load.
@@ -145,9 +146,10 @@ const ScheduleCard = ({ policy, remoteConfigured, onSave, saving }) => {
                 </div>
 
                 <div className="schedule-card__field">
-                    <label>{t('app.scheduleCard.fullBackupEvery', 'Full backup every')}</label>
+                    <label htmlFor={`${fieldId}-full-every`}>{t('app.scheduleCard.fullBackupEvery', 'Full backup every')}</label>
                     <div className="schedule-card__retention-row">
                         <Input
+                            id={`${fieldId}-full-every`}
                             type="number"
                             min={MIN_COUNT}
                             value={fullEvery}
@@ -200,8 +202,8 @@ const ScheduleCard = ({ policy, remoteConfigured, onSave, saving }) => {
                         <span>{t('app.scheduleCard.copyBackupsToRemoteStorage', 'Copy backups to remote storage')}</span>
                         <span className="app-panel-hint">
                             {remoteConfigured
-                                ? 'Uses the provider configured in Backups → Storage.'
-                                : 'No remote storage configured. Set one up in Backups → Storage.'}
+                                ? t('app.scheduleCard.usesConfiguredProvider', 'Uses the provider configured in Backups → Storage.')
+                                : t('app.scheduleCard.noRemoteStorage', 'No remote storage configured. Set one up in Backups → Storage.')}
                         </span>
                     </label>
                 </div>

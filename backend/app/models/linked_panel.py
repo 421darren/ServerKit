@@ -33,7 +33,7 @@ class LinkedPanelConfig(TimestampMixin, db.Model):
     remote_server_name = db.Column(db.String(120), nullable=True)
     enabled = db.Column(db.Boolean, default=True, nullable=False)
 
-    # One crypto path (plan 77 C1). legacy_plaintext: rows written before
+    # One crypto path. legacy_plaintext: rows written before
     # encryption-at-rest read back unchanged until rewritten.
     api_secret = EncryptedSecret('api_secret_encrypted', legacy_plaintext=True)
 

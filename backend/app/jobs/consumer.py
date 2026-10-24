@@ -104,7 +104,7 @@ class JobConsumer:
         job.queue_message_id = message['id']
         db.session.commit()
 
-        # Live run envelope (plan 77 E1): unified jobs stream through the same
+        # Live run envelope: unified jobs stream through the same
         # RunLogStream seam as deploys — run_log/run_status into run_job_<id>,
         # resumable over GET /api/v1/runs/job/<id>/logs?after_id. Handlers can
         # log through stream_for(job) themselves; these frames bracket the run.

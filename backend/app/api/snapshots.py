@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Snapshot reads (list/get/diff) require app
+# Bucket: PER-APP. Snapshot reads (list/get/diff) require app
 # access (can_access_app); restore requires write access (can_edit_app) on top
 # of the panel-wide @developer_required.
 """
@@ -14,27 +14,12 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.middleware.rbac import developer_required, get_current_user
-from app.models.application import Application
 from app.models.deployment_snapshot import DeploymentSnapshot
 from app.services.configuration_service import ConfigurationService
-from app.services.resource_grant_service import ResourceGrantService
+from app.exceptions import not_found
+from app.api._access import require_app
 
 snapshots_bp = Blueprint('snapshots', __name__)
-
-
-def _get_app_or_404(app_id, write=False):
-    """Resolve the app and enforce per-app access (plan 29 #9). ``write`` requires
-    can_edit_app (owner/admin/editor); otherwise can_access_app. A caller without
-    the needed tier gets a 403 (the resource itself exists)."""
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return None, (jsonify({'error': 'Application not found'}), 404)
-    user = get_current_user()
-    ok = (ResourceGrantService.can_edit_app(user, app) if write
-          else ResourceGrantService.can_access_app(user, app))
-    if not ok:
-        return None, (jsonify({'error': 'Access denied'}), 403)
-    return app, None
 
 
 def _get_snapshot_or_404(app_id, snap_id):
@@ -43,21 +28,19 @@ def _get_snapshot_or_404(app_id, snap_id):
         id=snap_id, application_id=app_id
     ).first()
     if not snap:
-        return None, (jsonify({'error': 'Snapshot not found'}), 404)
+        raise not_found('config_checkpoint')
     return snap, None
 
 
 # "Config Checkpoint" is the user-facing name for a deployment config snapshot
-# (§8 decision: rename in the UI; keep /snapshots working). Every route below is
+# (decision: rename in the UI; keep /snapshots working). Every route below is
 # also reachable under /config-checkpoints so the API matches the new wording.
 @snapshots_bp.route('/<int:app_id>/snapshots', methods=['GET'])
 @snapshots_bp.route('/<int:app_id>/config-checkpoints', methods=['GET'])
 @jwt_required()
 def list_snapshots(app_id):
     """List config snapshots for an app, newest first."""
-    app, err = _get_app_or_404(app_id)
-    if err:
-        return err
+    app = require_app(app_id)
 
     try:
         limit = min(int(request.args.get('limit', 50)), 200)
@@ -81,9 +64,7 @@ def list_snapshots(app_id):
 @jwt_required()
 def get_snapshot(app_id, snap_id):
     """Fetch a single snapshot, including its resolved config."""
-    _, err = _get_app_or_404(app_id)
-    if err:
-        return err
+    require_app(app_id)
     snap, err = _get_snapshot_or_404(app_id, snap_id)
     if err:
         return err
@@ -99,9 +80,7 @@ def diff_snapshot(app_id, snap_id):
     Query param ``against`` accepts another snapshot id or the literal
     ``previous`` (default).
     """
-    _, err = _get_app_or_404(app_id)
-    if err:
-        return err
+    require_app(app_id)
     snap, err = _get_snapshot_or_404(app_id, snap_id)
     if err:
         return err
@@ -144,9 +123,7 @@ def diff_snapshot(app_id, snap_id):
 @developer_required
 def restore_snapshot(app_id, snap_id):
     """Restore a snapshot's config (env/domains) and trigger a redeploy."""
-    _, err = _get_app_or_404(app_id, write=True)
-    if err:
-        return err
+    require_app(app_id, write=True)
     snap, err = _get_snapshot_or_404(app_id, snap_id)
     if err:
         return err

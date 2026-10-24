@@ -17,6 +17,8 @@ from app.services.manifest_spec_service import ManifestSpecService, ManifestErro
 from app.services.manifest_apply_service import ManifestApplyService
 from app.services.manifest_persistence_service import ManifestPersistenceService
 from app.middleware.rbac import require_admin_user
+from app.exceptions import not_found
+from app.api._request import json_object
 
 manifests_bp = Blueprint('manifests', __name__)
 
@@ -54,7 +56,7 @@ def scaffold_manifest():
 
     app = Application.query_active().filter_by(id=app_id).first()
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     fmt = (request.args.get('format') or 'json').lower()
     if fmt == 'yaml':
@@ -72,7 +74,7 @@ def validate_manifest():
     """POST /api/v1/manifests/validate  { content | manifest } -> normalized summary."""
     user = require_admin_user()
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         if 'content' in data:
             normalized = ManifestSpecService.normalize_text(data['content'])
@@ -109,7 +111,7 @@ def get_manifest():
 def plan_manifest():
     """POST /api/v1/manifests/plan {project_id, content|manifest?} -> dry-run plan."""
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     project = Project.query.get(data.get('project_id')) if data.get('project_id') else None
     if not project:
         return jsonify({'error': 'A valid project_id is required'}), 400
@@ -127,7 +129,7 @@ def plan_manifest():
 def apply_manifest():
     """POST /api/v1/manifests/apply {project_id, content|manifest?} -> apply."""
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     project = Project.query.get(data.get('project_id')) if data.get('project_id') else None
     if not project:
         return jsonify({'error': 'A valid project_id is required'}), 400
@@ -144,7 +146,7 @@ def apply_manifest():
     result = ManifestApplyService.apply(project, normalized, user_id=user.id,
                                         manifest_row=row)
 
-    # Appliance-tier blockers (plan 35): apply refused, nothing executed.
+    # Appliance-tier blockers: apply refused, nothing executed.
     if result.get('refused'):
         return jsonify(result), 400
 
@@ -171,13 +173,13 @@ def reset_bootstrap():
     typing the app name in `confirm`.
     """
     user = require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     app = (Application.query_active().filter_by(id=data.get('app_id')).first()
            if data.get('app_id') else None)
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
     if (data.get('confirm') or '') != app.name:
-        return jsonify({'error': f'Type the app name "{app.name}" to confirm'}), 400
+        return jsonify({'error': f'Type the service name "{app.name}" to confirm'}), 400
     app.bootstrap_done = False
     db.session.commit()
     return jsonify({'success': True, 'app_id': app.id, 'bootstrap_done': False}), 200

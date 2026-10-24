@@ -21,7 +21,7 @@ export async function restoreSnapshot(appId, snapId) {
 }
 
 // "Config Checkpoint" is the user-facing name for a deployment config snapshot
-// (§8). These aliases let new UI code use the new term; the backend serves both
+//. These aliases let new UI code use the new term; the backend serves both
 // /snapshots and /config-checkpoints.
 export async function getConfigCheckpoints(appId, limit = 50) {
     return getAppSnapshots.call(this, appId, limit);

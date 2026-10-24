@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Trans } from 'react-i18next';
+import { useState, useEffect, useId } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import {
   AlertDialog,
@@ -22,14 +22,16 @@ export function ConfirmDialog({
   title,
   message,
   details,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText,
+  cancelText,
   variant = 'danger',
   requireConfirmation,
   confirmationPlaceholder,
   onConfirm,
   onCancel,
 }) {
+  const { t } = useTranslation();
+  const fieldId = useId();
   const [inputValue, setInputValue] = useState('');
 
   useEffect(() => { if (isOpen) setInputValue(''); }, [isOpen]);
@@ -53,7 +55,7 @@ export function ConfirmDialog({
           </div>
           {requireConfirmation && (
             <div className="sk-confirm__confirm-field">
-              <Label>
+              <Label htmlFor={`${fieldId}-confirm`}>
                 {/* One key, not a prefix/suffix pair: word order around the
                     typed value differs by language, and split sentences cannot
                     be reordered by a translator. */}
@@ -65,6 +67,7 @@ export function ConfirmDialog({
                 />
               </Label>
               <Input
+                id={`${fieldId}-confirm`}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !isConfirmDisabled && onConfirm()}
@@ -75,13 +78,13 @@ export function ConfirmDialog({
           )}
         </AlertDialogHeader>
         <AlertDialogFooter className="sk-confirm__footer">
-          <AlertDialogCancel onClick={onCancel}>{cancelText}</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{cancelText ?? t('common.actions.cancel', 'Cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isConfirmDisabled}
             variant={variant === 'danger' ? 'destructive' : 'primary'}
           >
-            {confirmText}
+            {confirmText ?? t('common.actions.confirm', 'Confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

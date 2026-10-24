@@ -199,8 +199,8 @@ The two modes deliberately make narrower claims than a full install:
 
 - **quick** — shell syntax plus the source-level installer/update/lib/CLI suites.
 - **provision** — real repositories through `install.sh`, including supported
-  Python, venv, pip, SSL, SQLite, ctypes, and a source build/import of the pinned
-  gevent dependency. Ubuntu 26.04 also installs all backend requirements and
+  Python, venv, pip, SSL, SQLite, ctypes, and a source build/import of gevent (a
+  heavy C build that proves the toolchain). Ubuntu 26.04 also installs all backend requirements and
   runs `pip check`.
 
 Neither mode proves systemd, nginx, firewall behavior, Docker-in-Docker,

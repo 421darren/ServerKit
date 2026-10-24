@@ -1,4 +1,4 @@
-// Plan 79 A1/A2 — the i18next instance.
+// The i18next instance.
 //
 // Delivery is deliberately NOT the usual http-backend fetch:
 //

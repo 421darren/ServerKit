@@ -366,7 +366,7 @@ class TestConnectionTesting:
             captured.update({'url': url, 'json': json, 'timeout': timeout})
             return _Resp()
 
-        monkeypatch.setattr('app.services.notification_service.requests.post', fake_post)
+        monkeypatch.setattr('app.services.notification_service.safe_http.post', fake_post)
         conn = ChatWebhookService.add({
             'kind': 'discord',
             'name': 'Disabled room',
@@ -595,7 +595,7 @@ class TestApi:
             text = ''
 
         monkeypatch.setattr(
-            'app.services.notification_service.requests.post',
+            'app.services.notification_service.safe_http.post',
             lambda *args, **kwargs: _Resp(),
         )
         conn = ChatWebhookService.add({

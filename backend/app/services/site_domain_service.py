@@ -557,7 +557,7 @@ class SiteDomainService:
     @classmethod
     def set_immutable_assets(cls, app, enabled):
         """Save the fingerprinted-asset caching flag and republish the vhost
-        through the same path as every other vhost setting (plan 86 §B2), so
+        through the same path as every other vhost setting, so
         drift detection renders the same file."""
         from app import db
         app.immutable_assets = bool(enabled)
@@ -626,7 +626,7 @@ class SiteDomainService:
         # success with a URL that was never published.
         existing = Domain.query_active().filter_by(name=host).first()
         if existing and existing.application_id != app.id:
-            return {'success': False, 'error': f'{host} is already used by another app.'}
+            return {'success': False, 'error': f'{host} is already used by another service.'}
 
         try:
             if not existing:

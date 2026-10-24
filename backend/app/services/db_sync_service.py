@@ -8,8 +8,7 @@ Supports WordPress-specific features like URL search-replace and data anonymizat
 import os
 import subprocess
 
-from app.utils.system import run_checked
-import gzip
+from app.utils.system import run_checked, run_from_gzip, run_to_gzip
 import shutil
 import json
 import re
@@ -106,23 +105,9 @@ class DatabaseSyncService:
 
             # Execute dump
             if compress:
-                # Pipe through gzip
-                dump_process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                with gzip.open(file_path, 'wb') as f:
-                    while True:
-                        chunk = dump_process.stdout.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-
-                dump_process.wait()
-                if dump_process.returncode != 0:
-                    error = dump_process.stderr.read().decode()
-                    return {'success': False, 'error': f'mysqldump failed: {error}'}
+                result = run_to_gzip(cmd, file_path)
+                if not result['success']:
+                    return {'success': False, 'error': f"mysqldump failed: {result['error']}"}
             else:
                 with open(file_path, 'w') as f:
                     result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
@@ -212,9 +197,8 @@ class DatabaseSyncService:
 
             # Handle compressed files
             if file_path.endswith('.gz'):
-                with gzip.open(file_path, 'rb') as f:
-                    # 30 min bound for large DBs
-                    result = run_checked(cmd, stdin=f, timeout=1800)
+                # 30 min bound for large DBs
+                result = run_from_gzip(cmd, file_path, timeout=1800)
             else:
                 with open(file_path, 'r') as f:
                     result = run_checked(cmd, stdin=f, timeout=1800)
@@ -509,95 +493,6 @@ class DatabaseSyncService:
         return options
 
     @classmethod
-    def run_search_replace(cls, db_name: str, search: str, replace: str,
-                           table_prefix: str = 'wp_', host: str = 'localhost',
-                           user: str = 'root', password: str = None,
-                           dry_run: bool = False) -> Dict:
-        """
-        Run WordPress-aware search-replace on a database.
-
-        This is a pure SQL approach without requiring WP-CLI.
-        For better serialized data handling, use WP-CLI if available.
-
-        Args:
-            db_name: Database name
-            search: String to search for
-            replace: String to replace with
-            table_prefix: WordPress table prefix
-            host: MySQL host
-            user: MySQL user
-            password: MySQL password
-            dry_run: Only count replacements, don't apply
-
-        Returns:
-            Dict with success status and replacement count
-        """
-        try:
-            # Get list of tables
-            tables_result = cls._run_mysql(
-                f"SHOW TABLES LIKE '{table_prefix}%'",
-                database=db_name, host=host, user=user, password=password
-            )
-
-            if not tables_result['success']:
-                return tables_result
-
-            tables = [line.strip() for line in tables_result['output'].strip().split('\n')[1:] if line.strip()]
-            total_replacements = 0
-
-            for table in tables:
-                # Get columns
-                cols_result = cls._run_mysql(
-                    f"SHOW COLUMNS FROM `{table}`",
-                    database=db_name, host=host, user=user, password=password
-                )
-
-                if not cols_result['success']:
-                    continue
-
-                # Find text/varchar columns
-                text_columns = []
-                for line in cols_result['output'].strip().split('\n')[1:]:
-                    parts = line.split('\t')
-                    if len(parts) >= 2:
-                        col_name = parts[0]
-                        col_type = parts[1].lower()
-                        if any(t in col_type for t in ['varchar', 'text', 'longtext', 'mediumtext']):
-                            text_columns.append(col_name)
-
-                # Count or replace in each column
-                for col in text_columns:
-                    if dry_run:
-                        count_query = f"SELECT COUNT(*) FROM `{table}` WHERE `{col}` LIKE '%{search}%'"
-                        count_result = cls._run_mysql(
-                            count_query,
-                            database=db_name, host=host, user=user, password=password
-                        )
-                        if count_result['success']:
-                            try:
-                                count = int(count_result['output'].strip().split('\n')[1])
-                                total_replacements += count
-                            except (IndexError, ValueError):
-                                pass
-                    else:
-                        # Note: This is basic replacement, doesn't handle serialized data perfectly
-                        update_query = f"UPDATE `{table}` SET `{col}` = REPLACE(`{col}`, '{search}', '{replace}') WHERE `{col}` LIKE '%{search}%'"
-                        cls._run_mysql(
-                            update_query,
-                            database=db_name, host=host, user=user, password=password
-                        )
-
-            return {
-                'success': True,
-                'dry_run': dry_run,
-                'replacements': total_replacements if dry_run else 'Applied to all matching rows',
-                'tables_processed': len(tables)
-            }
-
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-
-    @classmethod
     def delete_snapshot(cls, file_path: str) -> Dict:
         """Delete a snapshot file."""
         try:
@@ -695,23 +590,10 @@ class DatabaseSyncService:
             full_cmd = ['docker', 'compose', '-f', compose_path, 'exec', '-T', 'db'] + dump_cmd
 
             if compress:
-                process = subprocess.Popen(
-                    full_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-                with gzip.open(output_path, 'wb') as f:
-                    while True:
-                        chunk = process.stdout.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                process.wait()
-                if process.returncode != 0:
-                    error = process.stderr.read().decode()
-                    if os.path.exists(output_path):
-                        os.remove(output_path)
-                    return {'success': False, 'error': f'Container mysqldump failed: {error}'}
+                result = run_to_gzip(full_cmd, output_path, timeout=600)
+                if not result['success']:
+                    return {'success': False,
+                            'error': f"Container mysqldump failed: {result['error']}"}
             else:
                 with open(output_path, 'w') as f:
                     result = run_checked(full_cmd, stdout=f, stderr=subprocess.PIPE,
@@ -771,40 +653,15 @@ class DatabaseSyncService:
                 import_cmd.append(f'-p{db_password}')
             import_cmd.append(db_name)
 
-            # Stream SQL to mysql as raw bytes. For gzip snapshots we must
-            # actively decompress and pipe the resulting SQL bytes; passing a
-            # GzipFile directly as stdin exposes its underlying compressed fd.
-            process = subprocess.Popen(
-                import_cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+            if snapshot_path.endswith('.gz'):
+                result = run_from_gzip(import_cmd, snapshot_path, timeout=1800)
+            else:
+                with open(snapshot_path, 'r') as f:
+                    result = run_checked(import_cmd, stdin=f, timeout=1800)
 
-            try:
-                opener = gzip.open if snapshot_path.endswith('.gz') else open
-                with opener(snapshot_path, 'rb') as input_file:
-                    while True:
-                        chunk = input_file.read(1024 * 1024)
-                        if not chunk:
-                            break
-                        process.stdin.write(chunk)
-
-                process.stdin.close()
-                process.stdin = None
-                stdout, stderr = process.communicate(timeout=1800)
-
-            except Exception:
-                process.kill()
-                process.wait()
-                raise
-
-            if process.returncode != 0:
-                error = stderr.decode('utf-8', errors='replace').strip()
-                return {
-                    'success': False,
-                    'error': f'Container import failed: {error}'
-                }
+            if not result['success']:
+                return {'success': False,
+                        'error': f"Container import failed: {result['error']}"}
 
             return {'success': True, 'message': f'Imported {snapshot_path} into container DB {db_name}'}
 

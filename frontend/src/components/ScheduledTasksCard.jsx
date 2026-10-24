@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Pill, Drawer } from '@/components/ds';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/intl';
 
 // Read-only summary of an app's scheduled (cron) jobs. Rendered on the service
 // detail and WordPress detail Overview tabs. The backend endpoint is
@@ -60,13 +61,13 @@ const ScheduledTasksCard = ({ appId }) => {
             {loading ? (
                 <div className="scheduled-tasks-card__loading">{t('common.loading', 'Loading…')}</div>
             ) : !jobs || jobs.length === 0 ? (
-                <div className="scheduled-tasks-card__empty">{t('app.scheduledTasksCard.noScheduledTasksForThisApp', 'No scheduled tasks for this app.')}</div>
+                <div className="scheduled-tasks-card__empty">{t('app.scheduledTasksCard.noScheduledTasksForThisApp', 'No scheduled tasks for this service.')}</div>
             ) : (
                 <ul className="scheduled-tasks-card__list">
                     {jobs.map((job) => (
                         <li key={job.id} className="scheduled-tasks-card__row">
                             <div className="scheduled-tasks-card__main">
-                                <span className="scheduled-tasks-card__name">{job.name || 'Unnamed job'}</span>
+                                <span className="scheduled-tasks-card__name">{job.name || t('app.scheduledTasksCard.unnamedJob', 'Unnamed job')}</span>
                                 <span className="scheduled-tasks-card__sched">{job.schedule_human || job.schedule}</span>
                                 {job.schedule_human && job.schedule && (
                                     <span className="scheduled-tasks-card__cron">{job.schedule}</span>
@@ -84,7 +85,7 @@ const ScheduledTasksCard = ({ appId }) => {
                                     <History size={13} />
                                 </SharedButton>
                                 <Pill kind={job.enabled ? 'green' : 'gray'}>
-                                    {job.enabled ? 'Enabled' : 'Disabled'}
+                                    {job.enabled ? t('app.scheduledTasksCard.enabled', 'Enabled') : t('app.scheduledTasksCard.disabled', 'Disabled')}
                                 </Pill>
                             </div>
                         </li>
@@ -106,8 +107,8 @@ const ScheduledTasksCard = ({ appId }) => {
                     ) : !runsData || runsData.runs.length === 0 ? (
                         <div className="scheduled-tasks-runs__empty">
                             {runsJob && !runsJob.tracked
-                                ? 'Run tracking is off for this task — no history to show.'
-                                : 'No runs recorded yet.'}
+                                ? t('app.scheduledTasksCard.trackingOffNoHistory', 'Run tracking is off for this task, so there is no history to show.')
+                                : t('app.scheduledTasksCard.noRunsRecordedYet', 'No runs recorded yet.')}
                         </div>
                     ) : (
                         <>
@@ -142,6 +143,7 @@ const ScheduledTasksCard = ({ appId }) => {
 // The status cell: a real icon when a run has been recorded, otherwise an honest
 // hint so the field is never a silent blank (the dead-field the review flagged).
 function StatusHint({ job }) {
+    const { t } = useTranslation();
     if (job.last_status) {
         return job.last_status === 'success' ? (
             <CheckCircle2 size={14} className="scheduled-tasks-card__status scheduled-tasks-card__status--ok" />
@@ -151,7 +153,7 @@ function StatusHint({ job }) {
     }
     return (
         <span className="scheduled-tasks-card__status-hint">
-            {job.tracked ? 'no runs yet' : 'tracking off'}
+            {job.tracked ? t('app.scheduledTasksCard.noRunsYet', 'no runs yet') : t('app.scheduledTasksCard.trackingOff', 'tracking off')}
         </span>
     );
 }
@@ -161,7 +163,7 @@ function formatWhen(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return formatDateTime(d, { parts: { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' } });
 }
 
 export default ScheduledTasksCard;

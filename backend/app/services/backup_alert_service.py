@@ -1,4 +1,4 @@
-"""Edge-triggered restore-proof alerts (plan 23 Phase 5).
+"""Edge-triggered restore-proof alerts.
 
 Drills and verification run on a schedule, so a naive "notify on failure" would
 re-alert every sweep. These alerts are STATE-TRANSITION only: a failure fires
@@ -47,7 +47,7 @@ class BackupAlertService:
     @staticmethod
     def _notify(event, data, policy=None):
         # Carry the policy target so the notification deep-links straight to its
-        # protection panel (focus=policy:<target_type>:<target_id>, plan 33).
+        # protection panel (focus=policy:<target_type>:<target_id>).
         if policy is not None:
             data = {**data, 'target_type': policy.target_type, 'target_id': policy.target_id}
         try:

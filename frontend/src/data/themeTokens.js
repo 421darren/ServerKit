@@ -1,7 +1,7 @@
 // ============================================
 // ServerKit theme token whitelist + alias table + validators
 // ============================================
-// A ServerKit theme is DATA, not code (see docs/THEMING.md and plan 60): a map
+// A ServerKit theme is DATA, not code (see docs/THEMING.md): a map
 // of canonical CSS custom-property names to values. This module is the single
 // client-side source of truth for
 //   - which token names a theme may set (the whitelist),

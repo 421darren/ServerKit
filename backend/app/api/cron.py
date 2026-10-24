@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app cron routes gate via the app-grant
+# Bucket: PER-APP. Per-app cron routes gate via the app-grant
 # family (can_access_app / can_edit_app). See docs/WORKSPACE_SCOPING.md.
 """
 Cron Job Management API
@@ -10,6 +10,7 @@ from flask import Blueprint, request, jsonify
 
 from app.middleware.rbac import admin_required, viewer_required, require_app_member
 from app.services.cron_service import CronService
+from app.api._request import json_object
 
 cron_bp = Blueprint('cron', __name__)
 
@@ -97,7 +98,7 @@ def list_jobs():
 @admin_required
 def create_job():
     """Create a new cron job."""
-    data = request.get_json()
+    data = json_object()
 
     schedule = data.get('schedule')
     command = data.get('command')
@@ -112,7 +113,7 @@ def create_job():
 
     application_id = _validate_application_id(data.get('application_id'))
     if application_id is _INVALID_APP:
-        return jsonify({'success': False, 'error': 'Application not found'}), 400
+        return jsonify({'success': False, 'error': 'Service not found'}), 400
 
     result = CronService.add_job(
         schedule=schedule,
@@ -131,14 +132,14 @@ def create_job():
 @admin_required
 def update_job(job_id):
     """Update a cron job."""
-    data = request.get_json()
+    data = json_object()
 
     set_application = 'application_id' in data
     application_id = None
     if set_application:
         application_id = _validate_application_id(data.get('application_id'))
         if application_id is _INVALID_APP:
-            return jsonify({'success': False, 'error': 'Application not found'}), 400
+            return jsonify({'success': False, 'error': 'Service not found'}), 400
 
     result = CronService.update_job(
         job_id=job_id,
@@ -170,7 +171,7 @@ def delete_job(job_id):
 @admin_required
 def toggle_job(job_id):
     """Enable or disable a cron job."""
-    data = request.get_json()
+    data = json_object()
     enabled = data.get('enabled', True)
 
     result = CronService.toggle_job(job_id, enabled)
@@ -229,7 +230,7 @@ def jobs_for_app(app_id):
 def toggle_tracking(job_id):
     """Enable/disable run tracking for a job (rewrites its crontab line with the
     serverkit-cron-run shim; disabling restores the bare command)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     enabled = bool(data.get('enabled', True))
     options = {}
     if 'alert_on_failure' in data:
@@ -263,14 +264,14 @@ def ingest_run():
     """
     # The cron-run shim posts DIRECTLY to the panel's loopback gunicorn port
     # (cli_api_client base http://127.0.0.1:<port>), never through nginx, so no
-    # X-Forwarded-For is present and ProxyFix (plan 48) leaves remote_addr as the
+    # X-Forwarded-For is present and ProxyFix leaves remote_addr as the
     # real 127.0.0.1 peer. A request routed through nginx instead carries the
     # real client as the rightmost hop, so this gate can't be spoofed to 127.0.0.1.
     remote = (request.remote_addr or '')
     if remote not in ('127.0.0.1', '::1', 'localhost'):
         return jsonify({'error': 'Ingest is restricted to localhost'}), 403
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     job_id = data.get('job_id')
     if not job_id:
         return jsonify({'error': 'job_id is required'}), 400
@@ -333,7 +334,7 @@ def preview_schedule():
     existing cron read gate rather than the admin write gate — the Backups and
     server-detail embedders shouldn't need admin to preview a schedule.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     schedule = data.get('schedule', '')
     result = CronService.preview_schedule(schedule)
     return jsonify(result)

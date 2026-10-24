@@ -1,6 +1,6 @@
-# Bucket: PER-APP (plan 29 #9). Reads gate on can_access_app; attach/detach
+# Bucket: PER-APP. Reads gate on can_access_app; attach/detach
 # gate on can_edit_app for the app AND can_access_app for the service used.
-"""Attach services an app uses (plan 86 §C2/§C4). Mounted under ``/api/v1/apps``.
+"""Attach services an app uses. Mounted under ``/api/v1/apps``.
 
   GET    /<app_id>/attachments                 — this app's attachments
   GET    /attachments/services?kind=<kind>     — installed services for a kind
@@ -13,12 +13,13 @@ restart, so responses say ``redeploy_required``.
 """
 from flask import Blueprint, jsonify, request
 
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import NotFoundError, ValidationError, not_found
 from app.middleware.rbac import developer_required, get_current_user, viewer_required
 from app.models.app_attachment import AppAttachment
 from app.services.app_attachment_service import (
     FAILURE_MODES, AppAttachmentService, AttachmentError)
 from app.services.resource_grant_service import ResourceGrantService
+from app.api._request import json_object
 
 app_attachments_bp = Blueprint('app_attachments', __name__)
 
@@ -28,7 +29,7 @@ app_attachments_bp = Blueprint('app_attachments', __name__)
 def list_attachments(app_id):
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_access_app(get_current_user(), app):
-        raise NotFoundError('Application not found')
+        raise not_found('service')
     return jsonify({'attachments': [a.to_dict() for a in AppAttachmentService.list_for_app(app)],
                     'kinds': AppAttachmentService.kinds_for(app)})
 
@@ -57,15 +58,15 @@ def attach_service(app_id, kind):
     user = get_current_user()
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(user, app):
-        raise NotFoundError('Application not found')
-    data = request.get_json(silent=True) or {}
+        raise not_found('service')
+    data = json_object(optional=True)
     service_app_id = data.get('service_app_id')
     if not isinstance(service_app_id, int) or isinstance(service_app_id, bool):
         raise ValidationError("'service_app_id' is required")
     kind = _kind_or_400(kind)
     service = AppAttachmentService.live_app(service_app_id)
     if service is None or not ResourceGrantService.can_access_app(user, service):
-        raise NotFoundError('Service not found')
+        raise not_found('service')
     try:
         row, created = AppAttachmentService.attach(app, service, kind, user_id=user.id)
     except AttachmentError as exc:
@@ -79,7 +80,7 @@ def detach(app_id, attachment_id):
     user = get_current_user()
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(user, app):
-        raise NotFoundError('Application not found')
+        raise not_found('service')
     attachment = AppAttachmentService.get(app, attachment_id)
     if attachment is None:
         raise NotFoundError('Attachment not found')
@@ -90,7 +91,7 @@ def detach(app_id, attachment_id):
     return jsonify(body)
 
 
-# ==================== CONNECTION POOLING (plan 86 §D1) ====================
+# ==================== CONNECTION POOLING ====================
 
 @app_attachments_bp.route('/<int:app_id>/pooler', methods=['GET'])
 @viewer_required
@@ -98,7 +99,7 @@ def get_pooler(app_id):
     from app.services import pooler_service
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_access_app(get_current_user(), app):
-        raise NotFoundError('Application not found')
+        raise not_found('service')
     return jsonify({'available': pooler_service.is_postgres_engine(app),
                     'enabled': bool(app.pooler_enabled),
                     'host': pooler_service.container_name(app),
@@ -111,17 +112,17 @@ def set_pooler(app_id):
     from app.services import pooler_service
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(get_current_user(), app):
-        raise NotFoundError('Application not found')
+        raise not_found('service')
     if not pooler_service.is_postgres_engine(app):
         raise ValidationError('Connection pooling is for an installed PostgreSQL')
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if not isinstance(data.get('enabled'), bool):
         raise ValidationError("'enabled' must be true or false")
     result = pooler_service.set_enabled(app, data['enabled'])
     return jsonify(result)
 
 
-# ==================== BOTTLENECK HINTS (plan 86 §A5) ====================
+# ==================== BOTTLENECK HINTS ====================
 
 @app_attachments_bp.route('/<int:app_id>/hints', methods=['GET'])
 @viewer_required
@@ -129,11 +130,11 @@ def get_hints(app_id):
     from app.services.bottleneck_hints_service import BottleneckHintsService
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_access_app(get_current_user(), app):
-        raise NotFoundError('Application not found')
+        raise not_found('service')
     return jsonify({'hints': BottleneckHintsService.hints(app)})
 
 
-# ==================== IMMUTABLE ASSETS (plan 86 §B2) ====================
+# ==================== IMMUTABLE ASSETS ====================
 
 @app_attachments_bp.route('/<int:app_id>/immutable-assets', methods=['PUT'])
 @developer_required
@@ -143,8 +144,8 @@ def set_immutable_assets(app_id):
     from app.services.site_domain_service import SiteDomainService
     app = AppAttachmentService.live_app(app_id)
     if app is None or not ResourceGrantService.can_edit_app(get_current_user(), app):
-        raise NotFoundError('Application not found')
-    data = request.get_json(silent=True) or {}
+        raise not_found('service')
+    data = json_object(optional=True)
     if not isinstance(data.get('enabled'), bool):
         raise ValidationError("'enabled' must be true or false")
     return jsonify(SiteDomainService.set_immutable_assets(app, data['enabled']))

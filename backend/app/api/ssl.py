@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.middleware.rbac import admin_required
 from app.services.ssl_service import SSLService, get_acme_contact, remember_acme_contact
+from app.api._request import json_object
 
 ssl_bp = Blueprint('ssl', __name__)
 
@@ -41,7 +42,7 @@ def get_certificate(domain):
 @admin_required
 def obtain_certificate():
     """Obtain a new SSL certificate from Let's Encrypt."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400

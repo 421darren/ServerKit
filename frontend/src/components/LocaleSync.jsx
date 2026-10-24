@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/useAuth.js';
 import { useLocale } from '../contexts/useLocale.js';
 import api from '../services/api';
 
-// Bridges auth -> locale (plan 79 B1/B2). LocaleProvider sits above
+// Bridges auth -> locale. LocaleProvider sits above
 // AuthProvider so the sign-in screen is translated before anyone is signed in,
 // which means it cannot read auth state itself. This renders inside
 // AuthProvider and does two things:

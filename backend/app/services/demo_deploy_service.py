@@ -1,6 +1,6 @@
 """Simulated deployments — scripted DeploymentJobs for the Deploy Console.
 
-Plan 51.5: lets a developer exercise the full console (StepRail, live log
+Lets a developer exercise the full console (StepRail, live log
 stream, ErrorCard + hints, SuccessBanner, retry) on any dev machine with no
 Docker, shell, or network access. The "runner" is a script that drives the
 REAL ``RunLogStream``, so DB rows, socket batches, poll fallback, failure

@@ -1,4 +1,4 @@
-"""Deploy Console stage markers (plan 87 §F).
+"""Deploy Console stage markers.
 
 The Deploy Console's PipelineStrip renders ``job.plan.steps``; the job runner
 advances it with ``set_step``. A deploy passes through several services

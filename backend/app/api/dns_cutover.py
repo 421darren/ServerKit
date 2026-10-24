@@ -6,13 +6,15 @@ public resolvers, and revert — restoring the pre-cutover world byte-for-byte.
 
 Read verbs (ttl-guidance, list/get snapshots, verify) are open to any
 authenticated user; the mutating verbs (snapshot, cutover, revert) are
-admin-only (plan 31 #1/#2/#3).
+admin-only.
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.dns_cutover_service import DnsCutoverService, DnsCutoverError
 from app.middleware.rbac import require_admin_user
+from app.exceptions import not_found
+from app.api._request import json_object
 
 dns_cutover_bp = Blueprint('dns_cutover', __name__)
 
@@ -29,7 +31,7 @@ def _cutover_error(exc):
 @dns_cutover_bp.route('/ttl-guidance', methods=['POST'])
 @jwt_required()
 def ttl_guidance():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     return jsonify(DnsCutoverService.ttl_guidance(data.get('records') or []))
 
 
@@ -37,7 +39,7 @@ def ttl_guidance():
 @jwt_required()
 def create_snapshot():
     require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         snapshot = DnsCutoverService.create_snapshot(
             domain=data.get('domain'),
@@ -62,7 +64,7 @@ def list_snapshots():
 def get_snapshot(snapshot_id):
     snapshot = DnsCutoverService.get_snapshot(snapshot_id)
     if not snapshot:
-        return jsonify({'error': 'Snapshot not found'}), 404
+        raise not_found('snapshot')
     return jsonify(snapshot.to_dict())
 
 
@@ -70,14 +72,14 @@ def get_snapshot(snapshot_id):
 @jwt_required()
 def cutover():
     require_admin_user()
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     snapshot_id = data.get('snapshot_id')
     if not snapshot_id:
         return jsonify({'error': 'snapshot_id is required — a cutover needs a '
                                  'snapshot so it can be reverted'}), 400
     snapshot = DnsCutoverService.get_snapshot(snapshot_id)
     if not snapshot:
-        return jsonify({'error': 'Snapshot not found'}), 404
+        raise not_found('snapshot')
     try:
         result = DnsCutoverService.cutover(
             snapshot, target=data.get('target'),
@@ -91,7 +93,7 @@ def cutover():
 @dns_cutover_bp.route('/verify', methods=['POST'])
 @jwt_required()
 def verify():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     try:
         result = DnsCutoverService.verify(
             domain=data.get('domain'),
@@ -109,7 +111,7 @@ def revert(snapshot_id):
     require_admin_user()
     snapshot = DnsCutoverService.get_snapshot(snapshot_id)
     if not snapshot:
-        return jsonify({'error': 'Snapshot not found'}), 404
+        raise not_found('snapshot')
     try:
         result = DnsCutoverService.revert(snapshot)
         return jsonify(result)

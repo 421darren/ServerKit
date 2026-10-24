@@ -7,6 +7,7 @@ import { useDeployments } from '../../hooks/useDeployments';
 import { getDeployStatus, formatRelativeTime, formatDuration } from '../../utils/serviceTypes';
 import { formatBytes } from '../../utils/formatBytes';
 import BandwidthSparkline from '../BandwidthSparkline';
+import { InfoList, InfoItem } from '../InfoList';
 import ScheduledTasksCard from '../ScheduledTasksCard';
 import RequestMetricsCard from './RequestMetricsCard';
 import AttachmentsCard from './AttachmentsCard';
@@ -17,6 +18,7 @@ import { KpiBand, MetricCard, Pill, Gauge, EnvTag, statusKind } from '@/componen
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
 import { normalizeContainerStats, resolveAppContainerId } from '@/utils/containerMetrics';
+import { formatDate } from '@/utils/intl';
 
 // Live metrics cadence.
 const METRICS_REFRESH_MS = 10000;
@@ -124,7 +126,7 @@ const OverviewTab = ({ app, deployConfig }) => {
                     tone="accent"
                     icon={<Rocket size={16} />}
                     value={deployments.length}
-                    label={t('app.overviewTab.totalDeploys', 'Total Deploys')}
+                    label={t('app.overviewTab.totalDeploys', 'Total deploys')}
                 />
                 <MetricCard
                     tone="green"
@@ -143,11 +145,10 @@ const OverviewTab = ({ app, deployConfig }) => {
             <div className="overview-tab__grid">
                 {/* Service Info Card */}
                 <div className="overview-tab__card">
-                    <h3 className="overview-tab__card-title">{t('app.overviewTab.serviceInfo', 'Service Info')}</h3>
-                    <div className="overview-tab__info-list">
-                        <div className="sk-info-row">
-                            <span className="k">{t('common.labels.type', 'Type')}</span>
-                            <span className="v">
+                    <h3 className="overview-tab__card-title">{t('app.overviewTab.serviceInfo', 'Service info')}</h3>
+                    <InfoList className="overview-tab__info-list">
+                        <InfoItem label={t('common.labels.type', 'Type')}>
+                            <span className="info-value">
                                 <span
                                     className="overview-tab__info-badge"
                                     style={{ backgroundColor: app.typeInfo.bgColor, color: app.typeInfo.color, borderColor: app.typeInfo.borderColor }}
@@ -155,11 +156,10 @@ const OverviewTab = ({ app, deployConfig }) => {
                                     {app.typeInfo.label}
                                 </span>
                             </span>
-                        </div>
+                        </InfoItem>
                         {app.domain && (
-                            <div className="sk-info-row">
-                                <span className="k">{t('common.labels.domain', 'Domain')}</span>
-                                <span className="v">
+                            <InfoItem label={t('common.labels.domain', 'Domain')}>
+                                <span className="info-value">
                                     <a
                                         href={`https://${app.domain}`}
                                         target="_blank"
@@ -174,12 +174,11 @@ const OverviewTab = ({ app, deployConfig }) => {
                                         </svg>
                                     </a>
                                 </span>
-                            </div>
+                            </InfoItem>
                         )}
                         {app.port && (
-                            <div className="sk-info-row">
-                                <span className="k">{t('common.labels.port', 'Port')}</span>
-                                <span className="v">
+                            <InfoItem label={t('common.labels.port', 'Port')}>
+                                <span className="info-value">
                                     {/* A port with no domain in front of it is
                                         still reachable — the number alone made
                                         you assemble the URL yourself. */}
@@ -196,39 +195,36 @@ const OverviewTab = ({ app, deployConfig }) => {
                                         </a>
                                     ) : app.port}
                                 </span>
-                            </div>
+                            </InfoItem>
                         )}
-                        <div className="sk-info-row">
-                            <span className="k">{t('common.labels.created', 'Created')}</span>
-                            <span className="v">
-                                {new Date(app.created_at).toLocaleDateString('en-US', {
+                        <InfoItem label={t('common.labels.created', 'Created')}>
+                            <span className="info-value">
+                                {formatDate(app.created_at, { parts: {
                                     year: 'numeric', month: 'short', day: 'numeric'
-                                })}
+                                } })}
                             </span>
-                        </div>
+                        </InfoItem>
                         {deployConfig && (
-                            <div className="sk-info-row">
-                                <span className="k">{t('app.overviewTab.repository', 'Repository')}</span>
-                                <span className="v">
+                            <InfoItem label={t('app.overviewTab.repository', 'Repository')}>
+                                <span className="info-value">
                                     {extractRepoDisplay(deployConfig.repo_url)}
                                     <span className="overview-tab__branch">{deployConfig.branch || 'main'}</span>
                                 </span>
-                            </div>
+                            </InfoItem>
                         )}
                         {app.environment_type && app.environment_type !== 'standalone' && (
-                            <div className="sk-info-row">
-                                <span className="k">{t('app.overviewTab.environment', 'Environment')}</span>
-                                <span className="v">
+                            <InfoItem label={t('app.overviewTab.environment', 'Environment')}>
+                                <span className="info-value">
                                     <EnvTag env={ENV_LABEL[app.environment_type] || app.environment_type.toUpperCase()} />
                                 </span>
-                            </div>
+                            </InfoItem>
                         )}
-                    </div>
+                    </InfoList>
                 </div>
 
                 {/* Resource Usage Card */}
                 <div className="overview-tab__card">
-                    <h3 className="overview-tab__card-title">{t('app.overviewTab.resourceUsage', 'Resource Usage')}</h3>
+                    <h3 className="overview-tab__card-title">{t('app.overviewTab.resourceUsage', 'Resource usage')}</h3>
                     {metricsLoading ? (
                         <div className="overview-tab__loading">{t('app.overviewTab.loadingMetrics', 'Loading metrics…')}</div>
                     ) : isDocker && metrics ? (
@@ -265,7 +261,7 @@ const OverviewTab = ({ app, deployConfig }) => {
                                 <div className="overview-tab__metric-item">
                                     <span className="overview-tab__metric-item-label">{t('common.labels.status', 'Status')}</span>
                                     <span className="overview-tab__metric-item-value">
-                                        {metrics.active ? 'Active' : 'Inactive'}
+                                        {metrics.active ? t('app.overviewTab.active', 'Active') : t('app.overviewTab.inactive', 'Inactive')}
                                     </span>
                                 </div>
                                 {metrics.pid && (
@@ -300,7 +296,9 @@ const OverviewTab = ({ app, deployConfig }) => {
                         </div>
                     ) : (
                         <div className="overview-tab__no-metrics">
-                            <p>{app.isRunning ? 'No metrics available for this service type.' : 'Start the service to view metrics.'}</p>
+                            <p>{app.isRunning
+                                ? t('app.overviewTab.noMetricsForType', 'No metrics available for this service type.')
+                                : t('app.overviewTab.startToViewMetrics', 'Start the service to view metrics.')}</p>
                         </div>
                     )}
                 </div>
@@ -334,22 +332,22 @@ const OverviewTab = ({ app, deployConfig }) => {
             {/* Traffic (timed access log; hidden until requests exist) */}
             <RequestMetricsCard appId={app.id} />
 
-            {/* Bottleneck hints from the traffic above (plan 86 §A5) */}
+            {/* Bottleneck hints from the traffic above */}
             <HintsCard app={app} />
 
-            {/* Cache / storage / queue this app uses (plan 86 §C4) */}
+            {/* Cache / storage / queue this app uses */}
             <AttachmentsCard app={app} />
 
-            {/* PgBouncer beside an installed PostgreSQL (plan 86 §D1) */}
+            {/* PgBouncer beside an installed PostgreSQL */}
             <PoolerCard app={app} />
 
-            {/* A/B slot deploys: live release, warm standby, switch back (plan 87) */}
+            {/* A/B slot deploys: live release, warm standby, switch back */}
             <SlotsCard app={app} />
 
             {/* Recent Deployments */}
             <div className="overview-tab__card overview-tab__card--full">
                 <div className="overview-tab__card-header-row">
-                    <h3 className="overview-tab__card-title">{t('app.overviewTab.recentDeployments', 'Recent Deployments')}</h3>
+                    <h3 className="overview-tab__card-title">{t('app.overviewTab.recentDeployments', 'Recent deployments')}</h3>
                     {deployments.length > 3 && (
                         <span className="overview-tab__see-all">
                             {deployments.length} total
@@ -373,7 +371,7 @@ const OverviewTab = ({ app, deployConfig }) => {
                                     <div className={`overview-tab__deploy-dot overview-tab__deploy-dot--${tone}`} />
                                     <div className="overview-tab__deploy-info">
                                         <span className="overview-tab__deploy-message">
-                                            {deploy.commitMessage || deploy.version || `Deployment #${deployments.length - idx}`}
+                                            {deploy.commitMessage || deploy.version || t('app.overviewTab.deploymentNumber', 'Deployment #{{number}}', { number: deployments.length - idx })}
                                         </span>
                                         <span className="overview-tab__deploy-meta">
                                             {deploy.commitSha && (
@@ -385,7 +383,7 @@ const OverviewTab = ({ app, deployConfig }) => {
                                         </span>
                                     </div>
                                     <Pill kind={isLatest ? 'green' : tone}>
-                                        {isLatest ? 'Live' : statusInfo.label}
+                                        {isLatest ? t('app.overviewTab.live', 'Live') : statusInfo.label}
                                     </Pill>
                                 </div>
                             );
@@ -411,7 +409,7 @@ const RelatedResourcesCard = ({ app, related }) => {
 
     return (
         <div className="overview-tab__card">
-            <h3 className="overview-tab__card-title">{t('app.overviewTab.relatedResources', 'Related Resources')}</h3>
+            <h3 className="overview-tab__card-title">{t('app.overviewTab.relatedResources', 'Related resources')}</h3>
             {!related ? (
                 <div className="overview-tab__loading">{t('common.loading', 'Loading…')}</div>
             ) : !hasAny ? (
@@ -450,21 +448,19 @@ const RelatedResourcesCard = ({ app, related }) => {
                         </div>
                     )}
                     {backup?.enabled && (
-                        <div className="sk-info-row">
-                            <span className="k">{t('common.labels.backups', 'Backups')}</span>
-                            <span className="v">
+                        <InfoItem label={t('common.labels.backups', 'Backups')}>
+                            <span className="info-value">
                                 {backup.frequency || 'scheduled'}
                                 {backup.last_status && <Pill kind={backup.last_status === 'success' ? 'green' : 'amber'}>{backup.last_status}</Pill>}
                             </span>
-                        </div>
+                        </InfoItem>
                     )}
                     {deployments?.count > 0 && (
-                        <div className="sk-info-row">
-                            <span className="k">{t('app.overviewTab.deployments', 'Deployments')}</span>
-                            <span className="v">
+                        <InfoItem label={t('app.overviewTab.deployments', 'Deployments')}>
+                            <span className="info-value">
                                 <Link to={`/services/${app.id}/events`}>{deployments.count} total</Link>
                             </span>
-                        </div>
+                        </InfoItem>
                     )}
                 </div>
             )}

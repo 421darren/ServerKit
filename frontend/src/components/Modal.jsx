@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 // (styles/components/_ui.scss → .sk-modal*). `size` picks a max-width on
 // >=sm screens; mobile is always near full-width.
 //
-// Form mode (plan 79 G2 / plan 76 F2): pass `onSubmit` and the body AND footer
+// Form mode: pass `onSubmit` and the body AND footer
 // are wrapped in one <form>. This exists because a submit button must live
 // inside the form it submits — without it, every modal with a form had to
 // bypass `footer` and hand-roll its own footer row inside the body, which is

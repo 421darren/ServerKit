@@ -1,4 +1,4 @@
-"""Email bounce / complaint suppression state (plan 33 Phase 4, roadmap #24).
+"""Email bounce / complaint suppression state (roadmap #24).
 
 One row per email address that a provider reported a bounce or complaint for.
 A hard-bouncing address auto-mutes after ``MUTE_THRESHOLD`` consecutive hard

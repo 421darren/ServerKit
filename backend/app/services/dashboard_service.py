@@ -1,4 +1,4 @@
-"""Dashboard board service (plan 62).
+"""Dashboard board service.
 
 Owns the shipped default boards and the per-user CRUD around them. A board is a
 dashboard tab; a widget instance is ``{i, type, x, y, w, h, cfg}`` placed on a

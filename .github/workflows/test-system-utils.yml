@@ -9,7 +9,7 @@ on:
       - 'backend/tests/test_utils_system*.py'
       - '.github/workflows/test-system-utils.yml'
   pull_request:
-    branches: [main]
+    branches: [main, dev]
     paths:
       - 'backend/app/utils/system.py'
       - 'backend/app/services/**'

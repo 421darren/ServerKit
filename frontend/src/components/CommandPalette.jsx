@@ -75,7 +75,7 @@ const TYPE_LABEL = {
     workspace: 'Workspace', project: 'Project', domain: 'Domain',
 };
 
-// Docs entries derived from the single docsLinks map (plan 40). Hidden under
+// Docs entries derived from the single docsLinks map. Hidden under
 // White Label since they point at the public serverkit.ai docs.
 const DOCS_ENTRIES = [
     { key: 'deploySources', labelKey: 'palette.docs.deploySources', label: 'Docs: Deploy sources', keywords: 'deploy source repo git' },

@@ -58,7 +58,7 @@ export async function deleteBackupRun(targetType, targetId, runId) {
     return this.request(`${runsBase(targetType, targetId)}/${runId}`, { method: 'DELETE' });
 }
 
-// ---- fleet-wide policy + run views (§8 unification) -----------------------
+// ---- fleet-wide policy + run views -----------------------
 // The per-target methods above answer "how is THIS site protected?"; these two
 // answer "how is everything protected?" and back the Backups overview — the
 // protected-resource count, the activity heatmap, and the success rate all come
@@ -67,7 +67,7 @@ export async function deleteBackupRun(targetType, targetId, runId) {
 // Target types available right now (core set + extension-registered kinds,
 // e.g. wordpress_site only while the WordPress extension is installed). The
 // Protection panel / restore drawer read this instead of hardcoding type
-// knowledge, so an absent extension means an absent type (plan 52 D4).
+// knowledge, so an absent extension means an absent type.
 export async function getBackupTargetTypes() {
     return this.request('/backups/target-types');
 }

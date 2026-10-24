@@ -30,7 +30,7 @@ class DeploymentPlanRunner:
         if not job.correlation_id:
             job.correlation_id = self.correlation_id
         # All log/step/close writes funnel through the one batched, crash-proof
-        # seam (plan 51 D4). runner.log() stays a thin wrapper for call-site
+        # seam. runner.log() stays a thin wrapper for call-site
         # compatibility with the 98ad048 code.
         self.stream = RunLogStream.for_job(job)
 
@@ -232,8 +232,8 @@ class DeploymentPlanRunner:
         if not project_dir:
             raise DeploymentStepError('docker.compose.up step requires project_dir for local targets')
         # Stream the real pull/build/start transcript into the run log so the
-        # Deploy Console shows it live and a failure persists a meaningful tail
-        # (plan 51 D5). The line callback rides the batched stream.
+        # Deploy Console shows it live and a failure persists a meaningful tail.
+        # The line callback rides the batched stream.
         current_step = self.job.current_step
         result = DockerService.compose_up_streaming(
             project_dir,

@@ -52,7 +52,7 @@ MODSEC_AUDIT_LOG = os.environ.get('SERVERKIT_MODSEC_AUDIT_LOG', '/var/log/modsec
 
 # Where managed app vhosts live. Imported, not mirrored: "mirrors
 # NginxService.SITES_AVAILABLE" is a comment, and a comment is not a
-# constraint — the two drift the moment either side moves (plan 75 §G4).
+# constraint — the two drift the moment either side moves.
 from app.services.nginx_service import NginxService  # noqa: E402
 
 NGINX_CONF_DIR = NginxService.NGINX_CONF_DIR
@@ -284,7 +284,7 @@ class WafService:
 
     @classmethod
     def _write_file(cls, path: str, content: str) -> Dict:
-        """Write *content* to *path* with privilege — the shared door (plan 75 §G2)."""
+        """Write *content* to *path* with privilege — the shared door."""
         from app.utils.system import write_privileged_file
         return write_privileged_file(path, content)
 
@@ -409,8 +409,8 @@ class WafService:
 
         ``write_app_vhost`` renders from the template, which has no WAF
         include; drift repair and a slot switch both rewrite the vhost, and
-        neither may strip protection the DB still records (plan 82 §F.1,
-        plan 87 §B). None when the app has no enforcing policy.
+        neither may strip protection the DB still records. None when the app
+        has no enforcing policy.
         """
         from app.models.waf_policy import WafPolicy
         policy = WafPolicy.query.filter_by(application_id=application_id).first()
@@ -433,7 +433,7 @@ class WafService:
 
         application = Application.query_active().filter_by(id=application_id).first()
         if not application:
-            return {'success': False, 'error': 'Application not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         policy = WafPolicy.query.filter_by(application_id=application_id).first()
         if policy is None:

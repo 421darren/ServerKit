@@ -1,9 +1,10 @@
 import { TOKEN_EXPIRY_OPTIONS } from './serverDetailData';
-import { useCallback, useState, useEffect  } from 'react';
+import { useCallback, useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
-import { useClipboard } from '@/hooks/useClipboard';
+import CopyField from '@/components/CopyField';
+import { InfoList, InfoItem } from '../InfoList';
 import { DangerZone } from '../DangerZone';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,10 +27,12 @@ import {
     NetworkIcon,
     TrashIcon,
     TagIcon,
-    TerminalIcon,
-    CopyIcon,
-    WindowsIcon,
 } from './serverDetailShared';
+import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
+
+// Radix Select items cannot carry an empty value; this stands for "no group".
+const NO_GROUP = '__none';
 
 const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
     const { t } = useTranslation();
@@ -42,16 +45,16 @@ const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
             <div className="form-section__header">
                 <span className="form-section__icon"><KeyIcon /></span>
                 <div>
-                    <h3>{t('app.serverSettingsTab.connectionString', 'Connection String')}</h3>
+                    <h3>{t('app.serverSettingsTab.connectionString', 'Connection string')}</h3>
                     <p className="section-description">
-                        {t('app.serverSettingsTab.generateAFreshConnectionStringTo', 'Generate a fresh connection string to pair (or re-pair) this server. Useful after reinstalling the agent — old credentials are gone, but a new string brings the agent right back to this row.')}
-                        {isOnline && ' This server is currently online; regenerating only affects re-pairing.'}
-                        {isExpired && ' The previous token has expired.'}
+                        {t('app.serverSettingsTab.generateAFreshConnectionStringTo', 'Generate a fresh connection string to pair (or re-pair) this server. Useful after reinstalling the agent: old credentials are gone, but a new string brings the agent right back to this row.')}
+                        {isOnline && ` ${t('app.serverSettingsTab.onlineRegenerateNote', 'This server is online now; a new string only affects re-pairing.')}`}
+                        {isExpired && ` ${t('app.serverSettingsTab.previousTokenExpired', 'The previous token has expired.')}`}
                     </p>
                 </div>
             </div>
             <Button onClick={onRegenerateToken}>
-                <KeyIcon /> {t('app.serverSettingsTab.generateConnectionString', 'Generate Connection String')}
+                <KeyIcon /> {t('app.serverSettingsTab.generateConnectionString', 'Generate connection string')}
             </Button>
         </div>
     );
@@ -59,6 +62,7 @@ const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
 
 const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const { confirm: confirmSettings } = useConfirm();
     const [formData, setFormData] = useState({
         name: server.name || '',
@@ -112,7 +116,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
             setNewIP('');
             toast.success(t('app.serverSettingsTab.ipAllowlistUpdated', 'IP allowlist updated'));
         } catch (err) {
-            toast.error(err.details?.[0] || err.message || t('app.serverSettingsTab.invalidIpPattern', 'Invalid IP pattern'));
+            toastError(toast, t('app.serverSettingsTab.invalidIpPattern', 'Enter an IP address or CIDR range, like 192.168.1.0/24.'), err.details?.[0] || err);
         }
     }
 
@@ -123,12 +127,12 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
             setAllowedIPs(updated);
             toast.success(t('app.serverSettingsTab.ipRemovedFromAllowlist', 'IP removed from allowlist'));
         } catch (err) {
-            toast.error(err.message || t('app.serverSettingsTab.failedToUpdateAllowlist', 'Failed to update allowlist'));
+            toastError(toast, t('app.serverSettingsTab.failedToUpdateAllowlist', "Couldn't update the allowlist."), err);
         }
     }
 
     async function handleRotateKey() {
-        const confirmed = await confirmSettings({ titleKey: 'app.serverSettingsTab.rotateCredentials', title: 'Rotate Credentials', messageKey: 'app.serverSettingsTab.rotateApiCredentialsTheAgentMust', message: 'Rotate API credentials? The agent must be online to receive new credentials.', variant: 'warning' });
+        const confirmed = await confirmSettings({ titleKey: 'app.serverSettingsTab.rotateCredentials', title: 'Rotate credentials', messageKey: 'app.serverSettingsTab.rotateApiCredentialsTheAgentMust', message: 'Rotate API credentials? The agent must be online to receive new credentials.', variant: 'warning' });
         if (!confirmed) return;
         setRotatingKey(true);
         try {
@@ -136,10 +140,10 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
             if (result.success) {
                 toast.success(t('app.serverSettingsTab.credentialRotationInitiatedAgentWillUpdate', 'Credential rotation initiated. Agent will update shortly.'));
             } else {
-                toast.error(result.error || t('app.serverSettingsTab.failedToRotateCredentials', 'Failed to rotate credentials'));
+                toastError(toast, t('app.serverSettingsTab.failedToRotateCredentials', "Couldn't rotate the credentials."), result.error);
             }
         } catch (err) {
-            toast.error(err.message || t('app.serverSettingsTab.failedToRotateCredentials', 'Failed to rotate credentials'));
+            toastError(toast, t('app.serverSettingsTab.failedToRotateCredentials', "Couldn't rotate the credentials."), err);
         } finally {
             setRotatingKey(false);
         }
@@ -151,10 +155,10 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
 
         try {
             await api.updateServer(server.id, formData);
-            toast.success(t('app.serverSettingsTab.serverUpdatedSuccessfully', 'Server updated successfully'));
+            toast.success(t('app.serverSettingsTab.serverUpdatedSuccessfully', 'Server updated'));
             onUpdate();
         } catch (err) {
-            toast.error(err.message || t('app.serverSettingsTab.failedToUpdateServer', 'Failed to update server'));
+            toastError(toast, t('app.serverSettingsTab.failedToUpdateServer', "Couldn't update the server."), err);
         } finally {
             setLoading(false);
         }
@@ -173,13 +177,14 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         <div className="form-section__header">
                             <span className="form-section__icon"><ServerIcon /></span>
                             <div>
-                                <h3>{t('app.serverSettingsTab.basicInformation', 'Basic Information')}</h3>
+                                <h3>{t('app.serverSettingsTab.basicInformation', 'Basic information')}</h3>
                                 <p className="section-description">{t('app.serverSettingsTab.identityAndGroupingForThisServer', 'Identity and grouping for this server.')}</p>
                             </div>
                         </div>
                         <div className="form-group">
-                            <label>{t('app.serverSettingsTab.serverName', 'Server Name')}</label>
+                            <label htmlFor={`${fieldId}-name`}>{t('app.serverSettingsTab.serverName', 'Server name')}</label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 name="name"
                                 value={formData.name}
@@ -189,8 +194,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         </div>
 
                         <div className="form-group">
-                            <label>{t('common.labels.description', 'Description')}</label>
+                            <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
                             <Textarea
+                                id={`${fieldId}-description`}
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
@@ -200,8 +206,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
+                                <label htmlFor={`${fieldId}-hostname`}>{t('app.serverSettingsTab.hostname', 'Hostname')}</label>
                                 <Input
+                                    id={`${fieldId}-hostname`}
                                     type="text"
                                     name="hostname"
                                     value={formData.hostname}
@@ -209,8 +216,9 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                                 />
                             </div>
                             <div className="form-group">
-                                <label>{t('common.labels.ipAddress', 'IP Address')}</label>
+                                <label htmlFor={`${fieldId}-ip`}>{t('common.labels.ipAddress', 'IP address')}</label>
                                 <Input
+                                    id={`${fieldId}-ip`}
                                     type="text"
                                     name="ip_address"
                                     value={formData.ip_address}
@@ -220,17 +228,24 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         </div>
 
                         <div className="form-group">
-                            <label>{t('app.serverSettingsTab.group', 'Group')}</label>
-                            <select name="group_id" value={formData.group_id} onChange={handleChange}>
-                                <option value="">{t('app.serverSettingsTab.noGroup', 'No Group')}</option>
-                                {groups.map(group => (
-                                    <option key={group.id} value={group.id}>{group.name}</option>
-                                ))}
-                            </select>
+                            <label htmlFor="server-settings-group">{t('app.serverSettingsTab.group', 'Group')}</label>
+                            <Select
+                                name="group_id"
+                                value={formData.group_id === '' || formData.group_id == null ? NO_GROUP : String(formData.group_id)}
+                                onValueChange={(value) => setFormData(prev => ({ ...prev, group_id: value === NO_GROUP ? '' : value }))}
+                            >
+                                <SelectTrigger id="server-settings-group"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NO_GROUP}>{t('app.serverSettingsTab.noGroup', 'No group')}</SelectItem>
+                                    {groups.map(group => (
+                                        <SelectItem key={group.id} value={String(group.id)}>{group.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <Button type="submit" disabled={loading}>
-                            {loading ? 'Saving...' : 'Save Changes'}
+                            {loading ? t('common.saving', 'Saving…') : t('app.serverSettingsTab.saveChanges', 'Save changes')}
                         </Button>
                     </div>
                 </form>
@@ -246,7 +261,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                     <div className="form-section__header">
                         <span className="form-section__icon"><NetworkIcon /></span>
                         <div>
-                            <h3>{t('app.serverSettingsTab.connectionIpAllowlist', 'Connection & IP Allowlist')}</h3>
+                            <h3>{t('app.serverSettingsTab.connectionIpAllowlist', 'Connection and IP allowlist')}</h3>
                             <p className="section-description">
                                 {t('app.serverSettingsTab.restrictWhichIpsCanConnectSupports', 'Restrict which IPs can connect. Supports single IPs, CIDR notation, and wildcards.')}
                             </p>
@@ -254,20 +269,19 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                     </div>
 
                     {connectionInfo && (
-                        <div className="security-info-bar">
-                            <div className="security-info-item">
-                                <span className="security-info-label">{t('app.serverSettingsTab.connectionIp', 'Connection IP')}</span>
-                                <span className="security-info-value">
-                                    <code>{connectionInfo.ip_address || 'Not connected'}</code>
-                                </span>
-                            </div>
+                        <InfoList className="security-info-bar">
+                            <InfoItem
+                                label={t('app.serverSettingsTab.connectionIp', 'Connection IP')}
+                                value={connectionInfo.ip_address || 'Not connected'}
+                                mono
+                            />
                             {connectionInfo.connected_since && (
-                                <div className="security-info-item">
-                                    <span className="security-info-label">{t('app.serverSettingsTab.connectedSince', 'Connected Since')}</span>
-                                    <span className="security-info-value">{new Date(connectionInfo.connected_since).toLocaleString()}</span>
-                                </div>
+                                <InfoItem
+                                    label={t('app.serverSettingsTab.connectedSince', 'Connected since')}
+                                    value={formatDateTime(connectionInfo.connected_since)}
+                                />
                             )}
-                        </div>
+                        </InfoList>
                     )}
 
                     <div className="subsection">
@@ -296,7 +310,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                         <div className="ip-add-form">
                             <Input
                                 type="text"
-                                placeholder={t('app.serverSettingsTab.ipAddressOrCidrEG', 'IP address or CIDR (e.g., 192.168.1.0/24)')}
+                                placeholder={t('app.serverSettingsTab.ipAddressOrCidrEG', 'IP address or CIDR (e.g. 192.168.1.0/24)')}
                                 value={newIP}
                                 onChange={(e) => setNewIP(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddIP())}
@@ -320,7 +334,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                     <div className="form-section__header">
                         <span className="form-section__icon"><KeyIcon /></span>
                         <div>
-                            <h3>{t('app.serverSettingsTab.apiKeyRotation', 'API Key Rotation')}</h3>
+                            <h3>{t('app.serverSettingsTab.apiKeyRotation', 'API key rotation')}</h3>
                             <p className="section-description">
                                 {t('app.serverSettingsTab.rotateTheApiCredentialsUsedBy', 'Rotate the API credentials used by the agent. The agent must be online to receive new credentials.')}
                             </p>
@@ -332,10 +346,10 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
                             onClick={handleRotateKey}
                             disabled={rotatingKey || server.status !== 'online'}
                         >
-                            <KeyIcon /> {rotatingKey ? 'Rotating...' : 'Rotate API Key'}
+                            <KeyIcon /> {rotatingKey ? t('app.serverSettingsTab.rotating', 'Rotating…') : t('app.serverSettingsTab.rotateApiKey', 'Rotate API key')}
                         </Button>
                         {server.api_key_last_rotated && (
-                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {new Date(server.api_key_last_rotated).toLocaleString()}</span>
+                            <span className="key-rotation-hint">{t('app.serverSettingsTab.lastRotated', 'Last rotated:')} {formatDateTime(server.api_key_last_rotated)}</span>
                         )}
                     </div>
 
@@ -361,11 +375,11 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
             </div>
 
             <DangerZone
-                title={t('app.serverSettingsTab.dangerZone', 'Danger Zone')}
+                title={t('app.serverSettingsTab.dangerZone', 'Remove server')}
                 description={t('app.serverSettingsTab.removingThisServerWillDisconnectThe', 'Removing this server will disconnect the agent and delete all associated data.')}
                 action={
                     <Button variant="destructive" onClick={onDelete}>
-                        <TrashIcon /> {t('app.serverSettingsTab.removeServer', 'Remove Server')}
+                        <TrashIcon /> {t('app.serverSettingsTab.removeServer', 'Remove server')}
                     </Button>
                 }
             />
@@ -376,7 +390,7 @@ const ServerSettingsTab = ({ server, onUpdate, onRegenerateToken, onDelete }) =>
 export const TokenModal = ({ server, onClose, onGenerated }) => {
     const { t } = useTranslation();
     const toast = useToast();
-    const { copy } = useClipboard({ successMessage: 'Copied to clipboard' });
+
     const [expiresIn, setExpiresIn] = useState(7 * 24 * 60 * 60);
     const [generating, setGenerating] = useState(false);
     // Result of the most recent generation in *this* modal session. We
@@ -394,7 +408,7 @@ export const TokenModal = ({ server, onClose, onGenerated }) => {
             onGenerated?.(data);
             toast.success(t('app.serverSettingsTab.connectionStringGenerated', 'Connection string generated'));
         } catch (err) {
-            toast.error(err.message || t('app.serverSettingsTab.failedToGenerateConnectionString', 'Failed to generate connection string'));
+            toastError(toast, t('app.serverSettingsTab.failedToGenerateConnectionString', "Couldn't generate the connection string."), err);
         } finally {
             setGenerating(false);
         }
@@ -414,13 +428,13 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${result.regi
         <Modal
             open
             onClose={onClose}
-            title={t('app.serverSettingsTab.connectionString', 'Connection String')}
+            title={t('app.serverSettingsTab.connectionString', 'Connection string')}
             size="lg"
             footer={!result ? (
                 <>
                     <Button variant="outline" onClick={onClose}>{t('common.actions.cancel', 'Cancel')}</Button>
                     <Button onClick={handleGenerate} disabled={generating}>
-                        {generating ? 'Generating…' : 'Generate'}
+                        {generating ? t('app.serverSettingsTab.generating', 'Generating…') : t('app.serverSettingsTab.generate', 'Generate')}
                     </Button>
                 </>
             ) : (
@@ -434,7 +448,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${result.regi
         >
             {!result && (
                 <p className="sk-modal__subtitle">
-                    {t('app.serverSettingsTab.generateASinglePasteableStringThe', 'Generate a single pasteable string the agent can consume. The token inside is single-use — burned the moment any agent registers with it.')}
+                    {t('app.serverSettingsTab.generateASinglePasteableStringThe', 'Generate a single pasteable string the agent can consume. The token inside is single-use and burns the moment any agent registers with it.')}
                 </p>
             )}
 
@@ -459,50 +473,31 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${result.regi
                         <div className="token-status">
                             <span className="token-status-dot active" />
                             <span>
-                                {t('app.serverSettingsTab.activeExpires', 'Active — expires')} {new Date(result.registration_expires).toLocaleString()}
+                                {t('app.serverSettingsTab.activeExpires', 'Active, expires')} {formatDateTime(result.registration_expires)}
                             </span>
                         </div>
 
-                        <div className="connection-string-field">
-                            <div className="connection-string-field__header">
-                                <KeyIcon />
-                                <span>{t('app.serverSettingsTab.connectionString3', 'Connection string')}</span>
-                                <Button variant="outline" size="sm" onClick={() => copy(result.connection_string)}>
-                                    <CopyIcon /> {t('common.actions.copy', 'Copy')}
-                                </Button>
-                            </div>
-                            <pre className="connection-string-field__value">{result.connection_string}</pre>
+                        <div className="server-connection-string">
+                            <CopyField
+                                label={t('app.serverSettingsTab.connectionString3', 'Connection string')}
+                                value={result.connection_string}
+                                multiline
+                            />
                         </div>
 
                         <details className="install-fallback">
                             <summary>{t('app.serverSettingsTab.needToInstallTheAgentFirst', 'Need to install the agent first? Use the one-liner installer.')}</summary>
                             <div className="install-tabs install-tabs--after-summary">
-                                <div className="install-tab">
-                                    <div className="install-tab-header">
-                                        <TerminalIcon />
-                                        <div className="install-tab-title">
-                                            <span>{t('app.serverSettingsTab.linux', 'Linux')}</span>
-                                            <span className="install-tab-description">{t('app.serverSettingsTab.curlTarSudoAndSystemd', 'curl, tar, sudo, and systemd')}</span>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => copy(linuxScript)}>
-                                            <CopyIcon /> {t('common.actions.copy', 'Copy')}
-                                        </Button>
-                                    </div>
-                                    <pre className="install-script">{linuxScript}</pre>
-                                </div>
-                                <div className="install-tab">
-                                    <div className="install-tab-header">
-                                        <WindowsIcon />
-                                        <div className="install-tab-title">
-                                            <span>{t('app.serverSettingsTab.windowsPowershell', 'Windows (PowerShell)')}</span>
-                                            <span className="install-tab-description">{t('app.serverSettingsTab.runAsAdministrator', 'Run as Administrator')}</span>
-                                        </div>
-                                        <Button variant="outline" size="sm" onClick={() => copy(windowsScript)}>
-                                            <CopyIcon /> {t('common.actions.copy', 'Copy')}
-                                        </Button>
-                                    </div>
-                                    <pre className="install-script">{windowsScript}</pre>
-                                </div>
+                                <CopyField
+                                    label={`${t('app.serverSettingsTab.linux', 'Linux')} · ${t('app.serverSettingsTab.curlTarSudoAndSystemd', 'curl, tar, sudo, and systemd')}`}
+                                    value={linuxScript}
+                                    multiline
+                                />
+                                <CopyField
+                                    label={`${t('app.serverSettingsTab.windowsPowershell', 'Windows (PowerShell)')} · ${t('app.serverSettingsTab.runAsAdministrator', 'Run as administrator')}`}
+                                    value={windowsScript}
+                                    multiline
+                                />
                             </div>
                         </details>
                     </>

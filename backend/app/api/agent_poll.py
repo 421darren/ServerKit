@@ -20,6 +20,7 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from app.services.agent_registry import agent_registry
+from app.api._request import json_object
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ agent_poll_bp = Blueprint('agent_poll', __name__)
 
 
 def _client_ip():
-    # ProxyFix-corrected real client IP when TRUST_PROXY_HEADERS is on (plan 48),
+    # ProxyFix-corrected real client IP when TRUST_PROXY_HEADERS is on,
     # so the shared per-IP auth throttle keys on the real agent, not nginx.
     return request.remote_addr or 'unknown'
 
@@ -38,7 +39,7 @@ def connect():
     """Authenticate an agent and return a session_token bound to a
     polling-mode ConnectedAgent.
 
-    Thin adapter over agent_registry.authenticate_and_register (plan 77 A2)
+    Thin adapter over agent_registry.authenticate_and_register
     — the exact sequence the WS on_auth handler runs, minus the socket-room
     bookkeeping; this endpoint only translates the outcome to HTTP."""
     data = request.get_json(silent=True) or {}
@@ -86,7 +87,7 @@ def poll():
     if not agent:
         return jsonify({'error': 'invalid session'}), 401
 
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     metrics = body.get('metrics') or {}
     sysinfo = body.get('system_info')
     caps = body.get('capabilities')
@@ -104,7 +105,7 @@ def poll():
         list(caps.keys()) if isinstance(caps, dict) else None,
     )
 
-    # Shared transport-neutral ingest (plan 77 A1/A2): capability
+    # Shared transport-neutral ingest: capability
     # side-effects (e.g. tunnel reconcile) fire exactly as on the WS path.
     agent_registry.ingest_agent_state(agent, metrics=metrics, sysinfo=sysinfo,
                                       capabilities=caps)

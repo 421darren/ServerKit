@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import { Button } from '@/components/ui/button';
+import ErrorState from '@/components/ErrorState';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -8,22 +9,27 @@ import { useTranslation } from 'react-i18next';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
 
 const SecurityConfigTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         loadConfig();
     }, []);
 
     async function loadConfig() {
+        setLoading(true);
         try {
             const data = await api.getSecurityConfig();
             setConfig(data);
+            setLoadError(null);
         } catch (err) {
             console.error('Failed to load security config:', err);
+            setLoadError(err);
         } finally {
             setLoading(false);
         }
@@ -56,6 +62,18 @@ const SecurityConfigTab = () => {
         return <div className="loading-sm">{t('app.securityConfigTab.loadingSettings', 'Loading settings…')}</div>;
     }
 
+    // Never render the form on a failed load: saving it would write the
+    // empty defaults over the real configuration.
+    if (loadError && !config) {
+        return (
+            <ErrorState
+                title={t('app.securityConfigTab.couldntLoadSettings', "Couldn't load security settings.")}
+                error={loadError}
+                onRetry={loadConfig}
+            />
+        );
+    }
+
     return (
         <div className="settings-tab">
             {message && (
@@ -66,7 +84,7 @@ const SecurityConfigTab = () => {
 
             <SharedCard variant="legacy" className="card">
                 <SharedCardHeader variant="legacy" className="card-header">
-                    <h3>{t('app.securityConfigTab.clamavSettings', 'ClamAV Settings')}</h3>
+                    <h3>{t('app.securityConfigTab.clamavSettings', 'ClamAV settings')}</h3>
                 </SharedCardHeader>
                 <SharedCardContent variant="legacy" className="card-body">
                     <div className="form-group">
@@ -92,8 +110,9 @@ const SecurityConfigTab = () => {
                     </div>
 
                     <div className="form-group">
-                        <Label>{t('app.securityConfigTab.quarantinePath', 'Quarantine Path')}</Label>
+                        <Label htmlFor={`${fieldId}-quarantine`}>{t('app.securityConfigTab.quarantinePath', 'Quarantine path')}</Label>
                         <Input
+                            id={`${fieldId}-quarantine`}
                             type="text"
                             value={config?.clamav?.quarantine_path || '/var/quarantine'}
                             onChange={(e) => updateConfig('clamav', 'quarantine_path', e.target.value)}
@@ -104,7 +123,7 @@ const SecurityConfigTab = () => {
 
             <SharedCard variant="legacy" className="card">
                 <SharedCardHeader variant="legacy" className="card-header">
-                    <h3>{t('app.securityConfigTab.fileIntegritySettings', 'File Integrity Settings')}</h3>
+                    <h3>{t('app.securityConfigTab.fileIntegritySettings', 'File integrity settings')}</h3>
                 </SharedCardHeader>
                 <SharedCardContent variant="legacy" className="card-body">
                     <div className="form-group">
@@ -133,7 +152,7 @@ const SecurityConfigTab = () => {
 
             <SharedCard variant="legacy" className="card">
                 <SharedCardHeader variant="legacy" className="card-header">
-                    <h3>{t('app.securityConfigTab.notificationSettings', 'Notification Settings')}</h3>
+                    <h3>{t('app.securityConfigTab.notificationSettings', 'Notification settings')}</h3>
                 </SharedCardHeader>
                 <SharedCardContent variant="legacy" className="card-body">
                     <div className="form-group">
@@ -173,7 +192,7 @@ const SecurityConfigTab = () => {
 
             <div className="form-actions">
                 <Button variant="default" onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Settings'}
+                    {saving ? t('common.saving', 'Saving…') : t('app.securityConfigTab.saveSettings', 'Save settings')}
                 </Button>
             </div>
         </div>

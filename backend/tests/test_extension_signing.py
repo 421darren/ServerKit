@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from app import db
 from app.models.plugin import InstalledPlugin
-from app.services import plugin_service, registry_service, signing_service
+from app.services import plugin_fetch, plugin_service, registry_service, signing_service
 
 # Installs plugins, and plugin_service hot-loads their blueprints onto the
 # live app. Flask refuses register_blueprint once an app has served a
@@ -670,7 +670,7 @@ def test_download_rejects_non_http_schemes(app, plugin_dirs):
     with pytest.raises(ValueError, match='Failed to download plugin'):
         plugin_service.install_from_url('file:///etc/passwd')
     with pytest.raises(ValueError, match='scheme'):
-        plugin_service._assert_url_safe('file:///etc/passwd')
+        plugin_fetch._assert_url_safe('file:///etc/passwd')
 
 
 def test_download_rejects_redirect_to_link_local(app, monkeypatch):
@@ -682,30 +682,30 @@ def test_download_rejects_redirect_to_link_local(app, monkeypatch):
         headers = {'Location': 'http://169.254.169.254/latest/meta-data'}
         def close(self): pass
 
-    monkeypatch.setattr(plugin_service.requests, 'get',
+    monkeypatch.setattr(plugin_fetch.requests, 'get',
                         lambda *a, **k: FakeRedirect())
     import socket as _socket
     monkeypatch.setattr(_socket, 'getaddrinfo',
                         lambda host, port, *a, **k: [(2, 1, 6, '', ('93.184.216.34', 0))])
 
     with pytest.raises(ValueError, match='Plain-http|non-public'):
-        plugin_service._download_resolved('https://example.com/ext.zip')
+        plugin_fetch._download_resolved('https://example.com/ext.zip')
 
 
 def test_download_rejects_private_and_plain_http_targets(app):
     with pytest.raises(ValueError, match='Plain-http'):
-        plugin_service._assert_url_safe('http://192.168.1.10/ext.zip')
+        plugin_fetch._assert_url_safe('http://192.168.1.10/ext.zip')
     with pytest.raises(ValueError, match='non-public'):
-        plugin_service._assert_url_safe('https://192.168.1.10/ext.zip')
+        plugin_fetch._assert_url_safe('https://192.168.1.10/ext.zip')
     with pytest.raises(ValueError, match='non-public'):
-        plugin_service._assert_url_safe('https://169.254.169.254/latest')
+        plugin_fetch._assert_url_safe('https://169.254.169.254/latest')
     # Loopback dev hosts stay allowed (http and https).
-    plugin_service._assert_url_safe('http://127.0.0.1:8000/ext.zip')
-    plugin_service._assert_url_safe('http://localhost:8000/ext.zip')
+    plugin_fetch._assert_url_safe('http://127.0.0.1:8000/ext.zip')
+    plugin_fetch._assert_url_safe('http://localhost:8000/ext.zip')
 
 
 def test_download_aborts_past_byte_cap(app, monkeypatch):
-    monkeypatch.setattr(plugin_service, '_MAX_DOWNLOAD_BYTES', 1024)
+    monkeypatch.setattr(plugin_fetch, '_MAX_DOWNLOAD_BYTES', 1024)
 
     class FakeResp:
         status_code = 200
@@ -714,13 +714,13 @@ def test_download_aborts_past_byte_cap(app, monkeypatch):
             return [b'x' * 1024, b'x' * 1024]
         def close(self): pass
 
-    monkeypatch.setattr(plugin_service.requests, 'get', lambda *a, **k: FakeResp())
+    monkeypatch.setattr(plugin_fetch.requests, 'get', lambda *a, **k: FakeResp())
     import socket as _socket
     monkeypatch.setattr(_socket, 'getaddrinfo',
                         lambda host, port, *a, **k: [(2, 1, 6, '', ('93.184.216.34', 0))])
 
     with pytest.raises(ValueError, match='cap'):
-        plugin_service._download_resolved('https://example.com/ext.zip')
+        plugin_fetch._download_resolved('https://example.com/ext.zip')
 
 
 # --------------------------------------------------------------------------- #
@@ -747,10 +747,10 @@ def test_extraction_cap_aborts_and_leaves_no_residue(
 # --------------------------------------------------------------------------- #
 
 def test_github_host_matching_is_https_only():
-    assert plugin_service._is_github_host('https://github.com/o/r') is True
-    assert plugin_service._is_github_host('https://api.github.com/x') is True
-    assert plugin_service._is_github_host('http://github.com/o/r') is False
-    assert plugin_service._is_github_host('https://github.com.evil.test/') is False
+    assert plugin_fetch._is_github_host('https://github.com/o/r') is True
+    assert plugin_fetch._is_github_host('https://api.github.com/x') is True
+    assert plugin_fetch._is_github_host('http://github.com/o/r') is False
+    assert plugin_fetch._is_github_host('https://github.com.evil.test/') is False
 
 
 # --------------------------------------------------------------------------- #

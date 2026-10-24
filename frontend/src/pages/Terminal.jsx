@@ -3,7 +3,8 @@ import useTabParam from '../hooks/useTabParam';
 import api from '../services/api';
 import { useToast } from '../contexts/useToast.js';
 import { useConfirm } from '../hooks/useConfirm';
-import TargetPicker from '../components/TargetPicker';
+import ServerPicker from '../components/ServerPicker';
+import { serverTarget, targetServerId } from '../utils/serverTarget';
 import RemoteTerminal from '../components/RemoteTerminal';
 import LogFileList from '../components/log-viewer/LogFileList';
 import LogToolbar from '../components/log-viewer/LogToolbar';
@@ -31,9 +32,22 @@ import {
     ScrollText, Cpu, Settings,
 } from 'lucide-react';
 import { Button as SharedButton } from '@/components/ui/button';
+import {
+    Select, SelectTrigger, SelectContent, SelectItem, SelectValue,
+} from '@/components/ui/select';
+import { errorReason } from '@/utils/errorMessage';
+import usePersistentState from '@/hooks/usePersistentState';
+import { formatDateTime, formatNumber, formatTime } from '@/utils/intl';
 
 // 'logs' stays first so the default landing keeps working on installs with no
 // paired agents (the interactive shell needs a connected agent).
+// Stored line count, or the 200-line default for a missing or junk value.
+const parseLineCount = (stored) => {
+    const v = parseInt(stored, 10);
+    return Number.isFinite(v) ? v : 200;
+};
+const notFalse = (stored) => stored !== 'false';
+
 const VALID_TABS = ['logs', 'journal', 'processes', 'services', 'shell'];
 
 // Section tabs rendered inline in the PageTopbar (Servers-style), routed via
@@ -41,9 +55,9 @@ const VALID_TABS = ['logs', 'journal', 'processes', 'services', 'shell'];
 // paired agent — so it's listed first, keeping the highlighted tab and the
 // landing view in sync. The interactive Terminal sits next.
 const TERMINAL_TABS = [
-    { to: '/terminal', labelKey: 'app.terminal.logFiles', label: 'Log Files', end: true, icon: <FileText size={15} /> },
+    { to: '/terminal', labelKey: 'app.terminal.logFiles', label: 'Log files', end: true, icon: <FileText size={15} /> },
     { to: '/terminal/shell', labelKey: 'app.terminal.terminal', label: 'Terminal', icon: <TerminalIcon size={15} /> },
-    { to: '/terminal/journal', labelKey: 'app.terminal.systemJournal', label: 'System Journal', icon: <ScrollText size={15} /> },
+    { to: '/terminal/journal', labelKey: 'app.terminal.systemJournal', label: 'System journal', icon: <ScrollText size={15} /> },
     { to: '/terminal/processes', labelKey: 'app.terminal.processes', label: 'Processes', icon: <Cpu size={15} /> },
     { to: '/terminal/services', labelKey: 'common.labels.services', label: 'Services', icon: <Settings size={15} /> },
 ];
@@ -73,7 +87,7 @@ const Terminal = () => {
 
 // ─── Interactive shell tab (demo console: target rail + terminal pane) ───
 // Sessions run over the ServerKit agent (terminal:create); the panel host has
-// no PTY endpoint (§5 gap), so the rail lists paired agent servers only.
+// no PTY endpoint, so the rail lists paired agent servers only.
 const TerminalShellTab = () => {
     const { t } = useTranslation();
     const [servers, setServers] = useState([]);
@@ -136,8 +150,8 @@ const TerminalShellTab = () => {
                         <TerminalIcon size={26} />
                         <p>
                             {anyOnline
-                                ? 'Pick a server on the left to open a shell.'
-                                : 'Interactive shells run over the ServerKit agent. Pair a server (Servers → Add Server) with shell access and it will show up here.'}
+                                ? t('app.terminal.pickServerToOpenShell', 'Pick a server on the left to open a shell.')
+                                : t('app.terminal.shellsRunOverAgent', 'Interactive shells run over the ServerKit agent. Pair a server (Servers → Add server) with shell access and it shows up here.')}
                         </p>
                     </div>
                 )}
@@ -171,17 +185,17 @@ const LogFilesTab = () => {
     const [loading, setLoading] = useState(true);
     const [loadingContent, setLoadingContent] = useState(false);
     const [error, setError] = useState(null);
+    // The file list's own failure, kept apart from `error` (which any action
+    // can set) so the viewer never says "no log files" when it couldn't look.
+    const [listError, setListError] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(LOG_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(LOG_PREFS.lineCount, parseLineCount);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(LOG_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(LOG_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(LOG_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(LOG_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const contentRef = useRef(null);
@@ -190,9 +204,6 @@ const LogFilesTab = () => {
         [logFiles, selectedLog]
     );
 
-    useEffect(() => { localStorage.setItem(LOG_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(LOG_PREFS.lineCount, lineCount); }, [lineCount]);
 
     // Reset when the target changes (clears previous server's selection)
     useEffect(() => {
@@ -227,24 +238,29 @@ const LogFilesTab = () => {
         }
         setLoading(true);
         setError(null);
+        setListError(null);
         try {
             const data = await api.getLogFiles();
             setLogFiles(data.logs || []);
         } catch (err) {
-            setError(err.message);
+            setListError(err);
         } finally {
             setLoading(false);
         }
     }
 
-    async function loadLogContent(logPath, showLoading = true) {
+    // Callers that just set state pass the new values: this render's
+    // lineCount/appliedSearch are still the old ones.
+    async function loadLogContent(logPath, showLoading = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const search = overrides.search ?? appliedSearch;
         if (showLoading) setLoadingContent(true);
         try {
             let data;
-            if (appliedSearch.trim()) {
-                data = await api.searchLog(logPath, appliedSearch, lineCount);
+            if (search.trim()) {
+                data = await api.searchLog(logPath, search, lines);
             } else {
-                data = await api.readLog(logPath, lineCount);
+                data = await api.readLog(logPath, lines);
             }
             setLogContent(data.content || data.lines?.join('\n') || '');
             setSelectedLog(logPath);
@@ -288,7 +304,7 @@ const LogFilesTab = () => {
     function handleSearchClear() {
         setSearchPattern('');
         setAppliedSearch('');
-        if (selectedLog) loadLogContent(selectedLog);
+        if (selectedLog) loadLogContent(selectedLog, true, { search: '' });
     }
 
     function scrollToBottom() {
@@ -313,7 +329,7 @@ const LogFilesTab = () => {
             toast.success(t('app.terminal.logFileTruncated', 'Log file truncated'));
             loadLogFiles();
         } catch (err) {
-            toast.error(t('app.terminal.failed', 'Failed: {{message}}', { message: err.message }));
+            toast.error(t('app.terminal.failed', "Couldn't do that. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -332,10 +348,10 @@ const LogFilesTab = () => {
             <div className="lv-header">
                 <div className="lv-header-target">
                     <span className="lv-header-label">{t('common.labels.source', 'Source')}</span>
-                    <TargetPicker
-                        feature="logs"
-                        value={target}
-                        onChange={setTarget}
+                    <ServerPicker
+                        capability="logs"
+                        value={targetServerId(target)}
+                        onChange={(id, server) => setTarget(serverTarget(id, server))}
                     />
                     {isRemote && (
                         <span className="lv-header-hint">
@@ -358,12 +374,12 @@ const LogFilesTab = () => {
                             </span>
                             <span className="lv-stat">
                                 <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                                <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                                <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                             </span>
                             {lastUpdated && (
                                 <span className="lv-stat">
                                     <Clock size={12} />
-                                    {lastUpdated.toLocaleTimeString()}
+                                    {formatTime(lastUpdated, { seconds: true })}
                                 </span>
                             )}
                         </>
@@ -386,6 +402,7 @@ const LogFilesTab = () => {
                     onSelect={handleSelectFile}
                     onRefresh={loadLogFiles}
                     loading={loading}
+                    error={listError}
                 />
 
                 <div className="lv-viewer">
@@ -402,7 +419,7 @@ const LogFilesTab = () => {
                         onSearchSubmit={handleSearchSubmit}
                         onSearchClear={handleSearchClear}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) setTimeout(() => loadLogContent(selectedLog), 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); if (selectedLog) loadLogContent(selectedLog, true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}
@@ -425,7 +442,11 @@ const LogFilesTab = () => {
                         content={selectedLog ? logContent : ''}
                         loading={loadingContent}
                         emptyMessage={
-                            isRemote && logFiles.length === 0
+                            loading && logFiles.length === 0
+                                ? t('app.terminal.loadingLogFiles', 'Loading log files…')
+                            : listError && logFiles.length === 0
+                                ? t('app.terminal.couldntLoadLogFiles', "Couldn't load the log files. Use Refresh in the list to try again.")
+                            : isRemote && logFiles.length === 0
                                 ? t('app.terminal.remoteLogBrowsingIsnTSupported', 'Remote log browsing isn\'t supported yet for {{name}}.', { name: target.name })
                                 : logFiles.length === 0
                                     ? t('app.terminal.noLogFilesWereFoundOn', 'No log files were found on this server.')
@@ -487,18 +508,15 @@ const JournalTab = () => {
     const [unavailable, setUnavailable] = useState(false);
     const [unit, setUnit] = useState('');
     const [unitInput, setUnitInput] = useState('');
-    const [lineCount, setLineCount] = useState(() => {
-        const v = parseInt(localStorage.getItem(JOURNAL_PREFS.lineCount), 10);
-        return Number.isFinite(v) ? v : 200;
-    });
+    const [lineCount, setLineCount] = usePersistentState(JOURNAL_PREFS.lineCount, parseLineCount);
     const [priority, setPriority] = useState('');
     const [source, setSource] = useState('');
     const [sourceLabel, setSourceLabel] = useState('');
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [searchPattern, setSearchPattern] = useState('');
     const [appliedSearch, setAppliedSearch] = useState('');
-    const [showLineNumbers, setShowLineNumbers] = useState(() => localStorage.getItem(JOURNAL_PREFS.showLineNumbers) !== 'false');
-    const [wrapLines, setWrapLines] = useState(() => localStorage.getItem(JOURNAL_PREFS.wrapLines) !== 'false');
+    const [showLineNumbers, setShowLineNumbers] = usePersistentState(JOURNAL_PREFS.showLineNumbers, notFalse);
+    const [wrapLines, setWrapLines] = usePersistentState(JOURNAL_PREFS.wrapLines, notFalse);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [unitFilter] = useState('');
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -506,9 +524,6 @@ const JournalTab = () => {
     const contentRef = useRef(null);
     const isJournalctl = source === 'journalctl' || source === '';
 
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.showLineNumbers, showLineNumbers); }, [showLineNumbers]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.wrapLines, wrapLines); }, [wrapLines]);
-    useEffect(() => { localStorage.setItem(JOURNAL_PREFS.lineCount, lineCount); }, [lineCount]);
 
     useEffect(() => {
         loadJournalLogs();
@@ -519,7 +534,11 @@ const JournalTab = () => {
         immediate: false,
     });
 
-    async function loadJournalLogs(showSpinner = true) {
+    // Same as loadLogContent: pass values that were just set.
+    async function loadJournalLogs(showSpinner = true, overrides = {}) {
+        const lines = overrides.lineCount ?? lineCount;
+        const selectedUnit = overrides.unit ?? unit;
+        const level = overrides.priority ?? priority;
         if (isRemote && !REMOTE_JOURNAL_SUPPORTED.has('read')) {
             setLogContent('');
             setSource('');
@@ -530,7 +549,7 @@ const JournalTab = () => {
         if (showSpinner) setLoading(true);
         setUnavailable(false);
         try {
-            const data = await api.getJournalLogs(unit || null, lineCount);
+            const data = await api.getJournalLogs(selectedUnit || null, lines, level);
             setLogContent(data.lines?.join('\n') || '');
             setSource(data.source || '');
             setSourceLabel(data.source_label || '');
@@ -553,18 +572,18 @@ const JournalTab = () => {
     function pickUnit(u) {
         setUnit(u);
         setUnitInput(u);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: u });
     }
 
     function clearUnit() {
         setUnit('');
         setUnitInput('');
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: '' });
     }
 
     function applyUnitInput() {
         setUnit(unitInput);
-        setTimeout(() => loadJournalLogs(), 0);
+        loadJournalLogs(true, { unit: unitInput });
     }
 
     function handleDownload() {
@@ -592,12 +611,12 @@ const JournalTab = () => {
             <div className="lv-page">
                 <div className="lv-empty-hint is-tall">
                     <AlertCircle size={48} />
-                    <h3 className="lv-empty-hint__title">{t('app.terminal.systemLogsUnavailable', 'System Logs Unavailable')}</h3>
+                    <h3 className="lv-empty-hint__title">{t('app.terminal.systemLogsUnavailable', 'System logs unavailable')}</h3>
                     <p>
                         {t('app.terminal.noSystemLogSourceWasFound', 'No system log source was found. Neither')} <code>journalctl</code>,
                         <code> /var/log/syslog</code>{t('app.terminal.norTheWindowsEventLogAre', ', nor the Windows Event Log are available.')}
                     </p>
-                    <p>{t('app.terminal.useThe', 'Use the')} <strong>{t('app.terminal.logFiles', 'Log Files')}</strong> {t('app.terminal.tabToBrowseAvailableLogFiles', 'tab to browse available log files instead.')}</p>
+                    <p>{t('app.terminal.useThe', 'Use the')} <strong>{t('app.terminal.logFiles', 'Log files')}</strong> {t('app.terminal.tabToBrowseAvailableLogFiles', 'tab to browse available log files instead.')}</p>
                 </div>
             </div>
         );
@@ -608,7 +627,11 @@ const JournalTab = () => {
             <div className="lv-header">
                 <div className="lv-header-target">
                     <span className="lv-header-label">{t('common.labels.source', 'Source')}</span>
-                    <TargetPicker feature="logs" value={target} onChange={setTarget} />
+                    <ServerPicker
+                        capability="logs"
+                        value={targetServerId(target)}
+                        onChange={(id, server) => setTarget(serverTarget(id, server))}
+                    />
                     {isRemote && (
                         <span className="lv-header-hint">
                             <AlertCircle size={12} />
@@ -631,12 +654,12 @@ const JournalTab = () => {
                     )}
                     <span className="lv-stat">
                         <span className="lv-stat-label">{t('app.terminal.showing', 'Showing')}</span>
-                        <span className="lv-stat-value">{visibleLineCount.toLocaleString()} lines</span>
+                        <span className="lv-stat-value">{formatNumber(visibleLineCount)} lines</span>
                     </span>
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -680,7 +703,7 @@ const JournalTab = () => {
                                 {filteredUnits.map(u => (
                                     <SharedButton variant="unstyled" type="button"
                                         key={u.id}
-                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}}`}
+                                        className={`lv-file lv-file--compact ${unit === u.id ? 'active' : ''}`}
                                         onClick={() => pickUnit(u.id)}
                                     >
                                         <span className={`lv-file-dot kind-${u.kind}`} />
@@ -706,7 +729,7 @@ const JournalTab = () => {
                                         <SharedButton variant="unstyled" type="button"
                                             key={opt.value}
                                             className={`lv-file lv-file--compact ${priority === opt.value ? 'active' : ''}`}
-                                            onClick={() => { setPriority(opt.value); setTimeout(loadJournalLogs, 0); }}
+                                            onClick={() => { setPriority(opt.value); loadJournalLogs(true, { priority: opt.value }); }}
                                         >
                                             <span className="lv-file-dot" style={{ background: priorityColor(opt.value) }} />
                                             <span className="lv-file-name">{opt.label}</span>
@@ -732,7 +755,7 @@ const JournalTab = () => {
                         onSearchSubmit={() => setAppliedSearch(searchPattern)}
                         onSearchClear={() => { setSearchPattern(''); setAppliedSearch(''); }}
                         lineCount={lineCount}
-                        onLineCountChange={(n) => { setLineCount(n); setTimeout(loadJournalLogs, 0); }}
+                        onLineCountChange={(n) => { setLineCount(n); loadJournalLogs(true, { lineCount: n }); }}
                         autoRefresh={autoRefresh}
                         onAutoRefreshToggle={() => setAutoRefresh(!autoRefresh)}
                         showLineNumbers={showLineNumbers}
@@ -830,7 +853,7 @@ const ProcessesTab = () => {
             setLastUpdated(new Date());
         } catch (err) {
             console.error('Failed to load processes:', err);
-            toast.error(t('app.terminal.failed', 'Failed: {{message}}', { message: err.message }));
+            toast.error(t('app.terminal.failed', "Couldn't do that. {{message}}", { message: errorReason(err) }));
         } finally {
             setLoading(false);
         }
@@ -874,7 +897,7 @@ const ProcessesTab = () => {
             loadProcesses();
             setSelectedProcess(null);
         } catch (err) {
-            toast.error(t('app.terminal.failed', 'Failed: {{message}}', { message: err.message }));
+            toast.error(t('app.terminal.failed', "Couldn't do that. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -888,7 +911,11 @@ const ProcessesTab = () => {
             <div className="lv-header">
                 <div className="lv-header-target">
                     <span className="lv-header-label">{t('common.labels.source', 'Source')}</span>
-                    <TargetPicker feature="processes" value={target} onChange={setTarget} />
+                    <ServerPicker
+                        capability="processes"
+                        value={targetServerId(target)}
+                        onChange={(id, server) => setTarget(serverTarget(id, server))}
+                    />
                     {isRemote && (
                         <span className="lv-header-hint">
                             <AlertCircle size={12} />
@@ -910,7 +937,7 @@ const ProcessesTab = () => {
                     {lastUpdated && (
                         <span className="lv-stat">
                             <Clock size={12} />
-                            {lastUpdated.toLocaleTimeString()}
+                            {formatTime(lastUpdated, { seconds: true })}
                         </span>
                     )}
                 </div>
@@ -936,16 +963,20 @@ const ProcessesTab = () => {
                     onSortsChange={setSorts}
                     actions={(
                         <>
-                            <select
-                                className="lv-select"
-                                value={limit}
-                                onChange={(e) => setLimit(parseInt(e.target.value, 10))}
-                                title={t('app.terminal.processesToFetch', 'Processes to fetch')}
-                            >
-                                {PROCESS_LIMITS.map((n) => (
-                                    <option key={n} value={n}>{t('app.terminal.top', 'Top')} {n}</option>
-                                ))}
-                            </select>
+                            <Select value={String(limit)} onValueChange={(v) => setLimit(parseInt(v, 10))}>
+                                <SelectTrigger
+                                    className="lv-select"
+                                    title={t('app.terminal.processesToFetch', 'Processes to fetch')}
+                                    aria-label={t('app.terminal.processesToFetch', 'Processes to fetch')}
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PROCESS_LIMITS.map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{t('app.terminal.top', 'Top')} {n}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <SharedButton variant="unstyled" type="button"
                                 className={`lv-chip ${autoRefresh ? 'active' : ''}`}
                                 onClick={() => setAutoRefresh(!autoRefresh)}
@@ -1001,7 +1032,7 @@ const ProcessesTab = () => {
                                 <span className="meta-label">{t('app.terminal.started', 'Started')}</span>
                                 <span className="meta-value">
                                     {selectedProcess.create_time
-                                        ? new Date(selectedProcess.create_time * 1000).toLocaleString()
+                                        ? formatDateTime(selectedProcess.create_time * 1000)
                                         : '—'}
                                 </span>
                             </div>
@@ -1042,7 +1073,11 @@ const ServicesTab = () => {
             <div className="lv-header">
                 <div className="lv-header-target">
                     <span className="lv-header-label">{t('common.labels.source', 'Source')}</span>
-                    <TargetPicker feature="services" value={target} onChange={setTarget} />
+                    <ServerPicker
+                        capability="services"
+                        value={targetServerId(target)}
+                        onChange={(id, server) => setTarget(serverTarget(id, server))}
+                    />
                 </div>
             </div>
             <SystemdServicesTab

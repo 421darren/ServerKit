@@ -2,7 +2,7 @@ import { statusKind } from '../ds/status.js';
 
 // Server status → ds Pill tone (shared by the header pill and the
 // Overview "Status" row).
-// Server connection states ride the shared vocabulary (plan 77 D3).
+// Server connection states ride the shared vocabulary.
 export const serverStatusKind = (status) => statusKind(status);
 
 export const PRESET_LABELS = {

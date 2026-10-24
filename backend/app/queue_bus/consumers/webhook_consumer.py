@@ -8,7 +8,7 @@ import time
 import uuid
 from datetime import datetime
 
-import requests as http_requests
+from app.utils import safe_http
 
 from app import db
 from app.queue_bus.service import QueueBusService
@@ -131,7 +131,7 @@ class WebhookConsumer:
         start_time = time.time()
 
         try:
-            resp = http_requests.post(
+            resp = safe_http.post(
                 subscription.url,
                 data=payload_json,
                 headers=headers,

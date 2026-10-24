@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import api from '../../services/api';
 import Modal from '../Modal';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
     const [selectedEvents, setSelectedEvents] = useState([]);
@@ -76,12 +77,13 @@ const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
     }, {});
 
     return (
-        <Modal open={true} onClose={onClose} title={subscription ? t('app.webhookSubscriptionModal.editSubscription', 'Edit Subscription') : t('app.webhookSubscriptionModal.createWebhookSubscription', 'Create Webhook Subscription')} className="webhook-modal">
+        <Modal open={true} onClose={onClose} title={subscription ? t('app.webhookSubscriptionModal.editSubscription', 'Edit subscription') : t('app.webhookSubscriptionModal.createWebhookSubscription', 'Create webhook subscription')} className="webhook-modal">
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         <div className="form-group">
-                            <Label>{t('common.labels.name', 'Name')}</Label>
+                            <Label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</Label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
@@ -91,8 +93,9 @@ const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
                         </div>
 
                         <div className="form-group">
-                            <Label>{t('app.webhookSubscriptionModal.payloadUrl', 'Payload URL')}</Label>
+                            <Label htmlFor={`${fieldId}-url`}>{t('app.webhookSubscriptionModal.payloadUrl', 'Payload URL')}</Label>
                             <Input
+                                id={`${fieldId}-url`}
                                 type="url"
                                 value={url}
                                 onChange={e => setUrl(e.target.value)}
@@ -136,8 +139,9 @@ const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <Label>{t('app.webhookSubscriptionModal.retryCount', 'Retry Count')}</Label>
+                                <Label htmlFor={`${fieldId}-retry-count`}>{t('app.webhookSubscriptionModal.retryCount', 'Retry count')}</Label>
                                 <Input
+                                    id={`${fieldId}-retry-count`}
                                     type="number"
                                     value={retryCount}
                                     onChange={e => setRetryCount(parseInt(e.target.value) || 3)}
@@ -146,8 +150,9 @@ const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
                                 />
                             </div>
                             <div className="form-group">
-                                <Label>{t('app.webhookSubscriptionModal.timeoutSeconds', 'Timeout (seconds)')}</Label>
+                                <Label htmlFor={`${fieldId}-timeout`}>{t('app.webhookSubscriptionModal.timeoutSeconds', 'Timeout (seconds)')}</Label>
                                 <Input
+                                    id={`${fieldId}-timeout`}
                                     type="number"
                                     value={timeoutSeconds}
                                     onChange={e => setTimeoutSeconds(parseInt(e.target.value) || 10)}
@@ -164,7 +169,7 @@ const WebhookSubscriptionModal = ({ subscription, onClose, onSubmit }) => {
                             variant="default"
                             disabled={saving || !name.trim() || !url.trim() || selectedEvents.length === 0}
                         >
-                            {saving ? 'Saving...' : (subscription ? 'Update' : 'Create')}
+                            {saving ? t('common.saving', 'Saving…') : (subscription ? t('app.webhookSubscriptionModal.update', 'Update') : t('common.actions.create', 'Create'))}
                         </Button>
                     </div>
                 </form>

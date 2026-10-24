@@ -8,17 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Modal from '@/components/Modal';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '../contexts/useToast.js';
-import { ArrowLeft, Plus, MoreVertical, Copy, Eye, EyeOff, KeyRound, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, MoreVertical, Eye, EyeOff, KeyRound, Trash2 } from 'lucide-react';
 import ResourceListPage from '../components/layouts/ResourceListPage';
 import { useTopbarActions } from '@/hooks/useTopbarActions';
 import { SearchField, ServiceTile } from '@/components/ds';
 import { formatRelativeTime } from '@/utils/time';
 import { useConfirm } from '@/hooks/useConfirm';
-import { useClipboard } from '@/hooks/useClipboard';
+import { CopyButton } from '../components/CopyButton';
 import { useWorkspace } from '../contexts/useWorkspace.js';
 import { useTranslation } from 'react-i18next';
+import { errorReason } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
-const formatDate = (d) => (d ? new Date(d).toLocaleString() : '—');
+const formatDate = (d) => (d ? formatDateTime(d) : '—');
 
 // Two tables, one chrome. The vault list and a vault's secrets are the same
 // surface at two depths, so both go through ResourceListPage rather than the
@@ -45,14 +47,13 @@ const VAULT_VIEWS = [
 export default function Vaults() {
     const { t } = useTranslation();
     const toast = useToast();
-    const toastError = toast.error;
     const { confirm } = useConfirm();
-    const { copy } = useClipboard({ successMessage: 'Copied' });
     const { activeWorkspaceId: workspaceScopeId, isAllWorkspaces } = useWorkspace();
 
     const [vaults, setVaults] = useState([]);
     const [workspaces, setWorkspaces] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
 
     const activeWorkspaceId = isAllWorkspaces ? '' : workspaceScopeId;
     const [vaultForm, setVaultForm] = useState({ open: false, name: '', description: '', workspace_id: activeWorkspaceId });
@@ -71,12 +72,13 @@ export default function Vaults() {
             ]);
             setVaults(v.vaults || []);
             setWorkspaces(w.workspaces || []);
+            setLoadError(null);
         } catch (err) {
-            toastError(t('app.vaults.loadFailed', 'Load failed: {{message}}', { message: err.message }));
+            setLoadError(err);
         } finally {
             setLoading(false);
         }
-    }, [t, toastError]);
+    }, []);
 
     useEffect(() => {
         loadAll();
@@ -96,7 +98,7 @@ export default function Vaults() {
             loadAll();
             toast.success(t('app.vaults.vaultCreated', 'Vault created'));
         } catch (err) {
-            toast.error(t('app.vaults.failedToCreateVault', 'Failed to create vault: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.failedToCreateVault', "Couldn't create the vault. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -112,7 +114,7 @@ export default function Vaults() {
             loadAll();
             toast.success(t('app.vaults.vaultDeleted', 'Vault deleted'));
         } catch (err) {
-            toast.error(t('app.vaults.failedToDeleteVault', 'Failed to delete vault: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.failedToDeleteVault', "Couldn't delete the vault. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -128,7 +130,7 @@ export default function Vaults() {
             openVault(selectedVault.id);
             toast.success(t('app.vaults.secretCreated', 'Secret created'));
         } catch (err) {
-            toast.error(t('app.vaults.failedToCreateSecret', 'Failed to create secret: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.failedToCreateSecret', "Couldn't create the secret. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -138,7 +140,7 @@ export default function Vaults() {
             const { secrets } = await api.listSecrets(id);
             setSelectedVault({ ...vault, secrets });
         } catch (err) {
-            toast.error(t('app.vaults.failedToLoadVault', 'Failed to load vault: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.failedToLoadVault', "Couldn't load the vault. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -148,7 +150,7 @@ export default function Vaults() {
             setRevealSecretId(secret.id);
             setRevealedValue(data.value || '');
         } catch (err) {
-            toast.error(t('app.vaults.revealFailed', 'Reveal failed: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.revealFailed', "Couldn't reveal the secret. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -163,7 +165,7 @@ export default function Vaults() {
             openVault(selectedVault.id);
             toast.success(t('app.vaults.secretDeleted', 'Secret deleted'));
         } catch (err) {
-            toast.error(t('app.vaults.failedToDeleteSecret', 'Failed to delete secret: {{message}}', { message: err.message }));
+            toast.error(t('app.vaults.failedToDeleteSecret', "Couldn't delete the secret. {{message}}", { message: errorReason(err) }));
         }
     }
 
@@ -237,7 +239,7 @@ export default function Vaults() {
             type: 'number',
             sortable: true,
             width: 100,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             // `value` sorts and filters; `render` is what the cell shows —
             // DataTable falls back to row[key], and there is no `secrets` key.
             value: (v) => v.secret_count ?? 0,
@@ -298,7 +300,7 @@ export default function Vaults() {
             type: 'date',
             sortable: true,
             width: 130,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             value: (s) => s.updated_at || null,
             render: (s) => (s.updated_at
                 ? <span title={formatDate(s.updated_at)}>{formatRelativeTime(s.updated_at)}</span>
@@ -318,9 +320,11 @@ export default function Vaults() {
                         <Button variant="ghost" size="icon" onClick={() => (revealed ? setRevealSecretId(null) : revealSecret(s))} title={revealed ? t('app.vaults.hide', 'Hide') : t('app.vaults.reveal', 'Reveal')}>
                             {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
                         </Button>
-                        <Button variant="ghost" size="icon" title={t('common.actions.copy', 'Copy')} onClick={() => copy(revealed ? revealedValue : s.value)}>
-                            <Copy size={14} />
-                        </Button>
+                        <CopyButton
+                            value={revealed ? revealedValue : s.value}
+                            label={t('common.actions.copy', 'Copy')}
+                            copiedLabel={t('app.copyField.copied', 'Copied')}
+                        />
                         <Button variant="ghost" size="icon" className="text-destructive" title={t('common.actions.delete', 'Delete')} onClick={() => deleteSecret(s.id)}>
                             <Trash2 size={14} />
                         </Button>
@@ -329,7 +333,7 @@ export default function Vaults() {
             },
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    ], [revealSecretId, revealedValue]);
+    ], [revealSecretId, revealedValue, selectedVault]);
 
     const vaultTable = selectedVault ? (
         <ResourceListPage
@@ -364,6 +368,9 @@ export default function Vaults() {
             noun="vaults"
             builtinViews={VAULT_VIEWS}
             totalCount={vaults.length}
+            error={loadError}
+            errorTitle={t('app.vaults.couldntLoadVaults', "Couldn't load vaults.")}
+            onRetry={loadAll}
             items={vaultRows}
             columns={vaultColumns}
             keyField="id"
@@ -388,7 +395,7 @@ export default function Vaults() {
         <>
             {vaultTable}
 
-            <Modal open={vaultForm.open} onClose={() => setVaultForm({ ...vaultForm, open: false })} title={t('app.vaults.newVault2', 'New Vault')}>
+            <Modal open={vaultForm.open} onClose={() => setVaultForm({ ...vaultForm, open: false })} title={t('app.vaults.newVault2', 'New vault')}>
                 <p className="sk-modal__subtitle">{t('app.vaults.createAnEncryptedVaultToGroup', 'Create an encrypted vault to group secrets.')}</p>
                 <form onSubmit={createVault} className="space-y-4">
                         <div>
@@ -419,12 +426,12 @@ export default function Vaults() {
                             </div>
                         )}
                         <div className="modal-actions">
-                            <Button type="submit">{t('app.vaults.createVault', 'Create Vault')}</Button>
+                            <Button type="submit">{t('app.vaults.createVault', 'Create vault')}</Button>
                         </div>
                     </form>
             </Modal>
 
-            <Modal open={secretForm.open} onClose={() => setSecretForm({ ...secretForm, open: false })} title={t('app.vaults.addSecret3', 'Add Secret')}>
+            <Modal open={secretForm.open} onClose={() => setSecretForm({ ...secretForm, open: false })} title={t('app.vaults.addSecret3', 'Add secret')}>
                 <p className="sk-modal__subtitle">{t('app.vaults.addAnEncryptedSecretTo', 'Add an encrypted secret to')} {selectedVault?.name}.</p>
                 <form onSubmit={createSecret} className="space-y-4">
                         <div>
@@ -440,7 +447,7 @@ export default function Vaults() {
                             <Textarea id="secretDesc" value={secretForm.description} onChange={(e) => setSecretForm({ ...secretForm, description: e.target.value })} />
                         </div>
                         <div className="modal-actions">
-                            <Button type="submit">{t('app.vaults.saveSecret', 'Save Secret')}</Button>
+                            <Button type="submit">{t('app.vaults.saveSecret', 'Save secret')}</Button>
                         </div>
                     </form>
             </Modal>

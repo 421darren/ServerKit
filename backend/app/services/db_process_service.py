@@ -41,13 +41,7 @@ class DbProcessService:
     # ------------------------------------------------------------------
     @staticmethod
     def _exec_sql(target, sql):
-        """Run ``sql`` against the target's engine — via ``db_exec`` (§G5).
-
-        The named seam stays (tests stub it); the engine × host dispatch it used
-        to re-implement does not. The private docker-postgres branch here never
-        set ``ON_ERROR_STOP=1``, so psql reported success for statements the
-        server had rejected — the drift that made three copies worth one.
-        """
+        """Run ``sql`` against the target's engine via ``db_exec`` (tests stub this)."""
         return db_exec.exec_sql(target, sql)
 
     # ------------------------------------------------------------------
@@ -62,7 +56,7 @@ class DbProcessService:
         """
         engine = (target or {}).get('engine')
         if engine not in SUPPORTED_ENGINES:
-            return {'error': 'unsupported engine'}
+            return {'error': 'unsupported engine', 'code': 'unsupported_engine'}
 
         sql = _MYSQL_PROCESSLIST if engine == 'mysql' else _PG_PROCESSLIST
         result = cls._exec_sql(target, sql)
@@ -83,7 +77,7 @@ class DbProcessService:
         """
         engine = (target or {}).get('engine')
         if engine not in SUPPORTED_ENGINES:
-            return {'error': 'unsupported engine'}
+            return {'error': 'unsupported engine', 'code': 'unsupported_engine'}
         try:
             pid = int(pid)
         except (TypeError, ValueError):

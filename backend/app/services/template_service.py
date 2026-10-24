@@ -12,27 +12,24 @@ Supports:
 
 import os
 import re
-import copy
 import time
 import yaml
 import json
 import shutil
-import secrets
-import string
-import hashlib
 import threading
 import subprocess
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Any
-from pathlib import Path
-import requests
 
 from app import paths
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 from app.services.deploy_lock import with_deploy_lock
+from app.services.template_catalog import TemplateCatalogMixin
+from app.services.template_magic import TemplateMagicMixin
+from app.services.template_ports import TemplatePortsMixin
 
 
-class TemplateService:
+class TemplateService(TemplateCatalogMixin, TemplateMagicMixin, TemplatePortsMixin):
     """Service for managing and deploying application templates."""
 
     CONFIG_DIR = paths.SERVERKIT_CONFIG_DIR
@@ -103,7 +100,7 @@ class TemplateService:
         'https://raw.githubusercontent.com/serverkit/templates',
     }
 
-    # Provider-owned templates (plan 52 D4 hook inversion): these ids are
+    # Provider-owned templates (hook inversion): these ids are
     # listed and installable ONLY while the owning extension has registered as
     # their provider (i.e. it is installed + active this boot — registration
     # happens via the manifest ``core_hooks`` seam). The map itself is core;
@@ -433,153 +430,6 @@ class TemplateService:
     # nothing can declare it wrong.
     EXTENSION_FAMILY = 'Extension'
 
-    @classmethod
-    def extension_dirs(cls) -> List[str]:
-        """Where extension YAMLs are looked for, highest precedence first.
-
-        The synced/operator directory shadows the bundled one, exactly like
-        :meth:`list_local_templates` does for app templates.
-        """
-        return [os.path.join(cls.TEMPLATES_DIR, cls.EXTENSIONS_SUBDIR),
-                os.path.join(cls.LOCAL_TEMPLATES_DIR, cls.EXTENSIONS_SUBDIR)]
-
-    @classmethod
-    def validate_extension(cls, document: Dict) -> Dict:
-        """Validate an extension document (the whole file, not just the block)."""
-        errors = []
-        if not isinstance(document, dict):
-            return {'valid': False, 'errors': ['extension file must be a mapping']}
-        for field in ('name', 'version', 'description'):
-            if not document.get(field):
-                errors.append(f'Missing required field: {field}')
-        if 'extension' not in document:
-            errors.append("Missing required 'extension' block")
-        else:
-            errors.extend(cls._extension_block_errors(document['extension']))
-        if 'compose' in document or 'dockerfile' in document:
-            errors.append('An extension installs into a running engine and must '
-                          'not declare a compose/dockerfile of its own')
-        if errors:
-            return {'valid': False, 'errors': errors}
-        return {'valid': True, 'errors': []}
-
-    @classmethod
-    def _extension_block_errors(cls, extension: Any) -> List[str]:
-        """Hard errors in an ``extension:`` block (shape only, never opinions)."""
-        if not isinstance(extension, dict):
-            return ["'extension' must be a mapping"]
-        errors = []
-        protocol = extension.get('protocol')
-        if not protocol:
-            errors.append('extension.protocol is required (which engines can host it)')
-        elif protocol not in cls.ENGINE_PROTOCOLS:
-            errors.append(
-                f"extension.protocol '{protocol}' is not one of: "
-                f"{', '.join(cls.ENGINE_PROTOCOLS)}")
-        elif protocol == 'none':
-            errors.append("extension.protocol 'none' cannot host an extension: "
-                          'there is no client to execute the statement with')
-        statement = extension.get('statement')
-        if not statement or not isinstance(statement, str) or not statement.strip():
-            errors.append('extension.statement is required and must be a non-empty string')
-        for key in ('available_query', 'installed_query', 'image_hint', 'size', 'unit'):
-            value = extension.get(key)
-            if value is not None and not isinstance(value, str):
-                errors.append(f'extension.{key} must be a string')
-        for key in ('images', 'templates', 'versions'):
-            value = extension.get(key)
-            if value is None:
-                continue
-            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-                errors.append(f'extension.{key} must be a list of strings')
-        return errors
-
-    @classmethod
-    def extension_metadata(cls, document: Dict, extension_id: str = None) -> Optional[Dict]:
-        """Normalized extension record, or ``None`` when the document is not one.
-
-        Everything a consumer needs is read off the YAML; nothing about any
-        particular extension is hardcoded here.
-        """
-        if not isinstance(document, dict) or not isinstance(document.get('extension'), dict):
-            return None
-        block = document['extension']
-        versions = block.get('versions')
-        if not isinstance(versions, list) or not versions:
-            versions = [document.get('version')] if document.get('version') else []
-        images = [i for i in (block.get('images') or []) if isinstance(i, str)]
-        return {
-            'id': extension_id or document.get('id'),
-            'name': document.get('name'),
-            'version': document.get('version'),
-            'description': document.get('description'),
-            'icon': document.get('icon'),
-            'website': document.get('website'),
-            'documentation': document.get('documentation'),
-            'family': cls.EXTENSION_FAMILY,
-            'protocol': block.get('protocol'),
-            'statement': block.get('statement'),
-            'available_query': block.get('available_query'),
-            'installed_query': block.get('installed_query'),
-            # [] means "any engine template speaking `protocol`".
-            'templates': [t for t in (block.get('templates') or []) if isinstance(t, str)],
-            'images': images,
-            'image_hint': block.get('image_hint'),
-            # An extension with no declared images makes no image claim, so it
-            # is never blocked on one.
-            'requires_image': bool(images),
-            'size': block.get('size'),
-            'unit': block.get('unit'),
-            'versions': [str(v) for v in versions],
-        }
-
-    @classmethod
-    def list_extension_templates(cls) -> List[Dict]:
-        """Every extension declared under a ``templates/extensions/`` directory.
-
-        Derived from the files, like the engine catalog: dropping a YAML in
-        makes the extension appear, with no code change anywhere.
-        """
-        found: List[Dict] = []
-        seen = set()
-        for directory in cls.extension_dirs():
-            if not os.path.isdir(directory):
-                continue
-            for filename in sorted(os.listdir(directory)):
-                if not filename.endswith(('.yaml', '.yml')):
-                    continue
-                extension_id = filename.rsplit('.', 1)[0]
-                if extension_id in seen:
-                    continue
-                record = cls._load_extension_file(os.path.join(directory, filename),
-                                                  extension_id)
-                if record:
-                    seen.add(extension_id)
-                    found.append(record)
-        return found
-
-    @classmethod
-    def _load_extension_file(cls, path: str, extension_id: str) -> Optional[Dict]:
-        """Parse + validate one extension file, or ``None`` (logged) if broken."""
-        try:
-            with open(path, 'r', encoding='utf-8') as fh:
-                document = yaml.safe_load(fh)
-        except Exception:
-            return None
-        validation = cls.validate_extension(document if isinstance(document, dict) else {})
-        if not validation['valid']:
-            return None
-        return cls.extension_metadata(document, extension_id=extension_id)
-
-    @classmethod
-    def get_extension_template(cls, extension_id: str) -> Optional[Dict]:
-        """One normalized extension by id, or ``None``."""
-        if not extension_id:
-            return None
-        for record in cls.list_extension_templates():
-            if record['id'] == extension_id:
-                return record
-        return None
 
     @classmethod
     def parse_template(cls, template_path: str) -> Dict:
@@ -598,43 +448,6 @@ class TemplateService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    @classmethod
-    def generate_value(cls, var_config: Dict, force_generate: bool = False) -> str:
-        """Generate a value for a variable based on its configuration.
-
-        Args:
-            var_config: Variable configuration dict
-            force_generate: If True, always generate new value even for ports
-        """
-        var_type = var_config.get('type', 'string')
-        default = var_config.get('default', '')
-
-        if var_type == 'password':
-            length = var_config.get('length', 32)
-            chars = string.ascii_letters + string.digits
-            if var_config.get('special_chars', False):
-                chars += '!@#$%^&*'
-            return ''.join(secrets.choice(chars) for _ in range(length))
-
-        elif var_type == 'port':
-            # ALWAYS find an available port - never trust defaults
-            start_port = int(default) if default else 8000
-            # A global base-port setting (Settings > managed_app_base_port)
-            # overrides the per-template default when configured (non-zero).
-            base = cls._managed_app_base_port()
-            if base:
-                start_port = base
-            return str(cls._find_available_port(start_port))
-
-        elif var_type == 'uuid':
-            import uuid
-            return str(uuid.uuid4())
-
-        elif var_type == 'random':
-            length = var_config.get('length', 16)
-            return secrets.token_hex(length // 2)
-
-        return str(default)
 
     # ==================================================================
     # Magic variables
@@ -652,8 +465,8 @@ class TemplateService:
     #   SERVICE_FQDN_<NAME>      -> the app's auto-assigned hostname (best-effort)
     #   SERVICE_URL_<NAME>       -> full URL derived from the FQDN (+ scheme)
     #   SERVICE_BASE64_<NAME>    -> base64 of a freshly generated secret
-    #   SERVERKIT_METRICS_TOKEN  -> the panel's Prometheus scrape token (plan
-    #                               86 §A4), so a monitoring template can scrape
+    #   SERVERKIT_METRICS_TOKEN  -> the panel's Prometheus scrape token, so a
+    #                               monitoring template can scrape
     #                               /api/v1/fleet-monitor/prometheus
     #
     # Resolution is PURE and unit-testable: no Docker, no network. The only
@@ -674,8 +487,8 @@ class TemplateService:
     # Whole-name magic tokens (no ``<NAME>`` suffix) -> internal kind. One
     # table so the resolver and the catalog validator agree on what exists.
     MAGIC_EXACT_TOKENS = {
-        'SERVER_PUBLIC_IP': 'server_public_ip',       # appliance tier (plan 35)
-        'SERVERKIT_METRICS_TOKEN': 'metrics_token',   # plan 86 §A4
+        'SERVER_PUBLIC_IP': 'server_public_ip',       # appliance tier
+        'SERVERKIT_METRICS_TOKEN': 'metrics_token',
     }
 
     # Matches ``${SERVICE_...}`` magic tokens specifically (a subset of the
@@ -689,185 +502,6 @@ class TemplateService:
     # Default password length for magic SERVICE_PASSWORD_* tokens.
     MAGIC_PASSWORD_LENGTH = 32
 
-    @classmethod
-    def _classify_magic_token(cls, token: str):
-        """Return ``(kind, name)`` for a bare magic token (no ``${}``), or
-        ``(None, None)`` if it is not a recognized magic variable."""
-        if token in cls.MAGIC_EXACT_TOKENS:
-            return cls.MAGIC_EXACT_TOKENS[token], ''
-        for prefix, kind in cls.MAGIC_PREFIXES:
-            if token.startswith(prefix):
-                return kind, token[len(prefix):]
-        return None, None
-
-    @classmethod
-    def _generate_magic_password(cls) -> str:
-        """Strong password for a SERVICE_PASSWORD_* token (alnum, no special
-        chars to stay shell/compose-safe). Reuses the same primitive as
-        ``generate_value(type=password)``."""
-        chars = string.ascii_letters + string.digits
-        return ''.join(secrets.choice(chars) for _ in range(cls.MAGIC_PASSWORD_LENGTH))
-
-    @classmethod
-    def _generate_magic_user(cls, name: str) -> str:
-        """Service username for a SERVICE_USER_* token: ``svc_<name>_<rand>``,
-        lowercased and reduced to ``[a-z0-9_]`` so it is safe as a DB/app user."""
-        base = re.sub(r'[^a-z0-9]+', '_', (name or 'service').lower()).strip('_') or 'service'
-        suffix = secrets.token_hex(2)  # 4 hex chars, keeps it short but unique
-        return f'svc_{base}_{suffix}'
-
-    @classmethod
-    def _resolve_magic_value(cls, kind: str, name: str, context: Dict) -> str:
-        """Resolve a single magic token to a value.
-
-        ``context`` may carry ``fqdn`` / ``scheme`` (and ``app_name``); when an
-        FQDN is not known yet the FQDN/URL forms degrade to a documented
-        placeholder (``localhost``) that the install finalizer can later fill —
-        this keeps resolution best-effort and non-fatal.
-        """
-        context = context or {}
-        if kind == 'password':
-            return cls._generate_magic_password()
-        if kind == 'user':
-            return cls._generate_magic_user(name)
-        if kind == 'base64':
-            import base64
-            secret = secrets.token_bytes(24)
-            return base64.b64encode(secret).decode('ascii')
-        if kind == 'fqdn':
-            return str(context.get('fqdn') or context.get('app_name') or 'localhost')
-        if kind == 'url':
-            scheme = str(context.get('scheme') or 'http')
-            host = context.get('fqdn') or context.get('app_name') or 'localhost'
-            return f'{scheme}://{host}'
-        if kind == 'metrics_token':
-            from app.services import metrics_token_service
-            return metrics_token_service.get_or_create()
-        if kind == 'server_public_ip':
-            ip = context.get('server_public_ip')
-            if not ip:
-                try:
-                    from app.services.site_domain_service import SiteDomainService
-                    ip = SiteDomainService.server_ip()
-                except Exception:
-                    ip = None
-            return str(ip or '')
-        return ''
-
-    @classmethod
-    def resolve_magic_variables(cls, content: Any, context: Dict = None):
-        """Scan ``content`` for ``${SERVICE_*}`` magic tokens, generate a value
-        once per unique token, substitute, and return ``(substituted, generated)``.
-
-        Args:
-            content: A string, or a (possibly nested) dict/list — e.g. a parsed
-                compose section. Returned with the same shape.
-            context: Optional dict with ``app_name`` / ``fqdn`` / ``scheme`` used
-                to resolve FQDN/URL tokens. No Docker/network access is performed.
-
-        Returns:
-            ``(substituted_content, generated_vars)`` where ``generated_vars`` maps
-            each magic variable name (without ``${}``) to its generated value, so
-            callers can persist them as env vars / surface them post-install.
-            Pure and idempotent for a given ``content`` within one call (the same
-            token always maps to the same generated value here).
-        """
-        context = context or {}
-        generated: Dict[str, str] = {}
-
-        def _collect(text: str):
-            for match in re.finditer(cls.MAGIC_TOKEN_PATTERN, text):
-                token = match.group(1)
-                if token in generated:
-                    continue
-                kind, name = cls._classify_magic_token(token)
-                if kind is None:
-                    continue
-                generated[token] = cls._resolve_magic_value(kind, name, context)
-
-        def _walk_collect(node: Any):
-            if isinstance(node, str):
-                _collect(node)
-            elif isinstance(node, dict):
-                for value in node.values():
-                    _walk_collect(value)
-            elif isinstance(node, list):
-                for item in node:
-                    _walk_collect(item)
-
-        # Pass 1: discover every unique token and generate a stable value.
-        _walk_collect(content)
-
-        # Pass 2: substitute using the generated values. Reuse the existing
-        # ${VAR} substitution so behavior is identical to normal variables.
-        if isinstance(content, str):
-            substituted = cls.substitute_variables(content, generated)
-        else:
-            substituted = cls.substitute_in_dict(content, generated)
-
-        return substituted, generated
-
-    @classmethod
-    def collect_magic_variables(cls, template: Dict, context: Dict = None) -> Dict[str, str]:
-        """Generate the magic variables a template uses, given its declared
-        ``compose`` / ``files`` / ``scripts`` sections, WITHOUT mutating the
-        template. Returns ``{name: value}`` for every ``${SERVICE_*}`` token found.
-
-        This is the wiring entry point for the install flow: the returned dict is
-        merged into the install ``variables`` so the existing ``${VAR}``
-        substitution renders the tokens, and so the secrets land in ``.env`` /
-        post-install output. Templates with no magic tokens get ``{}`` and behave
-        exactly as before.
-        """
-        # Scan the parts that the installer substitutes against.
-        scan_target = {
-            'compose': template.get('compose', {}),
-            'files': template.get('files', []),
-            'scripts': template.get('scripts', {}),
-        }
-        _, generated = cls.resolve_magic_variables(scan_target, context)
-        return generated
-
-    @classmethod
-    def _install_magic_context(cls, template: Dict, app_name: str,
-                               variables: Dict = None) -> Dict:
-        """Build the best-effort ``context`` for magic-variable resolution at
-        install time.
-
-        Resolves the would-be FQDN from the managed-sites base domain when one is
-        configured (the same ``<slug>.<base>`` the finalizer publishes), and the
-        scheme from whether wildcard HTTPS is on. All of this is best-effort and
-        non-fatal: if site routing isn't set up (or we're outside an app context),
-        FQDN/URL tokens fall back to a documented ``localhost`` placeholder that
-        the install finalizer can later fill in.
-        """
-        context = {'app_name': app_name}
-        try:
-            from app.services.site_domain_service import SiteDomainService
-            base = SiteDomainService.base_domain()
-            # Only assign an FQDN when the template opts into auto-domain and a
-            # base domain exists — mirrors the finalizer's publish condition.
-            if base and template.get('auto_domain'):
-                host = SiteDomainService.subdomain_for(app_name)
-                if host:
-                    context['fqdn'] = host
-                    context['scheme'] = 'https' if (
-                        SiteDomainService.https_enabled()
-                        and SiteDomainService.covers(host)
-                    ) else 'http'
-        except Exception:
-            # No app context / site routing not available — leave FQDN unset so
-            # tokens degrade to the localhost placeholder.
-            pass
-        return context
-
-    @classmethod
-    def _collect_magic_for_install(cls, template: Dict, app_name: str,
-                                   variables: Dict = None) -> Dict[str, str]:
-        """Resolve a template's magic variables for an install, using the
-        best-effort FQDN context. Thin wrapper over :meth:`collect_magic_variables`."""
-        context = cls._install_magic_context(template, app_name, variables)
-        return cls.collect_magic_variables(template, context)
 
     @classmethod
     def validate_catalog_entry(cls, entry: Dict) -> Dict:
@@ -1015,155 +649,6 @@ class TemplateService:
                 'error': f'Connection check failed: {str(e)}'
             }
 
-    @classmethod
-    def _managed_app_base_port(cls) -> int:
-        """Return the admin-configured base port for managed apps, or 0 if unset.
-
-        Reads the ``managed_app_base_port`` system setting. Returns 0 (meaning
-        "use each template's own default") on any error, e.g. if the settings
-        table isn't ready yet during early startup.
-        """
-        try:
-            from app.services.settings_service import SettingsService
-            return int(SettingsService.get('managed_app_base_port', 0) or 0)
-        except Exception:
-            return 0
-
-    @classmethod
-    def _find_available_port(cls, start_port: int = 8000, max_attempts: int = 1000) -> int:
-        """Find an available port that's not in use by the system, Docker, or database.
-
-        Checks:
-        1. Ports assigned to existing applications in the database
-        2. Docker container port mappings
-        3. Socket binding test
-        """
-        import socket
-
-        # Get ports from database (assigned to apps)
-        db_ports = cls._get_database_used_ports()
-
-        # Get ports currently used by Docker containers
-        docker_ports = cls._get_docker_used_ports()
-
-        # Combine all used ports
-        used_ports = db_ports | docker_ports
-
-        for port in range(start_port, start_port + max_attempts):
-            # Skip reserved/common ports
-            if port < 1024:
-                continue
-
-            # Skip if already assigned in DB or Docker
-            if port in used_ports:
-                continue
-
-            # Check if port is available on localhost (where Docker binds)
-            try:
-                # Try to bind - most reliable check
-                test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                test_sock.bind(('127.0.0.1', port))
-                test_sock.close()
-                return port
-            except OSError:
-                continue
-            except Exception:
-                continue
-
-        # Fallback: return a random high port
-        import random
-        return random.randint(10000, 60000)
-
-    @classmethod
-    def _port_is_free(cls, port) -> bool:
-        """True when nothing -- app row, container, or live socket -- holds
-        ``port``. Same three sources as :meth:`_find_available_port`, asked
-        about one specific port instead of scanning."""
-        import socket
-        try:
-            port = int(port)
-        except (TypeError, ValueError):
-            return False
-        if not 1 <= port <= 65535:
-            return False
-        if port in (cls._get_database_used_ports() | cls._get_docker_used_ports()):
-            return False
-        try:
-            test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            test_sock.bind(('127.0.0.1', port))
-            test_sock.close()
-            return True
-        except OSError:
-            return False
-        except Exception:
-            return False
-
-    @classmethod
-    def _get_database_used_ports(cls) -> set:
-        """Get all ports assigned to applications in the database."""
-        used_ports = set()
-        try:
-            from app.models import Application
-            # Deliberately unfiltered: a soft-deleted app must KEEP reserving its
-            # port, or a new app takes it and restoring from the recycle bin collides.
-            apps = Application.query.filter(Application.port.isnot(None)).all()
-            for app in apps:
-                if app.port:
-                    used_ports.add(app.port)
-            # A slot app holds two ports (plan 87): the live one is app.port,
-            # the standby's stays reserved for the switch back.
-            from app.models.app_slot import AppSlot
-            used_ports.update(row.host_port for row in
-                              AppSlot.query.filter(AppSlot.host_port.isnot(None)).all())
-        except Exception:
-            pass
-        return used_ports
-
-    @classmethod
-    def _get_docker_used_ports(cls) -> set:
-        """Get all ports currently mapped by Docker containers."""
-        used_ports = set()
-        try:
-            result = run_checked(['docker', 'ps', '--format', '{{.Ports}}'], timeout=10)
-            if result['success']:
-                # Parse port mappings like "0.0.0.0:8080->80/tcp, 127.0.0.1:3306->3306/tcp"
-                import re
-                for line in result['output'].strip().split('\n'):
-                    if line:
-                        # Find all host ports in the format "host:port->container"
-                        matches = re.findall(r'(?:[\d.]+:)?(\d+)->', line)
-                        for port_str in matches:
-                            try:
-                                used_ports.add(int(port_str))
-                            except ValueError:
-                                pass
-        except Exception:
-            pass
-        return used_ports
-
-    @classmethod
-    def substitute_variables(cls, content: str, variables: Dict) -> str:
-        """Substitute variables in content using ${VAR} syntax."""
-        def replace_var(match):
-            var_name = match.group(1)
-            return str(variables.get(var_name, match.group(0)))
-
-        # Replace ${VAR} patterns
-        pattern = r'\$\{([A-Z_][A-Z0-9_]*)\}'
-        return re.sub(pattern, replace_var, content)
-
-    @classmethod
-    def substitute_in_dict(cls, data: Any, variables: Dict) -> Any:
-        """Recursively substitute variables in a dictionary."""
-        if isinstance(data, str):
-            return cls.substitute_variables(data, variables)
-        elif isinstance(data, dict):
-            return {k: cls.substitute_in_dict(v, variables) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [cls.substitute_in_dict(item, variables) for item in data]
-        return data
 
     @classmethod
     def generate_compose(cls, template: Dict, variables: Dict) -> str:
@@ -1179,378 +664,6 @@ class TemplateService:
 
         return yaml.dump(compose, default_flow_style=False, sort_keys=False)
 
-    @classmethod
-    def list_local_templates(cls) -> List[Dict]:
-        """List locally available templates.
-
-        Deliberately NOT provider-gated: this is the raw "what is bundled on
-        disk" view, which ``build_repo_index`` needs to describe the bundle
-        faithfully for publishing. Provider-owned templates are hidden from
-        the *catalog* instead — :meth:`list_all_templates` and
-        :meth:`get_template` apply the availability gate (plan 52 D4), so an
-        absent extension means hidden cards and refused installs even though
-        the YAML remains bundled.
-
-        Parsing is memoized per file (see the cache block near the top of the
-        class); a repeat listing stats each file instead of re-parsing it.
-        """
-        templates = []
-        seen_ids = set()
-        seen_paths = set()
-
-        for templates_dir in [cls.TEMPLATES_DIR, cls.LOCAL_TEMPLATES_DIR]:
-            if not os.path.isdir(templates_dir):
-                continue
-
-            try:
-                with os.scandir(templates_dir) as scan:
-                    # Sorted so a same-id collision (foo.yaml vs foo.yml)
-                    # resolves the same way on every platform; os.listdir order
-                    # is filesystem-dependent.
-                    dir_entries = sorted(scan, key=lambda e: e.name)
-            except OSError:
-                continue
-
-            for dir_entry in dir_entries:
-                if not dir_entry.name.endswith(('.yaml', '.yml')):
-                    continue
-                seen_paths.add(dir_entry.path)
-
-                template_id = dir_entry.name.rsplit('.', 1)[0]
-                if template_id in seen_ids:
-                    continue
-                try:
-                    # DirEntry.stat() reuses the data the directory scan
-                    # already returned where the platform provides it, so this
-                    # is cheaper than a separate os.stat per file.
-                    info = dir_entry.stat()
-                except OSError:
-                    continue
-
-                entry = cls._local_entry(dir_entry.path, template_id,
-                                         (info.st_mtime_ns, info.st_size))
-                if entry is not None:
-                    # A file that fails to parse deliberately does NOT claim
-                    # the id, so a valid file of the same name in the fallback
-                    # directory can still supply it.
-                    seen_ids.add(template_id)
-                    templates.append(entry)
-
-        cls._prune_local_cache(seen_paths)
-        return templates
-
-    @classmethod
-    def invalidate_local_cache(cls) -> None:
-        """Drop the parsed-template cache.
-
-        Ordinary writes do not need this -- the cache is keyed on
-        (mtime_ns, size), so syncing or editing a template invalidates exactly
-        that file on the next listing. Provided for tests and any out-of-band
-        mutation that could defeat mtime comparison."""
-        with cls._local_cache_lock:
-            cls._local_cache = {}
-
-    @classmethod
-    def _prune_local_cache(cls, seen_paths: set) -> None:
-        """Forget files that are no longer on disk, so a long-running panel
-        that churns templates does not grow the cache without bound."""
-        with cls._local_cache_lock:
-            stale = [p for p in cls._local_cache if p not in seen_paths]
-            for path in stale:
-                del cls._local_cache[path]
-
-    @classmethod
-    def _local_entry(cls, filepath: str, template_id: str,
-                     stat_key: tuple) -> Optional[Dict]:
-        """Catalog projection for one bundled template, memoized on ``stat_key``.
-
-        Returns None when the file does not parse -- and caches that negative
-        result too, so one malformed YAML does not cost a parse on every
-        render. Returns a deep copy so a caller mutating the result (or its
-        nested ``repo``/``engine``/``categories``) cannot corrupt the cache."""
-        with cls._local_cache_lock:
-            cached = cls._local_cache.get(filepath)
-            if cached is not None and cached['key'] == stat_key:
-                return copy.deepcopy(cached['entry'])
-
-        entry = cls._parse_local_entry(filepath, template_id)
-
-        with cls._local_cache_lock:
-            cls._local_cache[filepath] = {'key': stat_key, 'entry': entry}
-        return copy.deepcopy(entry)
-
-    @classmethod
-    def _parse_local_entry(cls, filepath: str, template_id: str) -> Optional[Dict]:
-        """Parse one template file into its catalog projection, or None."""
-        result = cls.parse_template(filepath)
-        if not result.get('success'):
-            return None
-
-        template = result['template']
-        kind = template.get('kind', 'compose')
-        entry = {
-            'id': template_id,
-            'name': template.get('name'),
-            'version': template.get('version'),
-            'description': template.get('description'),
-            'icon': template.get('icon'),
-            'categories': template.get('categories', []),
-            'kind': kind,
-            'source': 'local',
-            'filepath': filepath
-        }
-        # Repo templates surface a minimal repo summary so the catalog grid
-        # can badge them and link to the wizard without a second fetch.
-        if kind == 'repo' and isinstance(template.get('repo'), dict):
-            repo = template['repo']
-            entry['repo'] = {
-                'url': repo.get('url'),
-                'branch': repo.get('branch', 'main'),
-            }
-        # A database engine declares itself with a top-level `engine:` block.
-        # This listing is a fixed projection, so without carrying the block
-        # through, the Databases catalog could never see an engine without
-        # re-parsing every YAML file.
-        engine = cls.engine_metadata(template)
-        if engine:
-            entry['engine'] = engine
-        return entry
-
-    @classmethod
-    def list_engine_templates(cls) -> List[Dict]:
-        """Every available template carrying an ``engine:`` block.
-
-        This is what the Databases engine catalog renders. It is derived
-        entirely from the template sources -- drop a new engine YAML into
-        ``backend/templates/`` (or sync a repository that ships one) and it
-        appears here with no code change.
-        """
-        return [t for t in cls.list_all_templates()
-                if isinstance(t.get('engine'), dict)]
-
-    @classmethod
-    def build_repo_index(cls, repo_name: str = 'serverkit-official') -> Dict:
-        """Build the ``index.json`` document that describes the locally-bundled
-        templates as a publishable repository.
-
-        This is the exact shape :meth:`fetch_remote_templates` / :meth:`sync_templates`
-        consume from ``<repo_url>/index.json`` (templates served at
-        ``<repo_url>/templates/<id>.yaml``). Publishing a repo is then just:
-        host the ``templates/*.yaml`` files plus this ``index.json``. Lets
-        Prompture Hub & friends ship template updates without a panel release.
-        """
-        templates = []
-        for t in cls.list_local_templates():
-            entry = {
-                'id': t['id'],
-                'name': t.get('name'),
-                'version': t.get('version'),
-                'description': t.get('description'),
-                'icon': t.get('icon'),
-                'categories': t.get('categories', []),
-            }
-            # Carried in the index so a panel that syncs this repo can list the
-            # engine catalog without fetching all 100+ template files first.
-            if isinstance(t.get('engine'), dict):
-                entry['engine'] = t['engine']
-            templates.append(entry)
-        return {
-            'name': repo_name,
-            'schema_version': cls.SCHEMA_VERSION,
-            'generated_at': datetime.now().isoformat(),
-            'count': len(templates),
-            'templates': templates,
-        }
-
-    @classmethod
-    def export_repo_index(cls, dest_path: str = None) -> Dict:
-        """Write :meth:`build_repo_index` to ``dest_path`` (defaults to
-        ``index.json`` alongside the bundled templates). Returns a status dict."""
-        index = cls.build_repo_index()
-        path = dest_path or os.path.join(cls.LOCAL_TEMPLATES_DIR, 'index.json')
-        try:
-            with open(path, 'w', encoding='utf-8') as f:
-                json.dump(index, f, indent=2)
-            return {'success': True, 'path': path, 'count': index['count']}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-
-    @classmethod
-    def invalidate_remote_cache(cls, repo_url: str = None) -> None:
-        """Drop cached remote indexes -- all of them, or just ``repo_url``.
-
-        Called whenever the repo list changes so a freshly added repo appears
-        immediately instead of after the TTL, and a removed one stops being
-        served from cache."""
-        with cls._remote_cache_lock:
-            if repo_url is None:
-                cls._remote_cache = {}
-            else:
-                cls._remote_cache.pop(repo_url, None)
-
-    @classmethod
-    def _cached_remote(cls, repo_url: str) -> Optional[List[Dict]]:
-        """Unexpired cache entry for ``repo_url``, or None. Returns copies so a
-        caller mutating an entry cannot corrupt the cache."""
-        with cls._remote_cache_lock:
-            entry = cls._remote_cache.get(repo_url)
-            if entry and entry['expires'] > time.monotonic():
-                return [dict(t) for t in entry['templates']]
-        return None
-
-    @classmethod
-    def _last_good_remote(cls, repo_url: str) -> Optional[List[Dict]]:
-        """Last payload this repo successfully served, regardless of expiry."""
-        with cls._remote_cache_lock:
-            entry = cls._remote_cache.get(repo_url) or {}
-            last_good = entry.get('last_good')
-            return [dict(t) for t in last_good] if last_good else None
-
-    @classmethod
-    def _store_remote(cls, repo_url: str, templates: List[Dict], ok: bool) -> None:
-        """Cache ``templates`` for ``repo_url``. A successful payload also
-        becomes the last-good; a failure carries the previous last-good
-        forward, so repeated failures keep serving it instead of decaying to
-        an empty catalog on the second one."""
-        ttl = cls._REMOTE_TTL_SECONDS if ok else cls._REMOTE_ERROR_TTL_SECONDS
-        with cls._remote_cache_lock:
-            previous = cls._remote_cache.get(repo_url) or {}
-            cls._remote_cache[repo_url] = {
-                'templates': [dict(t) for t in templates],
-                'expires': time.monotonic() + ttl,
-                'ok': ok,
-                'last_good': ([dict(t) for t in templates] if ok
-                              else previous.get('last_good')),
-            }
-
-    @classmethod
-    def fetch_remote_templates(cls, repo_url: str, force: bool = False) -> List[Dict]:
-        """Fetch a repository's template index, memoized (see the cache block
-        near the top of the class). ``force=True`` bypasses the cache, which is
-        what an explicit sync wants."""
-        if not force:
-            cached = cls._cached_remote(repo_url)
-            if cached is not None:
-                return cached
-
-        templates = []
-        try:
-            index_url = f"{repo_url}/index.json"
-            response = requests.get(index_url, timeout=cls._REMOTE_TIMEOUT_SECONDS)
-            response.raise_for_status()
-
-            index = response.json()
-            for template_info in index.get('templates', []):
-                template_info['source'] = 'remote'
-                template_info['repo_url'] = repo_url
-                templates.append(template_info)
-
-        except Exception as e:
-            print(f"Failed to fetch templates from {repo_url}: {e}")
-            # Keep serving the last good index rather than blanking a catalog
-            # the operator has already seen, but still back off so a dead repo
-            # is not retried on every single page load.
-            last_good = cls._last_good_remote(repo_url)
-            cls._store_remote(repo_url, last_good or [], ok=False)
-            return last_good or []
-
-        cls._store_remote(repo_url, templates, ok=True)
-        return [dict(t) for t in templates]
-
-    @classmethod
-    def list_all_templates(cls, category: str = None, search: str = None) -> List[Dict]:
-        """List all available templates from all sources, deduped by id.
-
-        Bundled and registry templates deliberately overlap -- the bundle is the
-        offline floor and the registry is the growth path (docs/REGISTRIES.md) --
-        so the same id legitimately arrives from both. Concatenating them listed
-        every bundled template twice. **Local wins**, matching
-        :meth:`get_template`, which already resolves local directories before
-        any repo; among repos, the first enabled one to claim an id keeps it.
-        """
-        by_id = {}
-
-        def _claim(entry):
-            """First source to claim an id keeps it."""
-            template_id = entry.get('id')
-            if template_id and template_id not in by_id:
-                by_id[template_id] = entry
-
-        # Local templates first -- they outrank every repo.
-        for entry in cls.list_local_templates():
-            _claim(entry)
-
-        # Remote templates fill in ids the bundle does not carry.
-        config = cls.get_config()
-        for repo in config.get('repos', []):
-            if repo.get('enabled', True):
-                for entry in cls.fetch_remote_templates(repo['url']):
-                    _claim(entry)
-
-        templates = list(by_id.values())
-
-        # Filter by category
-        if category:
-            templates = [t for t in templates if category in t.get('categories', [])]
-
-        # Provider-owned templates from any source (incl. synced remote repos)
-        # are hidden while their extension is absent.
-        templates = [t for t in templates if cls.template_available(t.get('id'))]
-
-        # Search filter
-        if search:
-            search_lower = search.lower()
-            templates = [
-                t for t in templates
-                if search_lower in t.get('name', '').lower()
-                or search_lower in t.get('description', '').lower()
-            ]
-
-        return templates
-
-    @classmethod
-    def get_template(cls, template_id: str) -> Dict:
-        """Get full template details."""
-        if not cls.template_available(template_id):
-            owner = cls.PROVIDER_OWNED_TEMPLATES.get(template_id)
-            return {
-                'success': False,
-                'error': f"Template '{template_id}' is provided by the "
-                         f"'{owner}' extension, which is not installed or not active",
-            }
-        # Check local directories (system dir, then bundled fallback)
-        for templates_dir in [cls.TEMPLATES_DIR, cls.LOCAL_TEMPLATES_DIR]:
-            for ext in ['.yaml', '.yml']:
-                filepath = os.path.join(templates_dir, f"{template_id}{ext}")
-                if os.path.exists(filepath):
-                    result = cls.parse_template(filepath)
-                    if result.get('success'):
-                        template = result['template']
-                        template['source'] = 'local'
-                        template['filepath'] = filepath
-                        return {'success': True, 'template': template}
-                    return result
-
-        # Check remote repos
-        config = cls.get_config()
-        for repo in config.get('repos', []):
-            if not repo.get('enabled', True):
-                continue
-
-            try:
-                url = f"{repo['url']}/templates/{template_id}.yaml"
-                response = requests.get(url, timeout=30)
-                if response.status_code == 200:
-                    template = yaml.safe_load(response.text)
-                    validation = cls.validate_template(template)
-                    if validation['valid']:
-                        template['source'] = 'remote'
-                        template['repo_url'] = repo['url']
-                        return {'success': True, 'template': template}
-            except Exception:
-                continue
-
-        return {'success': False, 'error': 'Template not found'}
 
     @classmethod
     def build_template_hints(cls, template: Dict) -> Dict:
@@ -1778,7 +891,7 @@ class TemplateService:
                 variables[var_name] = cls.generate_value(var_config)
 
         # Provider-owned templates validate through their provider's hook
-        # (plan 52 D4 — the WordPress external-DB preflight lives in the WP
+        # (the WordPress external-DB preflight lives in the WP
         # extension now), never through hardcoded per-template branches here.
         veto = cls._run_provider_validate(template_id, variables)
         if veto:
@@ -1917,7 +1030,7 @@ class TemplateService:
                 variables[var_name] = cls.generate_value(var_config)
 
         # Validate provider-owned templates through their provider hook
-        # (plan 52 D4 — e.g. the external-DB connection preflight for
+        # (e.g. the external-DB connection preflight for
         # wordpress-external-db is supplied by the WordPress extension).
         veto = cls._run_provider_validate(template_id, variables)
         if veto:
@@ -1931,7 +1044,7 @@ class TemplateService:
         # Create app directory
         app_path = os.path.join(cls.INSTALLED_DIR, app_name)
         if os.path.exists(app_path):
-            return {'success': False, 'error': f"App directory already exists: {app_path}"}
+            return {'success': False, 'error': f"A service directory already exists at {app_path}. Choose another name."}
 
         try:
             os.makedirs(app_path, exist_ok=True)
@@ -2111,6 +1224,11 @@ class TemplateService:
 
                 created_files.append(filename)
 
+                # Relative files (e.g. Dockerfiles) are build inputs, not
+                # absolute container paths to mount into every service.
+                if not container_path.startswith('/'):
+                    continue
+
                 # Track for bind mount: local file -> container path
                 # Get the container directory from the path
                 container_dir = os.path.dirname(container_path)
@@ -2208,8 +1326,7 @@ class TemplateService:
         try:
             script = cls.substitute_variables(script, variables)
 
-            env = os.environ.copy()
-            env.update(variables)
+            env = app_process_env(variables)
 
             result = run_checked(['bash', '-c', script], cwd=cwd, env=env, timeout=300)
 
@@ -2234,7 +1351,7 @@ class TemplateService:
         installed = config.get('installed', {}).get(str(app_id))
 
         if not installed:
-            return {'success': False, 'error': 'App not installed from template'}
+            return {'success': False, 'error': 'This service was not installed from a template'}
 
         template_id = installed['template_id']
         installed_version = installed['template_version']
@@ -2257,7 +1374,7 @@ class TemplateService:
     def _update_slot_app(cls, app, template, variables, install_info, info_path,
                          compose_path, backup_path, compose_content, config, user_id,
                          log_callback):
-        """Template update for a slot app (plan 87 §C): write the new compose,
+        """Template update for a slot app: write the new compose,
         then deploy it into the idle slot. The live slot keeps serving until
         the new one passes its gate; any failure puts the old files back."""
         from app.services.deployment_service import DeploymentService
@@ -2303,7 +1420,7 @@ class TemplateService:
         """Update an installed app to the latest template version.
 
         The new compose is rendered, validated and its images resolved *before*
-        the running containers are stopped (plan 72 B.1) — a template whose new
+        the running containers are stopped — a template whose new
         version does not render, does not validate or cannot pull now fails
         with the old stack still serving.
         """
@@ -2316,11 +1433,11 @@ class TemplateService:
         installed = config.get('installed', {}).get(str(app_id))
 
         if not installed:
-            return {'success': False, 'error': 'App not installed from template'}
+            return {'success': False, 'error': 'This service was not installed from a template'}
 
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            return {'success': False, 'error': 'Application not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         template_id = installed['template_id']
         app_path = app.root_path
@@ -2442,7 +1559,7 @@ class TemplateService:
 
             if not compose_result.get('success'):
                 # Rollback — and say whether it worked: an unchecked `up` here
-                # reported a plain failure while the app sat stopped (§A6).
+                # reported a plain failure while the app sat stopped.
                 if os.path.exists(backup_path):
                     shutil.copy(backup_path, compose_path)
                     restored = DockerService.compose_up(app_path, detach=True)
@@ -2509,15 +1626,15 @@ class TemplateService:
         target_app = Application.query_active().filter_by(id=target_app_id).first()
 
         if not source_app or not target_app:
-            return {'success': False, 'error': 'App not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         if not source_app.root_path or not target_app.root_path:
-            return {'success': False, 'error': 'Apps must have root_path set'}
+            return {'success': False, 'error': 'Both services need a root path'}
 
         # Read source app's .env file
         source_env_path = os.path.join(source_app.root_path, '.env')
         if not os.path.exists(source_env_path):
-            return {'success': False, 'error': 'Source app .env file not found'}
+            return {'success': False, 'error': 'The source service has no .env file'}
 
         try:
             env_vars = {}
@@ -2540,7 +1657,7 @@ class TemplateService:
                     db_config[key] = env_vars[key]
 
             if not db_config:
-                return {'success': False, 'error': 'No database credentials found in source app'}
+                return {'success': False, 'error': 'No database credentials found in the source service'}
 
             # Set target table prefix (default different from source)
             source_prefix = env_vars.get('TABLE_PREFIX', env_vars.get('WORDPRESS_TABLE_PREFIX', 'wp_'))
@@ -2624,156 +1741,4 @@ class TemplateService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    @classmethod
-    def add_repository(cls, name: str, url: str) -> Dict:
-        """Add a template repository."""
-        config = cls.get_config()
 
-        # Check if already exists
-        for repo in config.get('repos', []):
-            if repo['url'] == url:
-                return {'success': False, 'error': 'Repository already exists'}
-
-        config.setdefault('repos', []).append({
-            'name': name,
-            'url': url.rstrip('/'),
-            'enabled': True,
-            'added_at': datetime.now().isoformat()
-        })
-
-        return cls.save_config(config)
-
-    @classmethod
-    def remove_repository(cls, url: str) -> Dict:
-        """Remove a template repository."""
-        config = cls.get_config()
-        config['repos'] = [r for r in config.get('repos', []) if r['url'] != url]
-        return cls.save_config(config)
-
-    @classmethod
-    def list_repositories(cls) -> List[Dict]:
-        """List configured template repositories."""
-        config = cls.get_config()
-        return config.get('repos', cls.DEFAULT_REPOS)
-
-    @classmethod
-    def sync_templates(cls) -> Dict:
-        """Sync templates from all repositories."""
-        os.makedirs(cls.TEMPLATES_DIR, exist_ok=True)
-
-        config = cls.get_config()
-        synced = 0
-        unverified = 0  # saved, but the index pinned no sha256 for them
-        errors = []
-
-        for repo in config.get('repos', []):
-            if not repo.get('enabled', True):
-                continue
-
-            try:
-                # Fetch index
-                index_url = f"{repo['url']}/index.json"
-                response = requests.get(index_url, timeout=30)
-                response.raise_for_status()
-
-                index = response.json()
-
-                # Download each template
-                for template_info in index.get('templates', []):
-                    template_id = template_info.get('id')
-                    if not template_id:
-                        continue
-
-                    try:
-                        template_url = f"{repo['url']}/templates/{template_id}.yaml"
-                        response = requests.get(template_url, timeout=30)
-                        response.raise_for_status()
-
-                        # Verify against the checksum the index pinned for this
-                        # entry. A template is a deploy definition -- images,
-                        # ports, volumes, env -- so a swapped file is worth
-                        # refusing outright, and the index already carries the
-                        # hash for every official entry.
-                        #
-                        # Missing hash is allowed (third-party repos may not
-                        # publish one) and counted, mirroring how extensions
-                        # treat unsigned-vs-invalid: absent is a caveat, wrong
-                        # is a hard stop.
-                        expected = (template_info.get('sha256') or '').strip().lower()
-                        if expected:
-                            actual = hashlib.sha256(response.content).hexdigest()
-                            if actual != expected:
-                                errors.append(
-                                    f"Checksum mismatch for {template_id}: index pinned "
-                                    f"{expected[:12]}..., downloaded {actual[:12]}.... Not saved."
-                                )
-                                continue
-                        else:
-                            unverified += 1
-
-                        # Written as bytes so what lands on disk is exactly the
-                        # content that was hashed (text mode would rewrite line
-                        # endings on Windows and no longer match).
-                        filepath = os.path.join(cls.TEMPLATES_DIR, f"{template_id}.yaml")
-                        with open(filepath, 'wb') as f:
-                            f.write(response.content)
-
-                        synced += 1
-                    except Exception as e:
-                        errors.append(f"Failed to sync {template_id}: {e}")
-
-            except Exception as e:
-                errors.append(f"Failed to sync from {repo['name']}: {e}")
-
-        config['last_sync'] = datetime.now().isoformat()
-        cls.save_config(config)
-
-        return {
-            'success': True,
-            'synced': synced,
-            'unverified': unverified,
-            'errors': errors if errors else None
-        }
-
-    @classmethod
-    def get_categories(cls) -> List[str]:
-        """Get all available template categories."""
-        templates = cls.list_all_templates()
-        categories = set()
-        for template in templates:
-            categories.update(template.get('categories', []))
-        return sorted(categories)
-
-    @classmethod
-    def create_local_template(cls, template_data: Dict) -> Dict:
-        """Create a local template."""
-        validation = cls.validate_template(template_data)
-        if not validation['valid']:
-            return {'success': False, 'errors': validation['errors']}
-
-        os.makedirs(cls.TEMPLATES_DIR, exist_ok=True)
-
-        template_id = template_data['name'].lower().replace(' ', '-')
-        filepath = os.path.join(cls.TEMPLATES_DIR, f"{template_id}.yaml")
-
-        if os.path.exists(filepath):
-            return {'success': False, 'error': 'Template with this name already exists'}
-
-        try:
-            with open(filepath, 'w') as f:
-                yaml.dump(template_data, f, default_flow_style=False, sort_keys=False)
-
-            return {'success': True, 'template_id': template_id, 'filepath': filepath}
-        except Exception as e:
-            return {'success': False, 'error': str(e)}
-
-    @classmethod
-    def delete_local_template(cls, template_id: str) -> Dict:
-        """Delete a local template."""
-        for ext in ['.yaml', '.yml']:
-            filepath = os.path.join(cls.TEMPLATES_DIR, f"{template_id}{ext}")
-            if os.path.exists(filepath):
-                os.remove(filepath)
-                return {'success': True}
-
-        return {'success': False, 'error': 'Template not found'}

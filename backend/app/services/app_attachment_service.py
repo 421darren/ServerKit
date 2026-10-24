@@ -1,4 +1,4 @@
-"""Attach a service an app uses: storage, cache or queue (plan 86 §C2/§C4).
+"""Attach a service an app uses: storage, cache or queue.
 
 Cache and queue attachments are env references only: the app gets the
 service's C1 ``url`` through ``fromService`` under the names its libraries
@@ -85,7 +85,7 @@ def _is_loki(template, engine):
     return template.get('id') == 'loki'
 
 
-# Kinds that provision a data source on a Grafana consumer (plan 86 §A4)
+# Kinds that provision a data source on a Grafana consumer
 # instead of writing env; which service types each accepts.
 GRAFANA_KINDS = {'metrics': _is_prometheus, 'logs': _is_loki}
 
@@ -94,7 +94,7 @@ CONNECTION_KINDS = {
     'cache': [(_is_redis, {'REDIS_URL': 'url'})],
     'queue': [(_is_amqp, {'AMQP_URL': 'url', 'BROKER_URL': 'url'}),
               (_is_redis, {'BROKER_URL': 'url'})],
-    # The standard OpenTelemetry SDK variables (plan 86 §A4).
+    # The standard OpenTelemetry SDK variables.
     'tracing': [(_is_otel_collector, {'OTEL_EXPORTER_OTLP_ENDPOINT': 'otlpEndpoint',
                                       'OTEL_EXPORTER_OTLP_PROTOCOL': '=http/protobuf'})],
     # Collector -> trace store; read by the collector template's config.
@@ -104,7 +104,7 @@ CONNECTION_KINDS = {
 # Kinds only one consumer template can take.
 CONSUMER_ONLY = {'traces': 'otel-collector'}
 
-# One line per kind, shown where the operator decides (plan 86 §C4).
+# One line per kind, shown where the operator decides.
 FAILURE_MODES = {
     'storage': 'Objects outlive the app: detaching keeps the bucket and its data.',
     'cache': 'Cached data can be stale; invalidate on write, and never keep the only copy in a cache.',

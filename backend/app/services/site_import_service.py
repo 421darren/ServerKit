@@ -323,7 +323,7 @@ class SiteImportService:
         """Stage a live site over SSH, then build the analyse report from the
         source + pull result. Credentials never persist: the DB password is
         scrubbed from the durable source once the pull has consumed it, and the
-        staging manifest records no secrets (plan 31 #7/#9, Decision 5)."""
+        staging manifest records no secrets."""
         from app.services.site_importers.ssh import GenericSshImporter
 
         imp.status = 'analyzing'

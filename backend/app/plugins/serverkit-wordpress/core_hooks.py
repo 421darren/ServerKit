@@ -1,4 +1,4 @@
-"""Core-hook registrations for the WordPress extension (plan 52, D4).
+"""Core-hook registrations for the WordPress extension.
 
 Core keeps the engines — backup policies/runs/restore, the event bus catalog,
 the template catalog/installer — and this extension supplies its entries at

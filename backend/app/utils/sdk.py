@@ -31,17 +31,19 @@ from app.utils.version import compare_versions
 
 # Keep in lock-step with frontend/src/plugins/sdk/index.js `SDK_VERSION`.
 #
+# 1.6.0 — one field per job: ServerPicker, DomainField + attachDomain,
+#   PortField, EnvEditor, CopyField/CopyButton, InfoList, CatalogCard/Grid.
 # 1.5.0 — declarative walkthrough authoring helpers and useWalkthroughs.
-# 1.3.0 — plan 79: localization. useTranslation/Trans/t, useLocale, useLabel,
+# 1.3.0 — localization. useTranslation/Trans/t, useLocale, useLabel,
 #   and the locale-aware format door (useFormat + formatDate/Number/Relative/…).
 #   i18next and react-i18next also became SHARED vendor singletons, so an
 #   extension that externalizes them needs a panel at this SDK or newer:
 #   pin `"sdk_version": "^1.3.0"` if you use any of that surface.
 #   Additive — an extension pinned to ^1.2.0 keeps loading.
-# 1.2.0 — plan 52 Phases 4-5: layout/feedback primitives, ui/* form kit,
+# 1.2.0 — layout/feedback primitives, ui/* form kit,
 #   common hooks, format utils, and the cross-feature embeds (git repo-connect,
 #   backups ProtectionPanel) the WordPress runtime-ESM extraction needed.
-SDK_VERSION = '1.5.0'
+SDK_VERSION = '1.6.0'
 
 
 def _version_tuple(v):

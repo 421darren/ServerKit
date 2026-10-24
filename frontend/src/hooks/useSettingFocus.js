@@ -3,13 +3,13 @@ import useFocusParam from './useFocusParam';
 import { scrollBehavior } from '@/utils/reducedMotion';
 
 /**
- * Settings deep-link focus (plan 41, Phase 2). A settings tab calls this hook
+ * Settings deep-link focus. A settings tab calls this hook
  * once and spreads `register(id)` onto each card it wants to be landable from
  * the command palette. When the tab is opened via `/settings/<tab>?focus=setting:<id>`
  * the matching card is scrolled into view and flashed with `is-setting-focused`
  * for ~2s, then the highlight clears.
  *
- * Rides the plan-33 `useFocusParam` rail with a new `setting` kind — the param
+ * Rides the `useFocusParam` rail with a new `setting` kind — the param
  * fires once and is cleared, so a refresh doesn't re-trigger it.
  *
  * Usage — pass the card's own class as the second arg so the flash class is

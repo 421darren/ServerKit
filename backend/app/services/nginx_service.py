@@ -363,7 +363,7 @@ location = /wordpress {{
     }}
 '''
 
-    # ==================== TIMED ACCESS LOG (plan 86 §A1) ====================
+    # ==================== TIMED ACCESS LOG ====================
     # Every vhost ServerKit writes logs in this format. The combined fields come
     # first, unchanged, so every existing combined-format reader (bandwidth
     # accounting, the fail2ban `^<HOST> -` filters) keeps matching; the timing
@@ -380,7 +380,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
                            'cs=$upstream_cache_status h=$host';
 """
 
-    # ==================== COMPRESSION (plan 86 §B1) ====================
+    # ==================== COMPRESSION ====================
     # gzip (and brotli when the module is loaded) for every site, as one
     # http-level conf.d snippet. Stock configs already set some of these —
     # Debian's nginx.conf ships `gzip on;` — and a repeated http-level
@@ -409,7 +409,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
         ('brotli_types', COMPRESSION_TYPES),
     )
 
-    # ==================== IMMUTABLE ASSETS (plan 86 §B2) ====================
+    # ==================== IMMUTABLE ASSETS ====================
     # Opt-in, proxied sites only: a fingerprinted asset (a hash in its name)
     # never changes, so the browser may keep it a year. Off by default because
     # the panel cannot know an app's asset layout. The hash must be 8+ chars
@@ -433,7 +433,7 @@ log_format serverkit_timed '$remote_addr - $remote_user [$time_local] "$request"
     # per site does not scale (and can't be added/removed without touching a
     # global file per site). Purge is still per site: the cache key carries
     # $host, and purge_micro_cache(hosts) deletes only the files whose KEY
-    # line names that host (plan 86 §B3). proxy_* and fastcgi_* caches cannot
+    # line names that host. proxy_* and fastcgi_* caches cannot
     # share a keys_zone, hence two zones over one base directory.
     MICROCACHE_CONF_NAME = 'serverkit-microcache.conf'
     MICROCACHE_DIR = '/var/cache/nginx/serverkit-microcache'
@@ -459,7 +459,7 @@ fastcgi_cache_path /var/cache/nginx/serverkit-microcache/fastcgi levels=1:2 keys
     if ($request_uri ~* "^/(wp-admin|wp-login|admin|login|cart|checkout|my-account)") { set $sk_skip_cache 1; }
 '''
 
-    # Page-cache behaviour (plan 86 §B3):
+    # Page-cache behaviour:
     #   * the key is `$scheme://$host$request_uri`, so the cache files of one
     #     site can be found by host and purged alone (the proxy default key is
     #     `$scheme$proxy_host$request_uri` — the upstream port, not the site);
@@ -680,7 +680,7 @@ location /p/ {{
             )
         elif app_type in ['flask', 'django', 'python']:
             if not port:
-                return {'success': False, 'error': 'Port is required for Python apps'}
+                return {'success': False, 'error': 'Python services need a port'}
             config = cls.PYTHON_SITE_TEMPLATE.format(
                 name=name,
                 domains=domains_str,
@@ -689,7 +689,7 @@ location /p/ {{
             )
         elif app_type == 'docker':
             if not port:
-                return {'success': False, 'error': 'Port is required for Docker apps'}
+                return {'success': False, 'error': 'Docker services need a port'}
             config = cls.DOCKER_SITE_TEMPLATE.format(
                 name=name,
                 domains=domains_str,
@@ -697,7 +697,7 @@ location /p/ {{
             )
         elif app_type == 'remote':
             if not upstream:
-                return {'success': False, 'error': 'upstream (host:port) is required for remote apps'}
+                return {'success': False, 'error': 'Services on remote servers need an upstream (host:port)'}
             config = cls.REMOTE_UPSTREAM_TEMPLATE.format(
                 name=name,
                 domains=domains_str,
@@ -710,7 +710,7 @@ location /p/ {{
                 root_path=root_path
             )
         else:
-            return {'success': False, 'error': f'Unknown app type: {app_type}'}
+            return {'success': False, 'error': f'Unknown service type: {app_type}'}
 
         if immutable_assets:
             config = cls._with_immutable_assets(config, app_type)
@@ -787,7 +787,7 @@ location /p/ {{
         match = re.search(r'^    location / \{\n(.*?)^    \}\n', config, re.MULTILINE | re.DOTALL)
         if not match:
             return config
-        block = ('\n    # ServerKit: fingerprinted assets never change (plan 86 §B2)\n'
+        block = ('\n    # ServerKit: fingerprinted assets never change\n'
                  f'    location ~* "{cls.IMMUTABLE_ASSET_PATTERN}" {{\n'
                  + match.group(1) + cls.IMMUTABLE_ASSET_HEADERS + '    }\n')
         return config[:match.end()] + block + config[match.end():]
@@ -950,7 +950,7 @@ location /p/ {{
 
     @classmethod
     def ensure_compression(cls) -> Dict:
-        """Write the compression snippet once, best-effort (plan 86 §B1).
+        """Write the compression snippet once, best-effort.
 
         Skips when the snippet exists. A snippet that fails ``nginx -t`` is
         removed again, so compression can never take the web server down —
@@ -985,12 +985,12 @@ location /p/ {{
     def purge_micro_cache(cls, hosts: Optional[List[str]] = None) -> Dict:
         """Clear cached pages. Linux-only; no nginx reload needed.
 
-        With ``hosts`` only that site's entries go (plan 86 §B3). nginx writes
+        With ``hosts`` only that site's entries go. nginx writes
         each entry's key as a ``KEY: <scheme>://<host><uri>`` header line in
         the cache file, so a fixed-string grep for ``KEY: http[s]://<host>/``
         finds exactly this site's files; the trailing ``/`` keeps
         ``shop.example.com`` from matching ``shop.example.com.evil``. Entries
-        cached under the pre-§B3 key (before the vhost was rewritten) aren't
+        cached under an older key (before the vhost was rewritten) aren't
         found this way, and expire on their own TTL.
 
         Without ``hosts`` the whole shared directory is wiped (every site).
@@ -1118,7 +1118,7 @@ location /p/ {{
     def read_vhost(cls, name: str) -> Optional[str]:
         """The vhost's current content, or ``None`` if it cannot be read.
 
-        ``None`` means "could not determine", never "empty file" (§A). Callers
+        ``None`` means "could not determine", never "empty file". Callers
         that need to distinguish a missing vhost from an unreadable one check
         ``os.path.exists`` themselves.
         """
@@ -1128,9 +1128,22 @@ location /p/ {{
             return None
         return result.stdout if result.returncode == 0 else None
 
+    @staticmethod
+    def _invalid_site_name(name) -> Optional[Dict]:
+        """The error for a site name that is not a plain filename, else None.
+
+        Every site method joins `name` onto sites-available/sites-enabled and
+        acts on the result as root, so a caller-controlled name must not
+        traverse out (preview_diff applies the same rule for reads).
+        """
+        if (not name or not isinstance(name, str) or os.path.basename(name) != name
+                or name in ('.', '..') or '\x00' in name):
+            return {'success': False, 'error': f'Invalid site name: {name!r}'}
+        return None
+
     @classmethod
     def write_vhost(cls, name: str, content: str, *, enable: bool = True) -> Dict:
-        """Write, enable, config-test, roll back on failure, reload. One door (§G4).
+        """Write, enable, config-test, roll back on failure, reload. One door.
 
         ``environment_domain_service`` re-implemented this whole sequence with
         raw ``sudo`` calls, and ``nginx_advanced_service`` wrote the file with a
@@ -1148,12 +1161,9 @@ location /p/ {{
 
         Returns ``{'success', 'path'}`` or ``{'success': False, 'error'}``.
         """
-        # `name` becomes a filesystem path below — refuse anything that is not
-        # a plain filename so a caller-controlled name cannot traverse out of
-        # sites-available (preview_diff applies the same rule for reads).
-        if (not name or os.path.basename(name) != name
-                or name in ('.', '..') or '\x00' in name):
-            return {'success': False, 'error': f'Invalid site name: {name!r}'}
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
 
         # A vhost naming the timed format fails `nginx -t` until the
         # http-level log_format exists — declare it first.
@@ -1223,6 +1233,9 @@ location /p/ {{
     @classmethod
     def enable_site(cls, name: str) -> Dict:
         """Enable a site by creating symlink in sites-enabled."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         available_path = os.path.join(cls.SITES_AVAILABLE, name)
         enabled_path = os.path.join(cls.SITES_ENABLED, name)
 
@@ -1246,6 +1259,9 @@ location /p/ {{
     @classmethod
     def disable_site(cls, name: str) -> Dict:
         """Disable a site by removing symlink from sites-enabled."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         enabled_path = os.path.join(cls.SITES_ENABLED, name)
         _auto_capture_vhost(name, 'disable_site')
 
@@ -1263,6 +1279,9 @@ location /p/ {{
     @classmethod
     def delete_site(cls, name: str) -> Dict:
         """Delete a site configuration."""
+        invalid = cls._invalid_site_name(name)
+        if invalid:
+            return invalid
         _auto_capture_vhost(name, 'delete_site')
         # First disable it
         from app.services.restore_point_service import suppress_auto_capture

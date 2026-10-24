@@ -1,6 +1,6 @@
 /**
  * The single list of modules a runtime-loaded extension resolves through the
- * host (plan 25 Decision 2; plan 79 §SDK).
+ * host.
  *
  * Three things used to restate this list independently — the import map in
  * vite.config.js, the namespace capture in vendorShare.js, and one
@@ -30,7 +30,7 @@ export const VENDOR_MODULES = [
     // i18next and react-i18next are shared for the same reason React is: an
     // extension bundling its own copy would get a SEPARATE, uninitialised
     // i18next, so every `t()` in that extension would silently render its
-    // English default forever — the failure mode plan 79 hit twice in core.
+    // English default forever — the failure mode localization hit twice in core.
     { specifier: 'i18next', file: 'i18next.mjs', exportsFrom: 'module' },
     { specifier: 'react-i18next', file: 'react-i18next.mjs', exportsFrom: 'module' },
     { specifier: 'serverkit-sdk', file: 'serverkit-sdk.mjs', exportsFrom: 'sdk' },

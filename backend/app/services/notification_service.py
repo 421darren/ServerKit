@@ -22,6 +22,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 
 from app import paths
+from app.utils import safe_http
 from app.utils.config_store import load_json_config, save_json_config
 
 
@@ -184,7 +185,7 @@ class NotificationService:
             if config.get('avatar_url'):
                 payload['avatar_url'] = config['avatar_url']
 
-            response = requests.post(
+            response = safe_http.post(
                 webhook_url,
                 json=payload,
                 timeout=10
@@ -289,7 +290,7 @@ class NotificationService:
             if config.get('channel'):
                 payload['channel'] = config['channel']
 
-            response = requests.post(
+            response = safe_http.post(
                 webhook_url,
                 json=payload,
                 timeout=10
@@ -519,7 +520,7 @@ class NotificationService:
             headers = {'Content-Type': 'application/json'}
             headers.update(config.get('headers', {}))
 
-            response = requests.post(
+            response = safe_http.post(
                 webhook_url,
                 json=payload,
                 headers=headers,

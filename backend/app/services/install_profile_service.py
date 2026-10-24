@@ -208,7 +208,7 @@ def get_capabilities(force_refresh=False):
     The profile says what was *intended*; this says what is *true*. They drift
     — an operator can apt-install Docker on a Minimal box, and a Standard box
     can have a broken daemon. Cached for _CAPABILITY_TTL_SECONDS because the
-    Docker probe can block (ttl_cached, plan 77 F2).
+    Docker probe can block (ttl_cached).
     """
     if force_refresh:
         _probe_capabilities.invalidate()

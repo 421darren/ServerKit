@@ -6,8 +6,8 @@ security config, legacy file-integrity monitoring, suspicious-activity /
 event surfaces, SSH keys, IP allow/block lists, the security audit, and the
 scan/alert logs + notification helpers the extensions also write through.
 
-The install-gated tools were extracted to installable extensions
-(plan 47 Ph3b-4 / plan 55 Phase 3): ClamAV/YARA scanning and quarantine →
+The install-gated tools were extracted to installable extensions:
+ClamAV/YARA scanning and quarantine →
 serverkit-clamav, fail2ban management → serverkit-fail2ban (status probing
 lives on core ``Fail2banJailService``), Lynis → serverkit-lynis,
 unattended-upgrades → serverkit-auto-updates, container CVE/SBOM scanning →

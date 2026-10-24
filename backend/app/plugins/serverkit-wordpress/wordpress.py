@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-site WordPress routes gate on the linked
+# Bucket: PER-APP. Per-site WordPress routes gate on the linked
 # application's access seam: reads use can_access_app (owner/admin/any grant),
 # writes use can_edit_app (owner/admin/editor grant). The P0 <site_id> lifecycle
 # mutations and the previously-open <site_id>/<app_id> reads seal from open —

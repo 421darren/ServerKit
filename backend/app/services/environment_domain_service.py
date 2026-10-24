@@ -18,7 +18,7 @@ from app.utils.system import run_checked, run_privileged, write_privileged_file
 class EnvironmentDomainService:
     """Service for managing per-environment domains and Nginx configs."""
 
-    # Not redeclared: NginxService owns where vhosts live (plan 75 §G4). Four
+    # Not redeclared: NginxService owns where vhosts live. Four
     # files used to hardcode these, so a test that redirected NginxService's
     # paths left the other three writing to the real /etc/nginx.
     SITES_AVAILABLE = NginxService.SITES_AVAILABLE
@@ -136,8 +136,8 @@ class EnvironmentDomainService:
             )
 
             # write + enable + nginx -t + rollback + reload, all owned by
-            # NginxService (plan 75 §G4). This block used to re-implement it
-            # with hardcoded `sudo`, which is the founding bug class of plan 75:
+            # NginxService. This block used to re-implement it
+            # with hardcoded `sudo`, which is the founding bug class of the shared door:
             # it breaks on a panel running as root without sudo, and never
             # rolled back a vhost that failed the config test.
             result = NginxService.write_vhost(site_name, config)
@@ -296,7 +296,7 @@ class EnvironmentDomainService:
 
     @classmethod
     def _reload_nginx(cls) -> Dict:
-        """Test and reload Nginx — NginxService owns both (plan 75 §G4).
+        """Test and reload Nginx — NginxService owns both.
 
         Kept as a thin alias so callers outside this module keep working; the
         private re-implementation it replaced hardcoded ``sudo`` and called

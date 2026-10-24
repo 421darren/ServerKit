@@ -128,3 +128,17 @@ def test_drift_leaves_a_hand_edited_access_log_alone(tmp_path):
 def test_drift_reports_a_missing_file_as_none(tmp_path):
     missing = str(tmp_path / 'nope')
     assert _nginx_read_actual([missing]) == {missing: None}
+
+
+def test_drift_reads_the_old_asset_comment_as_the_current_one(tmp_path):
+    """The comment above the immutable-asset block lost an internal reference;
+    an existing vhost that still carries it is not drifted."""
+    rendered = NginxService._with_immutable_assets(
+        'server {\n    location / {\n        proxy_pass http://127.0.0.1:8003;\n    }\n}\n',
+        'docker')
+    old = rendered.replace('fingerprinted assets never change\n',
+                           'fingerprinted assets never change (old ref §B2)\n')
+    assert old != rendered
+    vhost = tmp_path / 'shop'
+    vhost.write_text(old)
+    assert _nginx_read_actual([str(vhost)])[str(vhost)] == rendered

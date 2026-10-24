@@ -1,4 +1,4 @@
-"""Source provider connection service for GitHub and GitLab repository imports."""
+"""Source provider connections (GitHub, GitLab, Bitbucket) for repository imports."""
 
 import base64
 import os
@@ -32,49 +32,24 @@ class SourceConnectionService:
 
     @classmethod
     def get_github_config(cls, redacted=False):
-        client_id = (
-            SettingsService.get('source_github_client_id', '')
-            or os.environ.get('SOURCE_GITHUB_CLIENT_ID', '')
-            or os.environ.get('SERVERKIT_GITHUB_CLIENT_ID', '')
-        )
-        client_secret = (
-            SettingsService.get('source_github_client_secret', '')
-            or os.environ.get('SOURCE_GITHUB_CLIENT_SECRET', '')
-            or os.environ.get('SERVERKIT_GITHUB_CLIENT_SECRET', '')
-        )
-
-        if redacted and client_secret:
-            client_secret = f'****{client_secret[-4:]}'
-
+        config = cls._provider_config('github', redacted)
         # When GitHub was set up via the one-click GitHub App manifest flow, we
         # also track the app slug so the UI can show it and the connect flow can
         # route through the app's install URL. `provider_kind` is 'app' for a
         # manifest-provisioned GitHub App, 'oauth' for a hand-entered OAuth app.
         app_slug = SettingsService.get('source_github_app_slug', '') or ''
-        return {
-            'client_id': client_id,
-            'client_secret': client_secret,
-            'configured': bool(client_id and client_secret),
-            'scopes': cls.GITHUB_SCOPES,
+        config.update({
             'provider_kind': 'app' if app_slug else 'oauth',
             'app_slug': app_slug,
             'app_name': SettingsService.get('source_github_app_name', '') or '',
             'app_html_url': SettingsService.get('source_github_app_html_url', '') or '',
             'install_url': f'https://github.com/apps/{app_slug}/installations/new' if app_slug else '',
-        }
+        })
+        return config
 
     @classmethod
     def update_github_config(cls, data, user_id=None):
-        updated = []
-        if 'client_id' in data:
-            SettingsService.set('source_github_client_id', data.get('client_id') or '', user_id=user_id)
-            updated.append('client_id')
-        if 'client_secret' in data:
-            value = data.get('client_secret') or ''
-            if not (isinstance(value, str) and value.startswith('****')):
-                SettingsService.set('source_github_client_secret', value, user_id=user_id)
-                updated.append('client_secret')
-        return {'updated': updated, 'config': cls.get_github_config(redacted=True)}
+        return cls._update_provider_config('github', data, user_id)
 
     # ==================================================================
     # One-click GitHub App setup (manifest flow)
@@ -187,77 +162,19 @@ class SourceConnectionService:
 
     @classmethod
     def generate_github_authorize_url(cls, redirect_uri):
-        config = cls.get_github_config()
-        if not config['configured']:
-            raise ValueError('GitHub source connection is not configured')
-
-        state = secrets.token_urlsafe(32)
-        session['source_github_state'] = state
-
         # GitHub App: send the user to the install screen (with OAuth-on-install
         # this grants repo access AND returns an authorization code to our
         # callback in one hop). Classic OAuth app: the plain authorize screen.
         slug = cls._github_app_slug()
         if slug:
-            params = {'state': state}
-            return f'https://github.com/apps/{slug}/installations/new?{urlencode(params)}', state
-
-        params = {
-            'client_id': config['client_id'],
-            'redirect_uri': redirect_uri,
-            'scope': ' '.join(cls.GITHUB_SCOPES),
-            'state': state,
-            'allow_signup': 'true',
-        }
-        return f'{cls.GITHUB_AUTHORIZE_URL}?{urlencode(params)}', state
+            cls._require_configured('github')
+            state = cls._new_state('github')
+            return f'https://github.com/apps/{slug}/installations/new?{urlencode({"state": state})}', state
+        return cls._authorize_url('github', redirect_uri, allow_signup='true')
 
     @classmethod
     def complete_github_callback(cls, user_id, code, state, redirect_uri):
-        expected_state = session.pop('source_github_state', None)
-        if not expected_state or state != expected_state:
-            raise ValueError('Invalid GitHub OAuth state')
-
-        config = cls.get_github_config()
-        if not config['configured']:
-            raise ValueError('GitHub source connection is not configured')
-
-        token_response = requests.post(
-            cls.GITHUB_TOKEN_URL,
-            headers={'Accept': 'application/json'},
-            data={
-                'client_id': config['client_id'],
-                'client_secret': config['client_secret'],
-                'code': code,
-                'redirect_uri': redirect_uri,
-            },
-            timeout=15,
-        )
-        token_response.raise_for_status()
-        token_data = token_response.json()
-        if token_data.get('error'):
-            raise ValueError(token_data.get('error_description') or token_data['error'])
-
-        access_token = token_data.get('access_token')
-        if not access_token:
-            raise ValueError('GitHub did not return an access token')
-
-        profile = cls._github_get(access_token, '/user')
-        connection = SourceConnection.query.filter_by(user_id=user_id, provider='github').first()
-        if not connection:
-            connection = SourceConnection(user_id=user_id, provider='github')
-            db.session.add(connection)
-
-        connection.provider_account_id = str(profile.get('id') or '')
-        connection.provider_username = profile.get('login') or ''
-        connection.display_name = profile.get('name') or profile.get('login') or ''
-        connection.avatar_url = profile.get('avatar_url') or ''
-        connection.access_token = access_token
-        connection.scope = token_data.get('scope') or ' '.join(cls.GITHUB_SCOPES)
-        connection.updated_at = datetime.utcnow()
-        connection.last_used_at = datetime.utcnow()
-
-        db.session.commit()
-        return connection
+        return cls._complete_callback('github', user_id, code, state, redirect_uri)
 
     @classmethod
     def get_connection(cls, user_id, provider='github'):
@@ -392,86 +309,123 @@ class SourceConnectionService:
             auth_url = f'https://x-access-token:{quote(token, safe="")}@github.com/{owner}/{repo}.git'
         return {'clone_url': auth_url, 'public_url': public_url}
 
-    # ------------------------------------------------------------------
-    # GitLab
-    # ------------------------------------------------------------------
+    # ==================================================================
+    # Shared OAuth plumbing. The three providers differ only in the facts
+    # below; config, the authorize hop, the code exchange and the stored
+    # connection are one implementation.
+    # ==================================================================
 
     @classmethod
-    def get_gitlab_config(cls, redacted=False):
+    def _oauth(cls, provider):
+        return {
+            'github': {
+                'label': 'GitHub', 'scopes': cls.GITHUB_SCOPES,
+                'authorize_url': cls.GITHUB_AUTHORIZE_URL, 'token_url': cls.GITHUB_TOKEN_URL,
+                'response_type': False, 'scope_param': True,
+                'basic_auth': False, 'grant_type': False,
+                'get': cls._github_get, 'profile': _github_profile, 'scope': _scope_string,
+            },
+            'gitlab': {
+                'label': 'GitLab', 'scopes': cls.GITLAB_SCOPES,
+                'authorize_url': cls.GITLAB_AUTHORIZE_URL, 'token_url': cls.GITLAB_TOKEN_URL,
+                'response_type': True, 'scope_param': True,
+                'basic_auth': False, 'grant_type': True,
+                'get': cls._gitlab_get, 'profile': _gitlab_profile, 'scope': _scope_string,
+            },
+            'bitbucket': {
+                # Bitbucket takes its scopes from the OAuth consumer, not the
+                # URL, and authenticates the code exchange with Basic auth.
+                'label': 'Bitbucket', 'scopes': cls.BITBUCKET_SCOPES,
+                'authorize_url': cls.BITBUCKET_AUTHORIZE_URL, 'token_url': cls.BITBUCKET_TOKEN_URL,
+                'response_type': True, 'scope_param': False,
+                'basic_auth': True, 'grant_type': True,
+                'get': cls._bitbucket_get, 'profile': _bitbucket_profile, 'scope': _scope_list,
+            },
+        }[provider]
+
+    @classmethod
+    def _provider_config(cls, provider, redacted=False):
+        upper = provider.upper()
         client_id = (
-            SettingsService.get('source_gitlab_client_id', '')
-            or os.environ.get('SOURCE_GITLAB_CLIENT_ID', '')
-            or os.environ.get('SERVERKIT_GITLAB_CLIENT_ID', '')
+            SettingsService.get(f'source_{provider}_client_id', '')
+            or os.environ.get(f'SOURCE_{upper}_CLIENT_ID', '')
+            or os.environ.get(f'SERVERKIT_{upper}_CLIENT_ID', '')
         )
         client_secret = (
-            SettingsService.get('source_gitlab_client_secret', '')
-            or os.environ.get('SOURCE_GITLAB_CLIENT_SECRET', '')
-            or os.environ.get('SERVERKIT_GITLAB_CLIENT_SECRET', '')
+            SettingsService.get(f'source_{provider}_client_secret', '')
+            or os.environ.get(f'SOURCE_{upper}_CLIENT_SECRET', '')
+            or os.environ.get(f'SERVERKIT_{upper}_CLIENT_SECRET', '')
         )
-
         if redacted and client_secret:
             client_secret = f'****{client_secret[-4:]}'
-
         return {
             'client_id': client_id,
             'client_secret': client_secret,
             'configured': bool(client_id and client_secret),
-            'scopes': cls.GITLAB_SCOPES,
+            'scopes': cls._oauth(provider)['scopes'],
         }
 
     @classmethod
-    def update_gitlab_config(cls, data, user_id=None):
+    def _update_provider_config(cls, provider, data, user_id=None):
         updated = []
         if 'client_id' in data:
-            SettingsService.set('source_gitlab_client_id', data.get('client_id') or '', user_id=user_id)
+            SettingsService.set(f'source_{provider}_client_id', data.get('client_id') or '', user_id=user_id)
             updated.append('client_id')
         if 'client_secret' in data:
             value = data.get('client_secret') or ''
+            # A masked value is the redacted secret echoed back: keep the real one.
             if not (isinstance(value, str) and value.startswith('****')):
-                SettingsService.set('source_gitlab_client_secret', value, user_id=user_id)
+                SettingsService.set(f'source_{provider}_client_secret', value, user_id=user_id)
                 updated.append('client_secret')
-        return {'updated': updated, 'config': cls.get_gitlab_config(redacted=True)}
+        config = getattr(cls, f'get_{provider}_config')(redacted=True)
+        return {'updated': updated, 'config': config}
 
     @classmethod
-    def generate_gitlab_authorize_url(cls, redirect_uri):
-        config = cls.get_gitlab_config()
+    def _require_configured(cls, provider):
+        config = getattr(cls, f'get_{provider}_config')()
         if not config['configured']:
-            raise ValueError('GitLab source connection is not configured')
+            raise ValueError(f"{cls._oauth(provider)['label']} source connection is not configured")
+        return config
 
+    @staticmethod
+    def _new_state(provider):
         state = secrets.token_urlsafe(32)
-        session['source_gitlab_state'] = state
-
-        params = {
-            'client_id': config['client_id'],
-            'redirect_uri': redirect_uri,
-            'response_type': 'code',
-            'scope': ' '.join(cls.GITLAB_SCOPES),
-            'state': state,
-        }
-        return f'{cls.GITLAB_AUTHORIZE_URL}?{urlencode(params)}', state
+        session[f'source_{provider}_state'] = state
+        return state
 
     @classmethod
-    def complete_gitlab_callback(cls, user_id, code, state, redirect_uri):
-        expected_state = session.pop('source_gitlab_state', None)
+    def _authorize_url(cls, provider, redirect_uri, **extra):
+        spec = cls._oauth(provider)
+        config = cls._require_configured(provider)
+        state = cls._new_state(provider)
+        # redirect_uri is what the callback posts to the token endpoint, so the
+        # authorize hop has to ask for the same one.
+        params = {'client_id': config['client_id'], 'redirect_uri': redirect_uri}
+        if spec['response_type']:
+            params['response_type'] = 'code'
+        if spec['scope_param']:
+            params['scope'] = ' '.join(spec['scopes'])
+        params['state'] = state
+        params.update(extra)
+        return f"{spec['authorize_url']}?{urlencode(params)}", state
+
+    @classmethod
+    def _complete_callback(cls, provider, user_id, code, state, redirect_uri):
+        spec = cls._oauth(provider)
+        expected_state = session.pop(f'source_{provider}_state', None)
         if not expected_state or state != expected_state:
-            raise ValueError('Invalid GitLab OAuth state')
+            raise ValueError(f"Invalid {spec['label']} OAuth state")
+        config = cls._require_configured(provider)
 
-        config = cls.get_gitlab_config()
-        if not config['configured']:
-            raise ValueError('GitLab source connection is not configured')
-
-        token_response = requests.post(
-            cls.GITLAB_TOKEN_URL,
-            headers={'Accept': 'application/json'},
-            data={
-                'client_id': config['client_id'],
-                'client_secret': config['client_secret'],
-                'code': code,
-                'grant_type': 'authorization_code',
-                'redirect_uri': redirect_uri,
-            },
-            timeout=15,
-        )
+        data = {'code': code, 'redirect_uri': redirect_uri}
+        if spec['grant_type']:
+            data['grant_type'] = 'authorization_code'
+        request_kwargs = {'headers': {'Accept': 'application/json'}, 'timeout': 15}
+        if spec['basic_auth']:
+            request_kwargs['auth'] = (config['client_id'], config['client_secret'])
+        else:
+            data.update(client_id=config['client_id'], client_secret=config['client_secret'])
+        token_response = requests.post(spec['token_url'], data=data, **request_kwargs)
         token_response.raise_for_status()
         token_data = token_response.json()
         if token_data.get('error'):
@@ -479,20 +433,18 @@ class SourceConnectionService:
 
         access_token = token_data.get('access_token')
         if not access_token:
-            raise ValueError('GitLab did not return an access token')
+            raise ValueError(f"{spec['label']} did not return an access token")
 
-        profile = cls._gitlab_get(access_token, '/user')
-        connection = SourceConnection.query.filter_by(user_id=user_id, provider='gitlab').first()
+        profile = spec['get'](access_token, '/user')
+        connection = SourceConnection.query.filter_by(user_id=user_id, provider=provider).first()
         if not connection:
-            connection = SourceConnection(user_id=user_id, provider='gitlab')
+            connection = SourceConnection(user_id=user_id, provider=provider)
             db.session.add(connection)
 
-        connection.provider_account_id = str(profile.get('id') or '')
-        connection.provider_username = profile.get('username') or ''
-        connection.display_name = profile.get('name') or profile.get('username') or ''
-        connection.avatar_url = profile.get('avatar_url') or ''
+        (connection.provider_account_id, connection.provider_username,
+         connection.display_name, connection.avatar_url) = spec['profile'](profile)
         connection.access_token = access_token
-        connection.scope = token_data.get('scope') or ' '.join(cls.GITLAB_SCOPES)
+        connection.scope = spec['scope'](token_data) or ' '.join(spec['scopes'])
         connection.updated_at = datetime.utcnow()
         connection.last_used_at = datetime.utcnow()
 
@@ -500,12 +452,49 @@ class SourceConnectionService:
         return connection
 
     @classmethod
-    def get_gitlab_status(cls, user_id):
-        connection = cls.get_connection(user_id, 'gitlab')
+    def _provider_status(cls, provider, user_id):
+        connection = cls.get_connection(user_id, provider)
         return {
-            'configured': cls.get_gitlab_config()['configured'],
+            'configured': getattr(cls, f'get_{provider}_config')()['configured'],
             'connection': connection.to_dict() if connection else None,
         }
+
+    @classmethod
+    def _provider_token(cls, provider, user_id):
+        connection = cls.get_connection(user_id, provider)
+        if not connection:
+            raise ValueError(f"{cls._oauth(provider)['label']} is not connected")
+        return cls._decrypt_connection_token(connection)
+
+    @staticmethod
+    def _api_get(url, headers):
+        response = requests.get(url, headers=headers, timeout=20)
+        response.raise_for_status()
+        return response.json()
+
+    # ------------------------------------------------------------------
+    # GitLab
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def get_gitlab_config(cls, redacted=False):
+        return cls._provider_config('gitlab', redacted)
+
+    @classmethod
+    def update_gitlab_config(cls, data, user_id=None):
+        return cls._update_provider_config('gitlab', data, user_id)
+
+    @classmethod
+    def generate_gitlab_authorize_url(cls, redirect_uri):
+        return cls._authorize_url('gitlab', redirect_uri)
+
+    @classmethod
+    def complete_gitlab_callback(cls, user_id, code, state, redirect_uri):
+        return cls._complete_callback('gitlab', user_id, code, state, redirect_uri)
+
+    @classmethod
+    def get_gitlab_status(cls, user_id):
+        return cls._provider_status('gitlab', user_id)
 
     @classmethod
     def list_gitlab_repositories(cls, user_id, search='', page=1, per_page=50):
@@ -575,115 +564,23 @@ class SourceConnectionService:
 
     @classmethod
     def get_bitbucket_config(cls, redacted=False):
-        client_id = (
-            SettingsService.get('source_bitbucket_client_id', '')
-            or os.environ.get('SOURCE_BITBUCKET_CLIENT_ID', '')
-            or os.environ.get('SERVERKIT_BITBUCKET_CLIENT_ID', '')
-        )
-        client_secret = (
-            SettingsService.get('source_bitbucket_client_secret', '')
-            or os.environ.get('SOURCE_BITBUCKET_CLIENT_SECRET', '')
-            or os.environ.get('SERVERKIT_BITBUCKET_CLIENT_SECRET', '')
-        )
-
-        if redacted and client_secret:
-            client_secret = f'****{client_secret[-4:]}'
-
-        return {
-            'client_id': client_id,
-            'client_secret': client_secret,
-            'configured': bool(client_id and client_secret),
-            'scopes': cls.BITBUCKET_SCOPES,
-        }
+        return cls._provider_config('bitbucket', redacted)
 
     @classmethod
     def update_bitbucket_config(cls, data, user_id=None):
-        updated = []
-        if 'client_id' in data:
-            SettingsService.set('source_bitbucket_client_id', data.get('client_id') or '', user_id=user_id)
-            updated.append('client_id')
-        if 'client_secret' in data:
-            value = data.get('client_secret') or ''
-            if not (isinstance(value, str) and value.startswith('****')):
-                SettingsService.set('source_bitbucket_client_secret', value, user_id=user_id)
-                updated.append('client_secret')
-        return {'updated': updated, 'config': cls.get_bitbucket_config(redacted=True)}
+        return cls._update_provider_config('bitbucket', data, user_id)
 
     @classmethod
     def generate_bitbucket_authorize_url(cls, redirect_uri):
-        config = cls.get_bitbucket_config()
-        if not config['configured']:
-            raise ValueError('Bitbucket source connection is not configured')
-
-        state = secrets.token_urlsafe(32)
-        session['source_bitbucket_state'] = state
-
-        # redirect_uri is what complete_bitbucket_callback posts to the token
-        # endpoint, so the authorize hop has to ask for the same one — the
-        # GitHub and GitLab generators above both send it.
-        params = {
-            'client_id': config['client_id'],
-            'redirect_uri': redirect_uri,
-            'response_type': 'code',
-            'state': state,
-        }
-        return f'{cls.BITBUCKET_AUTHORIZE_URL}?{urlencode(params)}', state
+        return cls._authorize_url('bitbucket', redirect_uri)
 
     @classmethod
     def complete_bitbucket_callback(cls, user_id, code, state, redirect_uri):
-        expected_state = session.pop('source_bitbucket_state', None)
-        if not expected_state or state != expected_state:
-            raise ValueError('Invalid Bitbucket OAuth state')
-
-        config = cls.get_bitbucket_config()
-        if not config['configured']:
-            raise ValueError('Bitbucket source connection is not configured')
-
-        token_response = requests.post(
-            cls.BITBUCKET_TOKEN_URL,
-            auth=(config['client_id'], config['client_secret']),
-            headers={'Accept': 'application/json'},
-            data={
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': redirect_uri,
-            },
-            timeout=15,
-        )
-        token_response.raise_for_status()
-        token_data = token_response.json()
-        if token_data.get('error'):
-            raise ValueError(token_data.get('error_description') or token_data['error'])
-
-        access_token = token_data.get('access_token')
-        if not access_token:
-            raise ValueError('Bitbucket did not return an access token')
-
-        profile = cls._bitbucket_get(access_token, '/user')
-        connection = SourceConnection.query.filter_by(user_id=user_id, provider='bitbucket').first()
-        if not connection:
-            connection = SourceConnection(user_id=user_id, provider='bitbucket')
-            db.session.add(connection)
-
-        connection.provider_account_id = str(profile.get('uuid') or '').strip('{}')
-        connection.provider_username = profile.get('username') or ''
-        connection.display_name = profile.get('display_name') or profile.get('username') or ''
-        connection.avatar_url = (profile.get('links', {}).get('avatar', {}) or {}).get('href', '')
-        connection.access_token = access_token
-        connection.scope = ' '.join(token_data.get('scopes', [])) or ' '.join(cls.BITBUCKET_SCOPES)
-        connection.updated_at = datetime.utcnow()
-        connection.last_used_at = datetime.utcnow()
-
-        db.session.commit()
-        return connection
+        return cls._complete_callback('bitbucket', user_id, code, state, redirect_uri)
 
     @classmethod
     def get_bitbucket_status(cls, user_id):
-        connection = cls.get_connection(user_id, 'bitbucket')
-        return {
-            'configured': cls.get_bitbucket_config()['configured'],
-            'connection': connection.to_dict() if connection else None,
-        }
+        return cls._provider_status('bitbucket', user_id)
 
     @classmethod
     def list_bitbucket_repositories(cls, user_id, search='', page=1, per_page=50):
@@ -749,20 +646,11 @@ class SourceConnectionService:
 
     @classmethod
     def _get_bitbucket_token(cls, user_id):
-        connection = cls.get_connection(user_id, 'bitbucket')
-        if not connection:
-            raise ValueError('Bitbucket is not connected')
-        return cls._decrypt_connection_token(connection)
+        return cls._provider_token('bitbucket', user_id)
 
     @classmethod
     def _bitbucket_get(cls, token, path):
-        response = requests.get(
-            f'{cls.BITBUCKET_API_URL}{path}',
-            headers=cls._bitbucket_headers(token),
-            timeout=20,
-        )
-        response.raise_for_status()
-        return response.json()
+        return cls._api_get(f'{cls.BITBUCKET_API_URL}{path}', cls._bitbucket_headers(token))
 
     @staticmethod
     def _bitbucket_headers(token):
@@ -833,10 +721,7 @@ class SourceConnectionService:
 
     @classmethod
     def _get_github_token(cls, user_id):
-        connection = cls.get_connection(user_id, 'github')
-        if not connection:
-            raise ValueError('GitHub is not connected')
-        return cls._decrypt_connection_token(connection)
+        return cls._provider_token('github', user_id)
 
     @staticmethod
     def _decrypt_connection_token(connection):
@@ -847,13 +732,7 @@ class SourceConnectionService:
 
     @classmethod
     def _github_get(cls, token, path):
-        response = requests.get(
-            f'{cls.GITHUB_API_URL}{path}',
-            headers=cls._github_headers(token),
-            timeout=20,
-        )
-        response.raise_for_status()
-        return response.json()
+        return cls._api_get(f'{cls.GITHUB_API_URL}{path}', cls._github_headers(token))
 
     @staticmethod
     def _github_headers(token):
@@ -902,20 +781,11 @@ class SourceConnectionService:
 
     @classmethod
     def _get_gitlab_token(cls, user_id):
-        connection = cls.get_connection(user_id, 'gitlab')
-        if not connection:
-            raise ValueError('GitLab is not connected')
-        return cls._decrypt_connection_token(connection)
+        return cls._provider_token('gitlab', user_id)
 
     @classmethod
     def _gitlab_get(cls, token, path):
-        response = requests.get(
-            f'{cls.GITLAB_API_URL}{path}',
-            headers=cls._gitlab_headers(token),
-            timeout=20,
-        )
-        response.raise_for_status()
-        return response.json()
+        return cls._api_get(f'{cls.GITLAB_API_URL}{path}', cls._gitlab_headers(token))
 
     @staticmethod
     def _gitlab_headers(token):
@@ -1013,3 +883,32 @@ class SourceConnectionService:
                 'avatar_url': (repo.get('owner') or {}).get('avatar_url'),
             },
         }
+
+
+# Profile -> (account id, username, display name, avatar URL), per provider.
+def _github_profile(profile):
+    login = profile.get('login') or ''
+    return (str(profile.get('id') or ''), login, profile.get('name') or login,
+            profile.get('avatar_url') or '')
+
+
+def _gitlab_profile(profile):
+    username = profile.get('username') or ''
+    return (str(profile.get('id') or ''), username, profile.get('name') or username,
+            profile.get('avatar_url') or '')
+
+
+def _bitbucket_profile(profile):
+    username = profile.get('username') or ''
+    avatar = (profile.get('links', {}).get('avatar', {}) or {}).get('href', '')
+    return (str(profile.get('uuid') or '').strip('{}'), username,
+            profile.get('display_name') or username, avatar)
+
+
+# Granted scopes as the token response reports them.
+def _scope_string(token_data):
+    return token_data.get('scope') or ''
+
+
+def _scope_list(token_data):
+    return ' '.join(token_data.get('scopes', []))

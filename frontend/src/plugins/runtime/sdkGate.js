@@ -1,5 +1,5 @@
 /**
- * Load-time SDK gate decision (plan 32 Decision 1) — the pure half of the
+ * Load-time SDK gate decision — the pure half of the
  * runtime loader's version check, split out so it's unit-testable under plain
  * node (the loader itself touches `import.meta.env` and `crypto`).
  *

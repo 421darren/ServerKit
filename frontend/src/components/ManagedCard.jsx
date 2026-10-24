@@ -2,8 +2,9 @@ import { CloudCog, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import useLabel from '../i18n/labels';
 import { MANAGED_CAPABILITY_MAP } from './sidebarItems';
+import { formatDate } from '@/utils/intl';
 
-// The managed card (plan 25): what a held capability's page shows instead of
+// The managed card: what a held capability's page shows instead of
 // its content. It names the capability, who holds it and since when, and links
 // to the server's page in ServerKit Cloud through the support URL the signed
 // policy carried. It never claims the page is gone — hidden is not removed:
@@ -19,7 +20,7 @@ export default function ManagedCard({ capability, profile, compact = false }) {
     const label = entry ? label_(entry) : capability;
     const heldBy = profile?.held_by || 'ServerKit Cloud';
     const since = profile?.since
-        ? new Date(profile.since).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+        ? formatDate(profile.since, { parts: { year: 'numeric', month: 'long', day: 'numeric' } })
         : null;
 
     return (
@@ -36,8 +37,8 @@ export default function ManagedCard({ capability, profile, compact = false }) {
             </h3>
             <p className="managed-card__body">
                 {since
-                    ? t('managed.card.bodySince', 'ServerKit Cloud took this over on {{date}} as part of your Managed service. The page is hidden, not removed — its API still answers and everything returns the moment the Managed scope ends.', { date: since })
-                    : t('managed.card.body', 'ServerKit Cloud takes care of this as part of your Managed service. The page is hidden, not removed — its API still answers and everything returns the moment the Managed scope ends.')}
+                    ? t('managed.card.bodySince', 'ServerKit Cloud took this over on {{date}} as part of your Managed service. The page is hidden, not removed. Its API still answers and everything returns the moment the Managed scope ends.', { date: since })
+                    : t('managed.card.body', 'ServerKit Cloud takes care of this as part of your Managed service. The page is hidden, not removed. Its API still answers and everything returns the moment the Managed scope ends.')}
                 {capability === 'updates' && (
                     <> {t('managed.card.updatesNote', 'The panel still updates itself; only the update screens are hidden.')}</>
                 )}

@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from app.middleware.rbac import admin_required
 from app.services.nginx_service import NginxService
+from app.api._request import json_object
 
 nginx_bp = Blueprint('nginx', __name__)
 
@@ -49,7 +50,7 @@ def list_sites():
 @admin_required
 def create_site():
     """Create a new Nginx site configuration."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -99,7 +100,7 @@ def delete_site(name):
 @admin_required
 def add_ssl_to_site(name):
     """Add SSL configuration to a site."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400

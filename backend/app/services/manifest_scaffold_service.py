@@ -46,7 +46,7 @@ class ManifestScaffoldService:
         if app.port:
             service['port'] = app.port
 
-        # Appliance tier (plan 35): round-trip a BYO image + typed L4 ports.
+        # Appliance tier: round-trip a BYO image + typed L4 ports.
         # A Dockerfile-built app round-trips its build config instead — its
         # recorded docker_image is the build artifact, not a declaration.
         from app.services.build_service import BuildService

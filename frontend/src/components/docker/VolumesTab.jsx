@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, Pill, SearchField } from '@/components/ds';
 import {
@@ -19,6 +20,7 @@ import {
     useServer,
     normalizeListResponse,
 } from './dockerHelpers';
+import { toastError } from '@/utils/errorMessage';
 
 export const CreateVolumeButton = () => {
     const { t } = useTranslation();
@@ -29,9 +31,9 @@ export const CreateVolumeButton = () => {
             <Button
                 onClick={() => setShowModal(true)}
                 disabled={isRemote}
-                title={isRemote ? t('app.volumesTab.creatingVolumesIsOnlyAvailableOn', 'Creating volumes is only available on the local Docker target right now') : t('app.volumesTab.createVolume', 'Create volume')}
+                title={isRemote ? t('app.volumesTab.creatingVolumesIsOnlyAvailableOn', 'Creating volumes is only available on the panel server right now') : t('app.volumesTab.createVolume', 'Create volume')}
             >
-                <span>+</span> {t('app.volumesTab.createVolume2', 'Create Volume')}
+                <span>+</span> {t('app.volumesTab.createVolume2', 'Create volume')}
             </Button>
             {showModal && <CreateVolumeModal onClose={() => setShowModal(false)} onCreated={() => window.location.reload()} />}
         </>
@@ -117,12 +119,18 @@ const VolumesTab = ({ onStatsChange }) => {
     });
     const [groupBy, setGroupBy] = useState(null);
 
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
+
     useEffect(() => {
         loadVolumes();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadVolumes() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -131,16 +139,19 @@ const VolumesTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getVolumes();
             }
+            if (seq !== loadSeq.current) return;
             setVolumes(data.volumes || []);
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load volumes:', err);
-        } finally {
+            if (seq !== loadSeq.current) return;
+            setVolumes([]);
+            setLoadError(err);
             setLoading(false);
         }
     }
 
     async function handleRemove(volume) {
-        const confirmed = await confirmVolume({ titleKey: 'app.volumesTab.removeVolume', title: 'Remove Volume', messageKey: 'app.volumesTab.removeThisVolumeAllDataWill', message: 'Remove this volume? All data will be lost.' });
+        const confirmed = await confirmVolume({ titleKey: 'app.volumesTab.removeVolume', title: 'Delete volume', messageKey: 'app.volumesTab.removeThisVolumeAllDataWill', message: 'Delete this volume? All data will be lost.', confirmText: t('common.actions.delete', 'Delete') });
         if (!confirmed) return;
 
         try {
@@ -149,12 +160,12 @@ const VolumesTab = ({ onStatsChange }) => {
             } else {
                 await api.removeVolume(volumeName(volume), true);
             }
-            toast.success(t('app.volumesTab.volumeRemovedSuccessfully', 'Volume removed successfully'));
+            toast.success(t('app.volumesTab.volumeRemovedSuccessfully', 'Volume deleted'));
             loadVolumes();
             onStatsChange?.();
         } catch (err) {
             console.error('Failed to remove volume:', err);
-            toast.error(t('app.volumesTab.failedToRemoveVolumeItMay', 'Failed to remove volume. It may be in use.'));
+            toastError(toast, t('app.volumesTab.failedToRemoveVolumeItMay', "Couldn't delete the volume. A container may still use it."), err);
         }
     }
 
@@ -242,7 +253,7 @@ const VolumesTab = ({ onStatsChange }) => {
                         type="button"
                         className="dx-row-action is-danger"
                         onClick={() => handleRemove(volume)}
-                        title={t('app.volumesTab.removeVolume2', 'Remove volume')}
+                        title={t('app.volumesTab.removeVolume2', 'Delete volume')}
                     >
                         <Trash2 size={13} />
                     </Button>
@@ -309,7 +320,9 @@ const VolumesTab = ({ onStatsChange }) => {
 
             <GridChips {...chrome.chipProps} />
 
-            {filteredVolumes.length === 0 ? (
+            {loadError ? (
+                <ErrorState error={loadError} onRetry={loadVolumes} />
+            ) : filteredVolumes.length === 0 ? (
                 <EmptyState
                     icon={HardDrive}
                     title={volumes.length === 0 ? t('app.volumesTab.noVolumes', 'No volumes') : t('app.volumesTab.noMatchingVolumes', 'No matching volumes')}
@@ -328,8 +341,7 @@ const VolumesTab = ({ onStatsChange }) => {
                         onSortsChange={setSorts}
                         groupBy={groupBy}
                         onGroupByChange={setGroupBy}
-                        className="dx-table-wrap"
-                        tableClassName="dx-manager-table dx-plain-table"
+                        className="dx-table-wrap sk-dtable-wrap--sticky"
                         footer={(
                             <DataTableFooter
                                 shown={chrome.shownCount}
@@ -347,6 +359,7 @@ const VolumesTab = ({ onStatsChange }) => {
 };
 
 const CreateVolumeModal = ({ onClose, onCreated }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
@@ -369,13 +382,14 @@ const CreateVolumeModal = ({ onClose, onCreated }) => {
     }
 
     return (
-        <Modal open onClose={onClose} title={t('app.volumesTab.createVolume2', 'Create Volume')} size="md">
+        <Modal open onClose={onClose} title={t('app.volumesTab.createVolume2', 'Create volume')} size="md">
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.volumesTab.volumeName', 'Volume Name *')}</label>
+                    <label htmlFor={`${fieldId}-name`}>{t('app.volumesTab.volumeName', 'Volume name *')}</label>
                     <Input
+                        id={`${fieldId}-name`}
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
@@ -389,7 +403,7 @@ const CreateVolumeModal = ({ onClose, onCreated }) => {
                         {t('common.actions.cancel', 'Cancel')}
                     </Button>
                     <Button type="submit" disabled={loading}>
-                        {loading ? 'Creating...' : 'Create Volume'}
+                        {loading ? t('app.volumesTab.creating', 'Creating…') : t('app.volumesTab.createVolume', 'Create volume')}
                     </Button>
                 </div>
             </form>

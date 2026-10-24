@@ -8,7 +8,7 @@ This module is the only writer of ``managed-profile.json`` — kept next to
 ``connect.json`` because it belongs to the pairing and leaves with it — and
 the only place that decides whether the profile currently applies.
 
-The rules that keep this truthful (plan 25):
+The rules that keep this truthful:
 
 - **Hidden, never removed.** The policy changes what the panel *shows*. Every
   route stays registered and every API keeps answering with the caller's
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 PROFILE_FILENAME = 'managed-profile.json'
 
-# The launch capability set (plan 25 §Vocabulary). Cloud validates against its
+# The launch capability set. Cloud validates against its
 # own copy before signing; the panel stores what it received and the UI maps
 # the ids it knows, so an id from a newer Cloud simply maps to nothing here.
 CAPABILITIES = (

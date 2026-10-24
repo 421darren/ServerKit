@@ -1,4 +1,4 @@
-"""Procfile worker processes for build-pack apps (plan 86 §C3).
+"""Procfile worker processes for build-pack apps.
 
 A build-pack deploy runs one container, ``serverkit-app-<id>``, from the
 image it built, and only the Procfile ``web:`` line used to matter. Every other
@@ -125,7 +125,7 @@ class WorkerProcessService:
 
 def connect_shared_network(app, container: str) -> None:
     """Join a `docker run` container to the shared service network when the app
-    offers or uses a connectable service (plan 86 §C1). Compose apps get this
+    offers or uses a connectable service. Compose apps get this
     from their managed override; single-container apps get it here."""
     try:
         from app.services.docker_service import DockerService

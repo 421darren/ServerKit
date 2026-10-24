@@ -4,7 +4,7 @@
 // the full page here (pages/Email.jsx + styles/email.scss + its own API
 // client in services/email.js). Imports go through 'serverkit-sdk' so the
 // same source works baked in-tree (the panel's build-time glob) and as a
-// runtime-ESM bundle once the extension leaves the tree (plan 52 Phase 2).
+// runtime-ESM bundle once the extension leaves the tree.
 //
 // The SCSS side-effect import compiles the page styles through this
 // extension's own module graph — the host's main.scss no longer carries an

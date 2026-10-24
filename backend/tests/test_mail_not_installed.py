@@ -37,7 +37,7 @@ def test_other_errors_are_not_masked(monkeypatch):
 
 
 def test_route_returns_404_for_not_installed(app, monkeypatch):
-    import app.api.servers as servers_api
+    import app.api.servers_remote as servers_api
     monkeypatch.setattr(servers_api.MailServerService, 'list_mailboxes',
                         staticmethod(lambda **kw: {
                             'success': False,

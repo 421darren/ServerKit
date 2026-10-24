@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). The registry-check trigger stays admin; the
+# Bucket: PER-APP. The registry-check trigger stays admin; the
 # latest-check read is scoped to callers who can access the app (can_access_app).
 from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
@@ -29,7 +29,7 @@ def check(app_id):
 def latest(app_id):
     """Return the most recent image-update check for the application (or null).
 
-    Scoped to the app's workspace visibility (plan 29 #9) — a foreign caller
+    Scoped to the app's workspace visibility — a foreign caller
     gets a sealed 404."""
     app = Application.query_active().filter_by(id=app_id).first()
     user = get_current_user()

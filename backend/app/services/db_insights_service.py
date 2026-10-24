@@ -1,4 +1,4 @@
-"""Read-only database visibility: top queries and health gauges (plan 86 §A3).
+"""Read-only database visibility: top queries and health gauges.
 
 For the Database Explorer's Insights tab, per server or container, with the
 same target shape as :mod:`db_process_service`:
@@ -93,7 +93,7 @@ class DbInsightsService:
         engine = 'postgresql' if engine in db_exec.POSTGRES_ALIASES else engine
         engine = 'mysql' if engine in db_exec.MYSQL_ALIASES else engine
         if engine not in SUPPORTED_ENGINES:
-            return {'error': 'unsupported engine'}
+            return {'error': 'unsupported engine', 'code': 'unsupported_engine'}
         if not target.get('container'):
             # Dockerised engines only (the host executors don't return
             # parse-friendly output).

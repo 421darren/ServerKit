@@ -7,6 +7,7 @@ import SqlEditor from './SqlEditor';
 import { downloadBlob } from '@/utils/downloadBlob';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDateTime } from '@/utils/intl';
 
 const HISTORY_KEY = 'serverkit_query_history';
 const MAX_HISTORY = 50;
@@ -81,7 +82,7 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
             if (result.success) {
                 setResults(result);
                 saveToHistory(sql);
-                toast.success(t('app.consoleTab.rowS', '{{rowcount}} row{{value}} · {{executiontime}}s', { rowcount: result.row_count, value: result.row_count === 1 ? '' : 's', executiontime: result.execution_time }));
+                toast.success(t('app.consoleTab.rowsIn', { count: result.row_count, executiontime: result.execution_time, defaultValue_one: '1 row · {{executiontime}}s', defaultValue_other: '{{count}} rows · {{executiontime}}s' }));
             } else {
                 setError(result.error || 'Query failed.');
             }
@@ -125,7 +126,7 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
                     title={t('app.consoleTab.runQueryEnter', 'Run query ({{MODKEY}}+Enter)', { MODKEY: MOD_KEY })}
                 >
                     <Play size={14} aria-hidden="true" />
-                    {loading ? 'Running…' : 'Run'}
+                    {loading ? t('app.consoleTab.running', 'Running…') : t('app.consoleTab.run', 'Run')}
                     <kbd>{MOD_KEY} ↵</kbd>
                 </SharedButton>
 
@@ -135,10 +136,10 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
                         className={`dbx-toggle ${readonly ? '' : 'is-write'}`}
                         onClick={() => setReadonly((r) => !r)}
                         aria-pressed={!readonly}
-                        title={readonly ? t('app.consoleTab.readOnlyOnlySelectShowDescribe', 'Read-only: only SELECT / SHOW / DESCRIBE') : t('app.consoleTab.writesEnabledBeCareful', 'Writes enabled — be careful')}
+                        title={readonly ? t('app.consoleTab.readOnlyOnlySelectShowDescribe', 'Read-only: only SELECT / SHOW / DESCRIBE') : t('app.consoleTab.writesEnabledBeCareful', 'Writes enabled: be careful')}
                     >
                         {readonly ? <Lock size={13} aria-hidden="true" /> : <Unlock size={13} aria-hidden="true" />}
-                        {readonly ? 'Read-only' : 'Writes on'}
+                        {readonly ? t('app.consoleTab.readOnly', 'Read-only') : t('app.consoleTab.writesOn', 'Writes on')}
                     </SharedButton>
                 )}
 
@@ -167,7 +168,7 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={t('app.consoleTab.selectFromQuerying', 'SELECT * FROM … — querying {{value}}', { value: conn.name || conn.path || conn.container })}
+                        placeholder={t('app.consoleTab.selectFromQuerying', 'SELECT * FROM … (querying {{value}})', { value: conn.name || conn.path || conn.container })}
                         ariaLabel="SQL editor"
                     />
                     {readonly && (
@@ -193,7 +194,7 @@ export default function ConsoleTab({ conn, tabId, active, isAdmin, initialQuery 
                                             <code>{item.query}</code>
                                             <span className="dbx-history-time">
                                                 <Clock size={11} aria-hidden="true" />
-                                                {new Date(item.timestamp).toLocaleString()}
+                                                {formatDateTime(item.timestamp)}
                                             </span>
                                         </SharedButton>
                                     </li>

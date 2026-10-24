@@ -38,14 +38,14 @@
 // GET /api/v1/plugins/contributions. The backend mirror lives in
 // backend/app/utils/sdk.py — keep the two in lock-step (asserted by
 // backend/tests/test_sdk_contract.py).
-export const SDK_VERSION = '1.5.0';
+export const SDK_VERSION = '1.6.0';
 
 export { api, default as defaultApi } from '../../services/api';
 
 // Design-system primitives — the sanctioned building blocks for plugin pages.
 // A plugin page should look like a core page: PageTopbar + KpiBand +
 // DataTable/ResourceList. Extensions previously deep-imported '@/components/ds'
-// (still works, same modules); this is the blessed surface (Plan 20 Decision 4).
+// (still works, same modules); this is the blessed surface.
 export {
     KpiBand,
     MetricCard,
@@ -60,8 +60,28 @@ export {
     DataTable,
     ResourceCard,
     ResourceList,
+    CatalogCard,
+    CatalogGrid,
     Drawer,
 } from '../../components/ds';
+
+// One field per job (SDK 1.6). An extension asking for a server, a domain, a
+// host port, env rows or a value to copy uses these, so it looks and checks
+// exactly like core: ServerPicker (value 'local' | server id), DomainField
+// (subdomain of a managed base or own domain) + attachDomain, PortField
+// (live free/taken check on host ports), EnvEditor ([{key, value}] rows),
+// CopyField (secrets masked), InfoList/InfoItem (label/value rows).
+export { default as ServerPicker } from '../../components/ServerPicker';
+export { serverTarget, targetServerId, LOCAL_SERVER_ID } from '../../utils/serverTarget';
+export { default as DomainField } from '../../components/DomainField';
+export { attachDomain } from '../../services/attachDomain';
+export { normalizeDomain, isValidDomain } from '../../utils/domains';
+export { default as PortField } from '../../components/PortField';
+export { default as EnvEditor } from '../../components/EnvEditor';
+export { parseDotenv, envToObject, envFromObject } from '../../utils/dotenv';
+export { default as CopyField } from '../../components/CopyField';
+export { CopyButton } from '../../components/CopyButton';
+export { InfoList, InfoItem } from '../../components/InfoList';
 
 // Scheduling — extensions schedule things (cert windows, report runs, cleanup
 // jobs) with the same friendly cron picker as core (Presets/Builder/Advanced +
@@ -98,7 +118,7 @@ export {
     Outlet,
 } from 'react-router-dom';
 
-// Layout + feedback primitives (plan 52 Phase 4 — the WordPress frontend
+// Layout + feedback primitives (the WordPress frontend
 // relocation proved these out). Generic re-exports, same modules core pages
 // use; an extension page should be able to mirror a core page's chrome
 // (tab group, modal, confirm, empty/loading states) without deep imports.
@@ -132,7 +152,7 @@ export { useTopbarActions } from '../../hooks/useTopbarActions';
 export { formatBytes } from '../../utils/formatBytes';
 export { timeAgo, formatRelativeTime, formatDuration } from '../../utils/time';
 
-// Localization (plan 79). These are the HOST's singletons, not a parallel
+// Localization. These are the HOST's singletons, not a parallel
 // extension i18n: `useTranslation`/`Trans` resolve against the panel's own
 // i18next instance (shared via vendorManifest), so an extension's copy follows
 // the user's language, plural rules and locale switch with no wiring of its
@@ -153,7 +173,7 @@ export {
     formatNumber, formatPercent, formatList,
 } from '../../utils/intl';
 
-// Generic page furniture + cross-feature embeds (plan 52 Phase 5 — the
+// Generic page furniture + cross-feature embeds (the
 // WordPress runtime-ESM extraction proved these out). Two consumer classes:
 //   - generic primitives any extension page may need (ErrorBoundary,
 //     DangerZone, ResourceAdvisory, ResourceListPage, the logs drawer, and
@@ -174,7 +194,7 @@ export { RepoProviderStrip } from '../../components/git/GitProviders';
 export { GIT_PROVIDERS, detectProvider } from '../../components/git/gitProviderData';
 export { default as ProtectionPanel } from '../../components/backups/ProtectionPanel';
 
-// List-page chrome (1.4.0, plan 52 Phase 2 — the email/cloudflare-ops frontend
+// List-page chrome (1.4.0 — the email/cloudflare-ops frontend
 // relocations proved these out). The full table kit a relocated list page
 // needs: the DataTable footer/toolbar pieces, the saved-view chrome from
 // ds/grid, the standalone-page layout, and the two table hooks. Same modules

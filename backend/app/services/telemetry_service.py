@@ -72,26 +72,6 @@ class TelemetryService:
             return None
 
     @classmethod
-    def emit_for_request(cls, source, event_type, message=None, severity=SystemEvent.SEVERITY_INFO,
-                         resource_type=None, resource_id=None, correlation_id=None, payload=None,
-                         commit=True):
-        """Emit an event, deriving actor/workspace from the current request context."""
-        actor_user_id, workspace_id = cls._get_request_scope()
-        return cls.emit(
-            source=source,
-            event_type=event_type,
-            message=message,
-            severity=severity,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            actor_user_id=actor_user_id,
-            workspace_id=workspace_id,
-            correlation_id=correlation_id,
-            payload=payload,
-            commit=commit,
-        )
-
-    @classmethod
     def _create_event(cls, source, event_type, message, severity, resource_type,
                       resource_id, actor_user_id, workspace_id, correlation_id, payload):
         if severity not in SystemEvent.VALID_SEVERITIES:

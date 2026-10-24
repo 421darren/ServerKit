@@ -1,4 +1,4 @@
-"""Crash-loop visibility (plan 86 §E1).
+"""Crash-loop visibility.
 
 A container with a restart policy that keeps dying looked "running" in the
 panel: Docker restarts it each time, and nothing counted. A one-minute
@@ -89,7 +89,7 @@ class CrashLoopService:
 
         if new_state != state:
             SystemSettings.set(STATE_KEY, new_state, value_type='json',
-                               description='Crash-loop sample windows (plan 86 §E1)')
+                               description='Crash-loop sample windows')
             db.session.commit()
         return {'apps': len(new_state), 'opened': opened, 'resolved': resolved}
 

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Check, AlertTriangle } from 'lucide-react';
 import { SegControl } from '@/components/ds';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
 
@@ -233,6 +234,8 @@ const MODES = [
 ];
 
 export default function SchedulePicker({ value = '', onChange, compact = false, presets = DEFAULT_PRESETS }) {
+    // Several pickers can share a page (one per schedule card).
+    const baseId = useId();
     const { t } = useTranslation();
     const [mode, setMode] = useState('presets');
     const builder = useMemo(() => cronToBuilder(value), [value]);
@@ -275,56 +278,69 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
             {mode === 'builder' && (
                 <div className="schedule-picker__builder">
                     <div className="schedule-picker__row">
-                        <label htmlFor="sp-frequency">{t('app.schedulePicker.frequency', 'Frequency')}</label>
-                        <select
-                            id="sp-frequency"
+                        <label id={`${baseId}-frequency`}>{t('app.schedulePicker.frequency', 'Frequency')}</label>
+                        <SegControl
+                            aria-labelledby={`${baseId}-frequency`}
                             value={builder.frequency}
-                            onChange={(e) => patchBuilder({ frequency: e.target.value })}
-                        >
-                            <option value="hourly">{t('app.schedulePicker.hourly', 'Hourly')}</option>
-                            <option value="daily">{t('app.schedulePicker.daily', 'Daily')}</option>
-                            <option value="weekly">{t('app.schedulePicker.weekly', 'Weekly')}</option>
-                            <option value="monthly">{t('app.schedulePicker.monthly', 'Monthly')}</option>
-                        </select>
+                            onChange={(frequency) => patchBuilder({ frequency })}
+                            options={[
+                                { value: 'hourly', label: t('app.schedulePicker.hourly', 'Hourly') },
+                                { value: 'daily', label: t('app.schedulePicker.daily', 'Daily') },
+                                { value: 'weekly', label: t('app.schedulePicker.weekly', 'Weekly') },
+                                { value: 'monthly', label: t('app.schedulePicker.monthly', 'Monthly') },
+                            ]}
+                        />
                     </div>
 
                     {builder.frequency !== 'hourly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-hour">{t('app.schedulePicker.atHour', 'At hour')}</label>
-                            <select
-                                id="sp-hour"
-                                value={builder.hour}
-                                onChange={(e) => patchBuilder({ hour: Number(e.target.value) })}
+                            <label htmlFor={`${baseId}-hour`}>{t('app.schedulePicker.atHour', 'At hour')}</label>
+                            <Select
+                                value={String(builder.hour)}
+                                onValueChange={(v) => patchBuilder({ hour: Number(v) })}
                             >
-                                {Array.from({ length: 24 }).map((_, h) => (
-                                    <option key={h} value={h}>{pad2(h)}</option>
-                                ))}
-                            </select>
-                            <label htmlFor="sp-minute">minute</label>
-                            <select
-                                id="sp-minute"
-                                value={builder.minute}
-                                onChange={(e) => patchBuilder({ minute: Number(e.target.value) })}
+                                <SelectTrigger id={`${baseId}-hour`} size="sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Array.from({ length: 24 }).map((_, h) => (
+                                        <SelectItem key={h} value={String(h)}>{pad2(h)}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <label htmlFor={`${baseId}-minute`}>minute</label>
+                            <Select
+                                value={String(builder.minute)}
+                                onValueChange={(v) => patchBuilder({ minute: Number(v) })}
                             >
-                                {Array.from({ length: 60 }).map((_, m) => (
-                                    <option key={m} value={m}>{pad2(m)}</option>
-                                ))}
-                            </select>
+                                <SelectTrigger id={`${baseId}-minute`} size="sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Array.from({ length: 60 }).map((_, m) => (
+                                        <SelectItem key={m} value={String(m)}>{pad2(m)}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     )}
 
                     {builder.frequency === 'hourly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-minute-h">{t('app.schedulePicker.atMinute', 'At minute')}</label>
-                            <select
-                                id="sp-minute-h"
-                                value={builder.minute}
-                                onChange={(e) => patchBuilder({ minute: Number(e.target.value) })}
+                            <label htmlFor={`${baseId}-minute-h`}>{t('app.schedulePicker.atMinute', 'At minute')}</label>
+                            <Select
+                                value={String(builder.minute)}
+                                onValueChange={(v) => patchBuilder({ minute: Number(v) })}
                             >
-                                {Array.from({ length: 60 }).map((_, m) => (
-                                    <option key={m} value={m}>{pad2(m)}</option>
-                                ))}
-                            </select>
+                                <SelectTrigger id={`${baseId}-minute-h`} size="sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Array.from({ length: 60 }).map((_, m) => (
+                                        <SelectItem key={m} value={String(m)}>{pad2(m)}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     )}
 
@@ -348,9 +364,9 @@ export default function SchedulePicker({ value = '', onChange, compact = false, 
 
                     {builder.frequency === 'monthly' && (
                         <div className="schedule-picker__row">
-                            <label htmlFor="sp-dom">{t('app.schedulePicker.onDay', 'On day')}</label>
+                            <label htmlFor={`${baseId}-dom`}>{t('app.schedulePicker.onDay', 'On day')}</label>
                             <Input
-                                id="sp-dom"
+                                id={`${baseId}-dom`}
                                 type="number"
                                 min={1}
                                 max={31}

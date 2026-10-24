@@ -72,6 +72,22 @@ if ! (cd "$REPO/backend" && "$PYTHON" tests/check_test_count.py); then
 fi
 
 # ---------------------------------------------------------------------------
+# 1b. Undefined names (same check as the CI ratchet job).
+# ---------------------------------------------------------------------------
+banner 'undefined names'
+if command -v ruff >/dev/null 2>&1 || "$PYTHON" -m ruff --version >/dev/null 2>&1; then
+    ruff_cmd='ruff'
+    command -v ruff >/dev/null 2>&1 || ruff_cmd="$PYTHON -m ruff"
+    # shellcheck disable=SC2086
+    if ! (cd "$REPO/backend" && $ruff_cmd check --select F821,F823 app tests); then
+        note_fail 'undefined names'
+    fi
+else
+    echo 'ruff not installed (pip install ruff==0.14.14) -- CI runs this check' >&2
+    note_skip 'undefined names (ruff not installed)'
+fi
+
+# ---------------------------------------------------------------------------
 # 2. Backend ratchets, censuses, and guards.
 #
 # Matched by filename rather than listed, so a new ratchet is covered the day it

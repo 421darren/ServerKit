@@ -8,7 +8,7 @@ import {
     managedSidebarIds,
 } from '../components/sidebarItems';
 
-// The managed profile (plan 25). One fetch per panel load, next to the
+// The managed profile. One fetch per panel load, next to the
 // connect status: ServerKit Cloud's signed presentation policy, naming the
 // capabilities it holds for this customer. Everything the UI needs derives
 // from it here so the sidebar, the palette, the route gate and the in-page

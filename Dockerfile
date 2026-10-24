@@ -44,7 +44,7 @@ RUN npm run build
 # Stage 2: Python dependency builder
 #
 # The compiler toolchain (gcc, *-dev headers) is needed to build wheels for
-# gevent / cryptography / lxml on platforms without a prebuilt wheel, but it is
+# cryptography / lxml / psutil on platforms without a prebuilt wheel, but it is
 # ~280 MB and has no business in a running panel. Building into a self-contained
 # venv here lets the runtime stage take the result and leave the toolchain behind.
 FROM python:3.11-slim-bookworm AS python-builder
@@ -55,8 +55,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
-    # Required for gevent
-    libevent-dev \
     # Required for cryptography
     libffi-dev \
     libssl-dev \
@@ -73,7 +71,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # surfaces as a failed image build, never as a half-installed panel on a host.
 #
 # 1. Bundled test suites. Third-party packages ship their own pytest trees
-#    (gevent and passlib are the big ones) that no running panel imports.
+#    (passlib is the big one) that no running panel imports.
 # 2. botocore API models. botocore carries JSON models for 400+ AWS services
 #    (~15 MB); ServerKit constructs exactly three clients — s3
 #    (storage_provider_service), route53 (dns_provider_service) and ses
@@ -180,8 +178,9 @@ USER serverkit
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Health check. Boot runs schema sync, migrations and settings seeding; the
+# 40s grace matches docker-compose.yml so a slow first boot is not unhealthy.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f "http://localhost:${SERVERKIT_BACKEND_PORT:-5000}/api/v1/system/health" || exit 1
 
 # Working directory for the backend

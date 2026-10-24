@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from 'react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '../../hooks/useConfirm';
 import EmptyState from '../EmptyState';
+import { ErrorState } from '../ErrorState';
 import Modal from '@/components/Modal';
 import { DataTable, DataTableFooter, SearchField } from '@/components/ds';
 import {
@@ -21,6 +22,8 @@ import {
     useServer,
     normalizeListResponse,
 } from './dockerHelpers';
+import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 export const PullImageButton = () => {
     const { t } = useTranslation();
@@ -28,7 +31,7 @@ export const PullImageButton = () => {
     return (
         <>
             <Button onClick={() => setShowModal(true)}>
-                <span>+</span> {t('app.imagesTab.pullImage', 'Pull Image')}
+                <span>+</span> {t('app.imagesTab.pullImage', 'Pull image')}
             </Button>
             {showModal && <PullImageModal onClose={() => setShowModal(false)} onPulled={() => window.location.reload()} />}
         </>
@@ -174,13 +177,18 @@ const ImagesTab = ({ onStatsChange }) => {
         storageKey: 'serverkit-table-docker-images-cols',
     });
     const [groupBy, setGroupBy] = useState(null);
+    // Only the newest load may write: see ContainersTab.
+    const loadSeq = useRef(0);
+    const [loadError, setLoadError] = useState(null);
 
     useEffect(() => {
         loadImages();
     }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function loadImages() {
+        const seq = ++loadSeq.current;
         setLoading(true);
+        setLoadError(null);
         try {
             let data;
             if (isRemote) {
@@ -189,16 +197,19 @@ const ImagesTab = ({ onStatsChange }) => {
             } else {
                 data = await api.getImages();
             }
+            if (seq !== loadSeq.current) return;
             setImages(data.images || []);
+            setLoading(false);
         } catch (err) {
-            console.error('Failed to load images:', err);
-        } finally {
+            if (seq !== loadSeq.current) return;
+            setImages([]);
+            setLoadError(err);
             setLoading(false);
         }
     }
 
     async function handleRemove(image) {
-        const confirmed = await confirmImage({ titleKey: 'app.imagesTab.removeImage', title: 'Remove Image', messageKey: 'app.imagesTab.removeThisImage', message: 'Remove this image?' });
+        const confirmed = await confirmImage({ titleKey: 'app.imagesTab.removeImage', title: 'Delete image', messageKey: 'app.imagesTab.removeThisImage', message: 'Delete this image?', confirmText: t('common.actions.delete', 'Delete') });
         if (!confirmed) return;
 
         try {
@@ -208,12 +219,12 @@ const ImagesTab = ({ onStatsChange }) => {
             } else {
                 await api.removeImage(id, true);
             }
-            toast.success(t('app.imagesTab.imageRemovedSuccessfully', 'Image removed successfully'));
+            toast.success(t('app.imagesTab.imageRemovedSuccessfully', 'Image deleted'));
             loadImages();
             onStatsChange?.();
         } catch (err) {
             console.error('Failed to remove image:', err);
-            toast.error(t('app.imagesTab.failedToRemoveImageItMay', 'Failed to remove image. It may be in use by a container.'));
+            toastError(toast, t('app.imagesTab.failedToRemoveImageItMay', "Couldn't delete the image. A container may still use it."), err);
         }
     }
 
@@ -275,7 +286,7 @@ const ImagesTab = ({ onStatsChange }) => {
             value: imageSizeMb,
             sortValue: imageSizeMb,
             render: (image) => (
-                <span className="dx-muted-line mono">{formatBytes(imageSizeBytes(image))}</span>
+                <span className="dx-muted-line">{formatBytes(imageSizeBytes(image))}</span>
             ),
         },
         {
@@ -296,7 +307,7 @@ const ImagesTab = ({ onStatsChange }) => {
                 if (ms == null) return <span className="dx-muted-line">-</span>;
                 const iso = new Date(ms).toISOString();
                 return (
-                    <span className="dx-muted-line" title={new Date(ms).toLocaleString()}>
+                    <span className="dx-muted-line" title={formatDateTime(ms)}>
                         {formatRelativeTime(iso)}
                     </span>
                 );
@@ -315,7 +326,7 @@ const ImagesTab = ({ onStatsChange }) => {
                         type="button"
                         className="dx-row-action is-danger"
                         onClick={() => handleRemove(image)}
-                        title={t('app.imagesTab.removeImage2', 'Remove image')}
+                        title={t('app.imagesTab.removeImage2', 'Delete image')}
                     >
                         <Trash2 size={13} />
                     </Button>
@@ -388,7 +399,12 @@ const ImagesTab = ({ onStatsChange }) => {
             {/* Only the SEARCH can empty the pane outright. A column rule that
                 matches nothing keeps the table mounted — the header menu that
                 undoes it lives in the header. */}
-            {filteredImages.length === 0 ? (
+            {loadError ? (
+                <ErrorState
+                    error={loadError}
+                    onRetry={loadImages}
+                />
+            ) : filteredImages.length === 0 ? (
                 <EmptyState
                     icon={Layers}
                     title={images.length === 0 ? t('app.imagesTab.noImages', 'No images') : t('app.imagesTab.noMatchingImages', 'No matching images')}
@@ -407,8 +423,7 @@ const ImagesTab = ({ onStatsChange }) => {
                         onSortsChange={setSorts}
                         groupBy={groupBy}
                         onGroupByChange={setGroupBy}
-                        className="dx-table-wrap"
-                        tableClassName="dx-manager-table dx-plain-table"
+                        className="dx-table-wrap sk-dtable-wrap--sticky"
                         footer={(
                             <DataTableFooter
                                 shown={chrome.shownCount}
@@ -426,6 +441,7 @@ const ImagesTab = ({ onStatsChange }) => {
 };
 
 const PullImageModal = ({ onClose, onPulled }) => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const { serverId, isRemote } = useServer();
     const [image, setImage] = useState('');
@@ -455,13 +471,14 @@ const PullImageModal = ({ onClose, onPulled }) => {
     }
 
     return (
-        <Modal open onClose={onClose} title={t('app.imagesTab.pullImage', 'Pull Image')} size="md">
+        <Modal open onClose={onClose} title={t('app.imagesTab.pullImage', 'Pull image')} size="md">
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label>{t('app.imagesTab.imageName', 'Image Name *')}</label>
+                    <label htmlFor={`${fieldId}-image`}>{t('app.imagesTab.imageName', 'Image name *')}</label>
                     <Input
+                        id={`${fieldId}-image`}
                         type="text"
                         value={image}
                         onChange={(e) => setImage(e.target.value)}
@@ -471,8 +488,9 @@ const PullImageModal = ({ onClose, onPulled }) => {
                 </div>
 
                 <div className="form-group">
-                    <label>{t('app.imagesTab.tag', 'Tag')}</label>
+                    <label htmlFor={`${fieldId}-tag`}>{t('app.imagesTab.tag', 'Tag')}</label>
                     <Input
+                        id={`${fieldId}-tag`}
                         type="text"
                         value={tag}
                         onChange={(e) => setTag(e.target.value)}
@@ -485,7 +503,7 @@ const PullImageModal = ({ onClose, onPulled }) => {
                         {t('common.actions.cancel', 'Cancel')}
                     </Button>
                     <Button type="submit" disabled={loading}>
-                        {loading ? 'Pulling...' : 'Pull Image'}
+                        {loading ? t('app.imagesTab.pulling', 'Pulling…') : t('app.imagesTab.pullImage', 'Pull image')}
                     </Button>
                 </div>
             </form>

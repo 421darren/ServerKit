@@ -44,7 +44,7 @@ class BackupRun(JsonColumnMixin, db.Model):
     remote_key = db.Column(db.Text, nullable=True)
     verified = db.Column(db.Boolean, default=False)  # remote-side evidence (legacy S3 HEAD)
 
-    # Verification ladder (plan 23). 'none' → 'listed' (tar -t readable) → 'hashed'
+    # Verification ladder. 'none' → 'listed' (tar -t readable) → 'hashed'
     # (manifest sha256 spot-check passed) → 'drilled' (a real restore drill of a
     # chain ending at this run succeeded). Only a drill ever sets 'drilled'.
     verify_level = db.Column(db.String(12), nullable=False, default='none')

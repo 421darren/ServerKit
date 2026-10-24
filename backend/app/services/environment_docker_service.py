@@ -495,7 +495,7 @@ networks:
     @classmethod
     def _find_available_port(cls) -> int:
         """Find an available port. Delegates to TemplateService."""
-        return TemplateService._find_available_port()
+        return TemplateService._claim_port()
 
     @classmethod
     def _generate_password(cls, length: int = 32) -> str:

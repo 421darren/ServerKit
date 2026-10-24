@@ -12,6 +12,7 @@ from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
 from app.error_reporting import unexpected_response
+from app.api._request import json_object
 
 plugins_bp = Blueprint('plugins', __name__)
 
@@ -54,7 +55,7 @@ def install_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'url' not in data:
         return jsonify({'error': 'url required'}), 400
 
@@ -65,7 +66,7 @@ def install_plugin():
     # Optional checksum continuity: the preview step returns the resolved URL +
     # sha256; passing them here pins the install to the exact previewed bytes.
     expected_sha256 = (data.get('sha256') or None)
-    # Optional signature continuity (plan 55): when the preview verified a
+    # Optional signature continuity: when the preview verified a
     # detached signature, pass it through so the install re-verifies the exact
     # pinned bytes. A bad signature is a hard failure; no signature = the
     # consent card's "unsigned" path.
@@ -119,7 +120,7 @@ def preview_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     url = (data.get('url') or '').strip()
     if not url:
         return jsonify({'error': 'url required'}), 400
@@ -152,7 +153,7 @@ def install_plugin_local():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     path = (data.get('path') or '').strip()
     if not path:
         return jsonify({'error': 'path required'}), 400
@@ -247,7 +248,7 @@ def uninstall_plugin(plugin_id):
     # ?purge=true or a JSON body {"purge": true}.
     purge = str(request.args.get('purge', '')).lower() in ('1', 'true', 'yes')
     if not purge:
-        body = request.get_json(silent=True) or {}
+        body = json_object(optional=True)
         purge = bool(body.get('purge'))
 
     plugin_name = plugin.name
@@ -337,7 +338,7 @@ def recommendations():
     use_cases = [u.strip() for u in raw.split(',') if u.strip()]
     return jsonify({
         'recommendations': recommend_extensions_for_use_cases(use_cases),
-        # Wizard round 2 (plan 47 Ph5): the security-posture chooser. Each
+        # Wizard round 2: the security-posture chooser. Each
         # level lists only extensions the catalog can actually install today —
         # unpublished slugs drop out rather than rendering dead checkboxes.
         'security_postures': {
@@ -518,7 +519,7 @@ def get_manifest_spec():
 @plugins_bp.route('/<int:plugin_id>/permissions', methods=['GET'])
 @jwt_required()
 def get_plugin_permissions(plugin_id):
-    """Declared vs actually-observed permission use for one extension (plan 55).
+    """Declared vs actually-observed permission use for one extension.
 
     Admin-only: it describes what a piece of third-party code has been reaching
     for, which is operator information.
@@ -614,7 +615,7 @@ def update_plugin_config(plugin_id):
     if not plugin:
         return jsonify({'error': 'Plugin not found'}), 404
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     config = data.get('config')
     if not isinstance(config, dict):
         return jsonify({'error': 'config must be an object'}), 400
@@ -681,7 +682,7 @@ def update_plugin_route(plugin_id):
             and not registry_service._show_unreviewed():
         return jsonify({'error': 'Extension not found in the registry'}), 404
 
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     acknowledged = body.get('acknowledge_risk') is True
     reason, message = registry_service.consent_gate(entry, acknowledged)
     if reason:

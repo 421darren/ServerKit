@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional
 
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 from app.utils.git_security import git_argv, git_env, validate_ref_name
 from app.services.deploy_lock import with_deploy_lock
 
@@ -45,7 +45,7 @@ class GitDeployService:
         # code and rebuilds/restarts containers, so a tombstone must not deploy.
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            return {'success': False, 'error': 'Application not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         webhook = GitWebhook.query.get(webhook_id) if webhook_id else None
 
@@ -106,7 +106,7 @@ class GitDeployService:
                 raise Exception(f"Git pull failed: {pull_result.get('error')}")
             if not deployment.commit_sha:
                 # A manual deploy names no commit: record what the pull
-                # checked out, never what was live before it (plan 87 §A2).
+                # checked out, never what was live before it.
                 head = run_checked(['git', 'rev-parse', 'HEAD'], cwd=app.root_path, timeout=10)
                 if head['success']:
                     deployment.commit_sha = head['output'].strip()[:40] or None
@@ -187,7 +187,7 @@ class GitDeployService:
 
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            return {'success': False, 'error': 'Application not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         # Get current deployment
         current = GitDeployment.query.filter_by(app_id=app_id, status='success')\
@@ -324,7 +324,7 @@ class GitDeployService:
 
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            return {'success': False, 'error': 'Application not found'}
+            return {'success': False, 'error': 'Service not found'}
 
         # Find webhook for this app to get settings
         webhook = GitWebhook.query.filter_by(app_id=app_id, is_active=True).first()
@@ -393,7 +393,7 @@ class GitDeployService:
 
         The default webhook path. It used to go straight to ``compose down``,
         so a commit that broke the compose file or the build took the site down
-        and left it down (plan 72 B.1). The preflight now validates the compose
+        and left it down. The preflight now validates the compose
         and builds the images to completion while the old containers are still
         serving; only then is anything stopped.
         """
@@ -411,7 +411,7 @@ class GitDeployService:
                     pass
 
         if getattr(app, 'slot_deploys_enabled', False):
-            # A slot app (plan 87 §C) never stops its live stack: the whole
+            # A slot app never stops its live stack: the whole
             # deploy — preflight, slot boot, gate, switch, watch — runs through
             # the deploy pipeline, which records it as a Deployment too. The
             # deploy lock is already held by this thread.
@@ -450,7 +450,7 @@ class GitDeployService:
         """Run a deployment script."""
         try:
             result = run_checked(['bash', '-c', script], cwd=cwd, timeout=300,
-                                 env={**os.environ, 'DEPLOY_DIR': cwd})
+                                 env=app_process_env({'DEPLOY_DIR': cwd}))
 
             return {
                 'success': result['success'],

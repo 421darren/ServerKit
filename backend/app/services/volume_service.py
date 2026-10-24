@@ -197,7 +197,7 @@ class VolumeService:
         """Live host mountpoint for the app's volume at ``mount_path`` (or None).
 
         Used to route a manifest disk's backup at the real bytes rather than the
-        in-container path (plan 35)."""
+        in-container path."""
         if app is None:
             return None
         vol = AppVolume.query.filter_by(

@@ -7,9 +7,15 @@ import shlex
 import yaml
 from datetime import datetime
 
+from app.exceptions import DependencyUnavailableError
 from app.utils.system import run_checked
 
 logger = logging.getLogger(__name__)
+
+# Metadata reads (ps, inspect, info, version) answer in well under a second
+# on a healthy daemon. Unbounded, a wedged dockerd held each request thread
+# forever; the panel runs one worker process, so they add up.
+QUICK_TIMEOUT = 30
 
 # Docker-style memory limit: a number plus a one-letter unit (bytes/kilo/mega/giga).
 _MEMORY_LIMIT_RE = re.compile(r'^\d+(\.\d+)?(b|k|m|g)$', re.IGNORECASE)
@@ -34,7 +40,7 @@ class DockerService:
         # dropping the guard here made a broken Popen surface as
         # `compose up` exit_code -1 instead of falling back to v1.
         try:
-            if run_checked(['docker', 'compose', 'version'], timeout=None)['success']:
+            if run_checked(['docker', 'compose', 'version'], timeout=QUICK_TIMEOUT)['success']:
                 cls._compose_cmd = ['docker', 'compose']
                 return cls._compose_cmd
         except Exception as e:  # noqa: BLE001
@@ -59,23 +65,12 @@ class DockerService:
     # cannot silently cap a build; see COMPOSE/LONG notes below.
     @staticmethod
     def run(args, timeout=60, **kwargs):
-        """Run ``docker <args>``; one result shape for every caller (§G3).
+        """Run ``docker <args>`` through ``run_checked``.
 
-        Three services kept private ``_docker()`` wrappers around this exact
-        call, and the three had already drifted into three *different* return
-        contracts: one dict that mapped FileNotFoundError to "Docker not
-        found", one dict that collapsed every failure into ``str(e)``, and one
-        that handed back a raw ``CompletedProcess``. A caller reading
-        ``result['success']`` against the third silently got a ``KeyError``
-        rather than an answer.
-
-        Sits on ``run_checked`` (§G1) rather than re-implementing it, so the
-        result shape and the error handling have exactly one definition:
-        ``{'success', 'output', 'stderr', 'error', 'returncode'}``. ``error``
-        distinguishes the three things that are not "the command said no":
-        docker absent, docker too slow, and everything else. A caller that
-        cannot tell those apart is the caller that reports "not installed"
-        because a probe timed out (§A).
+        Returns ``{'success', 'output', 'stderr', 'error', 'returncode'}``;
+        ``error`` tells "docker missing" and "timed out" apart from the
+        command saying no, so a slow probe is never reported as "not
+        installed".
         """
         return run_checked(['docker', *args], timeout=timeout, **kwargs)
 
@@ -96,7 +91,7 @@ class DockerService:
     @staticmethod
     def is_docker_installed():
         """Check if Docker is installed and running."""
-        result = DockerService.run(['version', '--format', 'json'], timeout=None)
+        result = DockerService.run(['version', '--format', 'json'], timeout=QUICK_TIMEOUT)
         if not result['success']:
             return {'installed': False, 'error': result['error']}
         try:
@@ -107,7 +102,7 @@ class DockerService:
     @staticmethod
     def get_docker_info():
         """Get Docker system information."""
-        result = DockerService.run(['info', '--format', '{{json .}}'], timeout=None)
+        result = DockerService.run(['info', '--format', '{{json .}}'], timeout=QUICK_TIMEOUT)
         if not result['success']:
             logger.error('Failed to get Docker info: %s', result['error'])
             return None
@@ -152,38 +147,45 @@ class DockerService:
 
     @staticmethod
     def list_containers(all_containers=True):
-        """List Docker containers."""
-        try:
-            args = ['ps', '--format', '{{json .}}']
-            if all_containers:
-                args.insert(1, '-a')
+        """List Docker containers.
 
-            result = DockerService.run(args, timeout=None)
-            if not result['success']:
-                return []
+        Raises DependencyUnavailableError when docker does not answer: an
+        empty list would tell the UI "no containers" on a box running many.
+        """
+        args = ['ps', '--format', '{{json .}}']
+        if all_containers:
+            args.insert(1, '-a')
 
-            containers = []
-            for line in result['output'].strip().split('\n'):
-                if line:
-                    container = json.loads(line)
-                    name = container.get('Names')
-                    containers.append({
-                        'id': container.get('ID'),
-                        'name': name,
-                        'image': container.get('Image'),
-                        'status': container.get('Status'),
-                        'state': container.get('State'),
-                        'ports': container.get('Ports'),
-                        'created': container.get('CreatedAt'),
-                        'size': container.get('Size'),
-                        # Flag ServerKit's own containers so the UI can hide
-                        # lifecycle controls; the API rejects them regardless.
-                        'protected': DockerService.is_protected_name(name),
-                    })
-            return containers
-        except Exception as e:
-            logger.error(f"Failed to list containers: {e}")
-            return []
+        result = DockerService.run(args, timeout=QUICK_TIMEOUT)
+        if not result['success']:
+            raise DependencyUnavailableError(
+                'Docker is not reachable: '
+                + (result.get('stderr') or result.get('error') or 'docker ps failed'))
+
+        containers = []
+        for line in result['output'].strip().split('\n'):
+            if not line:
+                continue
+            try:
+                container = json.loads(line)
+            except ValueError:
+                logger.warning('Unparseable docker ps line: %r', line)
+                continue
+            name = container.get('Names')
+            containers.append({
+                'id': container.get('ID'),
+                'name': name,
+                'image': container.get('Image'),
+                'status': container.get('Status'),
+                'state': container.get('State'),
+                'ports': container.get('Ports'),
+                'created': container.get('CreatedAt'),
+                'size': container.get('Size'),
+                # Flag ServerKit's own containers so the UI can hide
+                # lifecycle controls; the API rejects them regardless.
+                'protected': DockerService.is_protected_name(name),
+            })
+        return containers
 
     # One `docker ps` row, tab-delimited. Tabs are used instead of
     # `--format '{{json .}}'` because the JSON form flattens every label into a
@@ -229,7 +231,7 @@ class DockerService:
         if all_containers:
             args.insert(1, '-a')
 
-        result = cls.run(args, timeout=None)
+        result = cls.run(args, timeout=QUICK_TIMEOUT)
         if not result['success']:
             logger.warning('docker ps (bulk) failed: %s', result['error'])
             return []
@@ -254,7 +256,7 @@ class DockerService:
     @staticmethod
     def get_container(container_id):
         """Get detailed container information."""
-        result = DockerService.run(['inspect', container_id], timeout=None)
+        result = DockerService.run(['inspect', container_id], timeout=QUICK_TIMEOUT)
         if not result['success']:
             return None
         try:
@@ -370,7 +372,7 @@ class DockerService:
                 # The panel emits the `app.stopped` event via the audit trail
                 # (AuditService.log('app.stop') -> EventService.emit_for_audit),
                 # so this low-level helper no longer emits its own event -- doing
-                # so would double-fire it for Automations triggers (plan 45 Ph4).
+                # so would double-fire it for Automations triggers.
                 return {'success': True}
             return {'success': False, 'error': result['error']}
         except Exception as e:
@@ -518,7 +520,7 @@ class DockerService:
         app_id = cls._app_attr(app, 'id')
         if (app_id and not isinstance(app, dict)
                 and cls._app_attr(app, 'slot_deploys_enabled') and cls._app_attr(app, 'active_slot')):
-            # A slot app (plan 87): the live slot, its standby, its workers
+            # A slot app: the live slot, its standby, its workers
             # (for compose, the live and standby projects).
             from app.services.slot_deploy_service import SlotDeployService
             return SlotDeployService.containers(app)
@@ -526,7 +528,7 @@ class DockerService:
         if not containers and app_id and cls._app_attr(app, 'buildpack_type'):
             # A build-pack app is not a compose project: its deploy runs
             # `serverkit-app-<id>` plus one `serverkit-app-<id>-<process>` per
-            # Procfile worker (plan 86 §C3). Anchored so app 5 never lists 50.
+            # Procfile worker. Anchored so app 5 never lists 50.
             listed = cls.run(['ps', '-a', '--filter', f'name=^serverkit-app-{app_id}$',
                               '--filter', f'name=^serverkit-app-{app_id}-',
                               '--format', '{{json .}}'], timeout=30)
@@ -856,7 +858,7 @@ class DockerService:
     def tag_image(source, target):
         """Tag an image."""
         try:
-            result = DockerService.run(['tag', source, target], timeout=None)
+            result = DockerService.run(['tag', source, target], timeout=QUICK_TIMEOUT)
             if result['success']:
                 return {'success': True}
             return {'success': False, 'error': result['error']}
@@ -903,11 +905,11 @@ class DockerService:
 
     @staticmethod
     def ensure_network(name, driver='bridge'):
-        """Idempotently ensure a Docker network exists (appliance tier, plan 35).
+        """Idempotently ensure a Docker network exists (appliance tier).
 
         The shared external ``serverkit`` network lets manifest-generated app
         projects resolve each other by container name (fromService.host)."""
-        if DockerService.run(['network', 'inspect', name], timeout=None)['success']:
+        if DockerService.run(['network', 'inspect', name], timeout=QUICK_TIMEOUT)['success']:
             return {'success': True, 'existed': True}
         created = DockerService.create_network(name, driver=driver)
         created['existed'] = False
@@ -981,7 +983,7 @@ class DockerService:
     def inspect_volume(name):
         """Live state of a named volume: {'present', 'mountpoint', 'driver'}."""
         try:
-            result = DockerService.run(['volume', 'inspect', name], timeout=None)
+            result = DockerService.run(['volume', 'inspect', name], timeout=QUICK_TIMEOUT)
             if not result['success']:
                 return {'present': False, 'mountpoint': None, 'driver': None}
             data = json.loads(result['output'] or '[]')
@@ -1043,7 +1045,7 @@ class DockerService:
 
     @classmethod
     def run_compose(cls, cmd, *, cwd=None, timeout=None):
-        """Run an already-built compose argv; the shared result shape (§G1).
+        """Run an already-built compose argv; the shared result shape.
 
         Separate from :meth:`run` because the argv head is whatever
         ``_get_compose_cmd()`` resolved — ``docker compose`` (v2) or
@@ -1172,7 +1174,7 @@ class DockerService:
         """Start Docker Compose services, streaming each output line to on_line.
 
         Same overlay/command construction as ``compose_up``, but runs via Popen
-        with plain, ANSI-free progress (plan 51 D5) and delivers output
+        with plain, ANSI-free progress and delivers output
         line-by-line so the Deploy Console shows the real pull/build/start
         transcript live (the biggest reason template-install errors used to be
         unreadable). Returns ``{success, exit_code}``; the actual failure output
@@ -1333,7 +1335,7 @@ class DockerService:
     def compose_build(cls, project_path, service=None, compose_file=None, no_cache=False):
         """Build the project's images without starting anything.
 
-        The deploy preflight (plan 72 B.1) runs this *before* the live
+        The deploy preflight runs this *before* the live
         containers are stopped, so a build failure can no longer take a site
         down: the subsequent ``up --build`` re-uses the layer cache.
         """
@@ -1438,7 +1440,7 @@ class DockerService:
         ``cpu_limit`` / ``memory_limit`` (task #23) emit ``cpus`` / ``mem_limit``
         on the app's service block so Docker enforces the caps.
 
-        ``host_requirements`` (appliance tier, plan 35) emits
+        ``host_requirements`` (appliance tier) emits
         ``privileged`` / ``cap_add`` / ``sysctls`` / ``devices`` — exactly the
         fields catalog templates already pass through.
         """
@@ -1491,7 +1493,7 @@ class DockerService:
 
             if networks:
                 # Attach to shared external network(s) so manifest apps resolve
-                # each other by container name (fromService.host, plan 35).
+                # each other by container name (fromService.host).
                 for net in networks:
                     DockerService.ensure_network(net)
                 compose['services'][app_name]['networks'] = list(networks)

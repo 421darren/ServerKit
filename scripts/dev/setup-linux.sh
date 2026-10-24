@@ -46,7 +46,6 @@ echo -e "${BLUE}→ Installing Python dependencies...${NC}"
 source venv/bin/activate
 pip install --quiet --upgrade pip
 pip install --quiet -r backend/requirements.txt
-pip install --quiet gunicorn gevent gevent-websocket
 
 # Install frontend dependencies
 echo -e "${BLUE}→ Installing frontend dependencies...${NC}"

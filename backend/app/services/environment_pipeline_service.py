@@ -107,7 +107,7 @@ class EnvironmentPipelineService:
 
         prod_app = prod_site.application
         if not prod_app:
-            return {'success': False, 'error': 'Production application not found'}
+            return {'success': False, 'error': 'Production service not found'}
 
         # Check for existing environment of same type (except multidev)
         if env_type != 'multidev':
@@ -1716,7 +1716,7 @@ class EnvironmentPipelineService:
 
             # Set permissions
             # run_privileged, not a hardcoded sudo: this is escalation, and
-            # _needs_sudo() is the one place that decides it (plan 75 §G2).
+            # _needs_sudo() is the one place that decides it.
             run_privileged(['chown', '-R', 'www-data:www-data', target_dir],
                            timeout=60)
 

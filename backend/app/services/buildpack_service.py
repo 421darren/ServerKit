@@ -413,7 +413,7 @@ class BuildpackService:
     @classmethod
     def _apply_procfile(cls, repo_path: str, files: set, plan: Dict) -> None:
         """A Procfile ``web:`` line overrides the inferred start command; the
-        other long-running lines become ``plan['processes']`` (plan 86 §C3),
+        other long-running lines become ``plan['processes']``,
         run as sibling containers of the same image at deploy."""
         if 'Procfile' not in files:
             return
@@ -710,7 +710,7 @@ class BuildpackService:
                          networks: Optional[list] = None) -> str:
         """Return a docker-compose snippet wrapping the generated image.
 
-        Appliance tier (plan 35): ``extra_ports`` are raw compose publish
+        Appliance tier: ``extra_ports`` are raw compose publish
         strings (typed L4 ports) appended to the app's own HTTP port;
         ``volumes`` are service mount specs and ``named_volumes`` declare the
         top-level named volumes they reference.
@@ -740,7 +740,7 @@ class BuildpackService:
             for net in networks:
                 lines.append(f'      - {net}')
         for process, command in ((plan.get('processes') or {}).items()):
-            # Same image, the Procfile command, no port (plan 86 §C3).
+            # Same image, the Procfile command, no port.
             lines += [
                 f'  {safe_name}-{process}:',
                 f'    image: serverkit-{safe_name}:latest',

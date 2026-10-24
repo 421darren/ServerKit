@@ -1,5 +1,5 @@
 """ClamAV malware-scanning service — moved verbatim out of the host's
-``SecurityService`` (plan 47 Ph3d / plan 55 Phase 3).
+``SecurityService``.
 
 Carries the ClamAV install/status/definitions surface, single-file and
 directory scans (background thread + status polling), and the quarantine

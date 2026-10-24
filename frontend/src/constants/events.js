@@ -1,4 +1,4 @@
-// Shared wire-protocol constants (plan 77 E3).
+// Shared wire-protocol constants.
 //
 // This table mirrors backend/app/constants.py::SOCKET_EVENTS verbatim — a
 // backend test (tests/test_socket_contract.py) parses this file and fails
@@ -27,7 +27,7 @@ export const SOCKET_EVENTS = {
     DEPLOY_LOG: 'deploy_log',
     DEPLOY_STATUS: 'deploy_status',
 
-    // generalized run envelope (plan 77 E1) — one event pair for every run kind
+    // generalized run envelope — one event pair for every run kind
     RUN_LOG: 'run_log',
     RUN_STATUS: 'run_status',
 

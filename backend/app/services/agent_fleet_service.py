@@ -11,6 +11,8 @@ import threading
 import time
 import uuid
 
+from flask import current_app
+
 from app import db
 from app.models.server import (
     Server, ServerGroup, AgentVersion, ServerCommand, AgentSession, AgentRollout
@@ -119,8 +121,8 @@ class AgentFleetService:
                 continue
 
             threading.Thread(
-                target=dispatch_agent_command,
-                args=(server_id, 'agent:update', params),
+                target=self._dispatch_in_app,
+                args=(current_app._get_current_object(), server_id, 'agent:update', params),
                 kwargs={'user_id': user_id, 'timeout': 60.0},
                 daemon=True
             ).start()
@@ -182,7 +184,7 @@ class AgentFleetService:
 
         thread = threading.Thread(
             target=self._run_staged_rollout,
-            args=(rollout_id, ids, version_id, batch_size, delay_minutes, user_id, cancel_event),
+            args=(current_app._get_current_object(), rollout_id, ids, version_id, batch_size, delay_minutes, user_id, cancel_event),
             daemon=True
         )
         self._rollout_threads[rollout_id] = thread
@@ -190,11 +192,8 @@ class AgentFleetService:
 
         return {'success': True, 'rollout_id': rollout_id, 'rollout': rollout.to_dict()}
 
-    def _run_staged_rollout(self, rollout_id, server_ids, version_id, batch_size, delay_minutes, user_id, cancel_event):
+    def _run_staged_rollout(self, app, rollout_id, server_ids, version_id, batch_size, delay_minutes, user_id, cancel_event):
         """Run staged rollout in batches with health checks between waves."""
-        from app import create_app
-        app = create_app()
-
         with app.app_context():
             total = len(server_ids)
             processed = 0
@@ -370,15 +369,17 @@ class AgentFleetService:
             # Send asynchronously
             threading.Thread(
                 target=self._deliver_single_command,
-                args=(server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
+                args=(current_app._get_current_object(), server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
                 daemon=True
             ).start()
 
-    def _deliver_single_command(self, server_id, command_id, action, params, user_id):
-        """Send a single queued command and update its status."""
-        from app import create_app
-        app = create_app()
+    @staticmethod
+    def _dispatch_in_app(app, *args, **kwargs):
+        with app.app_context():
+            return dispatch_agent_command(*args, **kwargs)
 
+    def _deliver_single_command(self, app, server_id, command_id, action, params, user_id):
+        """Send a single queued command and update its status."""
         with app.app_context():
             result = dispatch_agent_command(
                 server_id, action, params, user_id=user_id, timeout=60.0
@@ -443,7 +444,7 @@ class AgentFleetService:
 
         threading.Thread(
             target=self._deliver_single_command,
-            args=(cmd.server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
+            args=(current_app._get_current_object(), cmd.server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
             daemon=True
         ).start()
 
@@ -469,7 +470,7 @@ class AgentFleetService:
 
                 threading.Thread(
                     target=self._deliver_single_command,
-                    args=(cmd.server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
+                    args=(current_app._get_current_object(), cmd.server_id, cmd.id, cmd.command_type, cmd.command_data, cmd.user_id),
                     daemon=True
                 ).start()
 

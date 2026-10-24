@@ -116,7 +116,7 @@ const EMPTY = {
     // tool-result renderers. Consumed by the core AIAssistant via
     // useContributions().ai.
     ai: { suggested_prompts: [], tool_renderers: [] },
-    // Runtime-frontend descriptor map { slug: { entry, hashes } } (plan 25).
+    // Runtime-frontend descriptor map { slug: { entry, hashes } }.
     // Present only for installed extensions shipping a prebuilt ESM bundle;
     // empty for baked builtins and when the kill switch is off.
     frontends: {},
@@ -223,6 +223,14 @@ let cachedValue = null;
 let generation = 0;
 const subscribers = new Set();
 
+// A failed fetch (typically the backend restarting under an update) must not
+// pin the baked fallback for the whole session: the baked manifest can be
+// empty, which drops every extension from the nav until a full reload. Retry
+// a few times with backoff, then leave it to the next deliberate refresh.
+const RETRY_DELAYS_MS = [3000, 10000, 30000];
+let retryAttempt = 0;
+let retryTimer = null;
+
 function notify(value) {
     cachedValue = value;
     for (const cb of subscribers) {
@@ -257,18 +265,20 @@ export function refreshContributions() {
             // routes render with their components already available (fail-soft:
             // a bundle that can't load records an error state, never throws).
             // Pass the panel's SDK version so the loader can refuse a bundle
-            // built against an incompatible SDK before fetching it (plan 32 #1).
+            // built against an incompatible SDK before fetching it.
             await loadRuntimeFrontends(
                 merged.frontends, merged.panel_sdk_version || merged.sdk_version);
             if (requestGeneration !== generation) return cachedValue || EMPTY;
             // Mark the envelope as loaded so consumers (e.g. the NotFound page)
             // can tell "contributions still loading" from "genuinely no route".
             merged.__ready = true;
+            retryAttempt = 0;
             notify(merged);
             return merged;
         })
         .catch(() => {
             if (requestGeneration !== generation) return cachedValue || EMPTY;
+            scheduleRetry(requestGeneration);
             // If the backend contribution endpoint is unavailable (common
             // while running only the Vite dev server), use the active plugin
             // manifest baked into this frontend build instead of leaving
@@ -279,6 +289,19 @@ export function refreshContributions() {
             return fallback;
         });
     return cachedPromise;
+}
+
+function scheduleRetry(requestGeneration) {
+    // Forget the failed promise so ensureContributions() re-fetches too.
+    cachedPromise = null;
+    if (retryTimer || retryAttempt >= RETRY_DELAYS_MS.length) return;
+    retryTimer = setTimeout(() => {
+        retryTimer = null;
+        // A newer refresh already superseded this one; it owns any retry.
+        if (requestGeneration !== generation) return;
+        retryAttempt += 1;
+        refreshContributions();
+    }, RETRY_DELAYS_MS[retryAttempt]);
 }
 
 export function useContributions() {

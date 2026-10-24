@@ -3,6 +3,7 @@ import { ArrowDown, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { scrollBehavior } from '@/utils/reducedMotion';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatTime } from '@/utils/intl';
 
 // How many slices the severity map is divided into. Enough to resolve a single
 // error in a long log without rendering a node per line.
@@ -196,14 +197,14 @@ export default function LogPane({
                                             {section.errors > 0 && (
                                                 <b className="deploy-console__sec-err"> · {section.errors} error{section.errors === 1 ? '' : 's'}</b>
                                             )}
-                                            {section.warns > 0 && ` · ${section.warns} warning${section.warns === 1 ? '' : 's'}`}
+                                            {section.warns > 0 && ` · ${t('app.logPane.warningCount', { count: section.warns, defaultValue_one: '1 warning', defaultValue_other: '{{count}} warnings' })}`}
                                         </span>
                                     </SharedButton>
                                 )}
                                 {!isShut && section.rows.map(({ ln, i }) => {
                                     const ts = timestamps && ln.ts
-                                        ? new Date(ln.ts).toLocaleTimeString()
-                                        : (timestamps && ln.created_at ? new Date(ln.created_at).toLocaleTimeString() : '');
+                                        ? formatTime(ln.ts)
+                                        : (timestamps && ln.created_at ? formatTime(ln.created_at) : '');
                                     return (
                                         <div
                                             key={ln.id ?? `i${i}`}
@@ -225,7 +226,7 @@ export default function LogPane({
                 <div
                     className="deploy-console__map"
                     onMouseDown={onMapDown}
-                    title={t('app.logPane.logSeverityClickOrDragTo', 'Log severity — click or drag to jump')}
+                    title={t('app.logPane.logSeverityClickOrDragTo', 'Log severity: click or drag to jump')}
                 >
                     {buckets.map((level, i) => (
                         <i

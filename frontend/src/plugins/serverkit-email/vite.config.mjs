@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// ServerKit runtime-ESM extension build (panel plan 25).
+// ServerKit runtime-ESM extension build.
 // Externalizes the host-shared libraries so the panel resolves them to its OWN
 // singletons via the import map — never bundle React (a second copy crashes
 // hooks). Emits one self-contained dist/index.mjs; the SCSS is compiled and

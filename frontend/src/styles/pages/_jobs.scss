@@ -1,4 +1,4 @@
-// Jobs page (plan 39) — host-idiom table-with-search, the /servers–/domains
+// Jobs page — host-idiom table-with-search, the /servers–/domains
 // pattern. Most weight is carried by shared primitives: .sk-dtable (DataTable),
 // .sk-kpiband (KpiBand), .sk-seg (SegControl) and the global .search-box. This
 // file only lays out the page shell, the command bar, the scheduled-jobs
@@ -33,8 +33,7 @@
 
 .sk-jobs__owner {
     color: $text-tertiary;
-    font-family: $font-mono;
-    font-size: $font-size-xs;
+    font-size: $text-xs;
 }
 
 .sk-jobs__when {
@@ -43,8 +42,8 @@
 }
 
 .sk-jobs__error {
-    margin-top: 3px;
-    font-size: $font-size-xs;
+    margin-top: $space-1;
+    font-size: $text-xs;
     color: $danger;
     max-width: 320px;
     overflow: hidden;

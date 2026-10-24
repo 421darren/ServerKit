@@ -4,10 +4,11 @@ from app.services.workspace_service import WorkspaceService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 # The workspace guards now live in middleware/rbac.py so any resource blueprint
-# can reuse them (plan 19 Decision 2). Re-exported here for existing callers.
+# can reuse them. Re-exported here for existing callers.
 from app.middleware.rbac import (
     admin_required, get_current_user, require_workspace_access, require_workspace_role,
 )
+from app.api._request import json_object
 
 workspaces_bp = Blueprint('workspaces', __name__)
 
@@ -54,7 +55,7 @@ def get_workspace(workspace_id):
 @admin_required
 def create_workspace():
     user = get_current_user()
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Request body required'}), 400
     try:
@@ -77,7 +78,7 @@ def update_workspace(workspace_id):
     if role not in ['owner', 'admin'] and not user.is_admin:
         return jsonify({'error': 'Insufficient permissions'}), 403
 
-    data = request.get_json()
+    data = json_object()
     ws = WorkspaceService.update_workspace(workspace_id, data)
     if not ws:
         return jsonify({'error': 'Workspace not found'}), 404
@@ -145,7 +146,7 @@ def add_member(workspace_id):
     if role not in ['owner', 'admin'] and not user.is_admin:
         return jsonify({'error': 'Insufficient permissions'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     user_id = data.get('user_id')
     if not user_id:
         return jsonify({'error': 'user_id required'}), 400
@@ -167,7 +168,7 @@ def update_member_role(member_id):
     denied = require_workspace_role(member.workspace_id, user, ['owner', 'admin'])
     if denied:
         return denied
-    data = request.get_json() or {}
+    data = json_object()
     role = data.get('role')
     if not role:
         return jsonify({'error': 'role required'}), 400
@@ -216,7 +217,7 @@ def create_api_key(workspace_id):
     denied = require_workspace_role(workspace_id, user, ['owner', 'admin'])
     if denied:
         return denied
-    data = request.get_json() or {}
+    data = json_object()
     name = data.get('name')
     if not name:
         return jsonify({'error': 'name required'}), 400

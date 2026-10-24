@@ -5,7 +5,6 @@ import json
 import psutil
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.error_reporting import unexpected_response
 from app.exceptions import ValidationError
 from app.models import User
 from app.middleware.rbac import admin_required, get_current_user, viewer_required
@@ -17,6 +16,7 @@ from app.services.site_domain_service import SiteDomainService
 from app.utils.domain import is_valid_canonical_domain
 from app.utils.version import get_panel_version, get_install_dir
 from app.middleware.rbac import require_admin_user
+from app.api._request import json_object
 
 # Cache for update check (to avoid hitting GitHub API too often)
 _update_cache = {
@@ -116,10 +116,7 @@ def get_panel_update_status():
     log file (see panel_update_service).
     """
     from app.services import panel_update_service as svc
-    try:
-        return jsonify(svc.get_status()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(svc.get_status()), 200
 
 
 @system_bp.route('/update', methods=['POST'])
@@ -129,7 +126,7 @@ def start_panel_update():
 
     Body must carry ``{"confirm": true}`` — this restarts the panel backend.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         raise ValidationError('Confirmation required: pass {"confirm": true}.')
 
@@ -198,10 +195,7 @@ def get_storage_overview():
     bound ServerKit's own share. Reads only."""
     from app.services import storage_overview_service
 
-    try:
-        return jsonify(storage_overview_service.overview()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(storage_overview_service.overview()), 200
 
 
 @system_bp.route('/disk/reclaim/report', methods=['GET'])
@@ -210,10 +204,7 @@ def get_disk_reclaim_report():
     """Measure every safe reclaim candidate. Reads only — deletes nothing."""
     from app.services import disk_reclaim_service as svc
 
-    try:
-        return jsonify(svc.scan()), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    return jsonify(svc.scan()), 200
 
 
 @system_bp.route('/disk/reclaim', methods=['POST'])
@@ -226,7 +217,7 @@ def reclaim_disk_space():
     ``?wait=false`` enqueues the work as a background job instead of running
     it inline — reclaims can take minutes when Docker or a VACUUM is involved.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if data.get('confirm') is not True:
         raise ValidationError('Confirmation required: pass {"confirm": true}.')
     keys = data.get('keys')
@@ -237,34 +228,28 @@ def reclaim_disk_space():
     user = get_current_user()
     from app.services import disk_reclaim_service as svc
 
-    try:
-        keys, error = svc.validate_reclaim_keys(keys)
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    keys, error = svc.validate_reclaim_keys(keys)
     if error:
         raise ValidationError(error)
 
-    try:
-        wait = request.args.get('wait', 'true').lower() != 'false'
-        if not wait:
-            from app.jobs.service import JobService
-            job = JobService.enqueue(
-                svc.DISK_RECLAIM_JOB_KIND,
-                payload={'keys': keys},
-                max_attempts=1,
-                owner_type='system',
-                owner_id='disk',
-            )
-            _audit('disk.reclaim', user.id, target_type='job',
-                   target_id=str(job.id), details={'keys': keys, 'queued': True})
-            return jsonify({'job_id': job.id, 'kind': svc.DISK_RECLAIM_JOB_KIND}), 202
+    wait = request.args.get('wait', 'true').lower() != 'false'
+    if not wait:
+        from app.jobs.service import JobService
+        job = JobService.enqueue(
+            svc.DISK_RECLAIM_JOB_KIND,
+            payload={'keys': keys},
+            max_attempts=1,
+            owner_type='system',
+            owner_id='disk',
+        )
+        _audit('disk.reclaim', user.id, target_type='job',
+               target_id=str(job.id), details={'keys': keys, 'queued': True})
+        return jsonify({'job_id': job.id, 'kind': svc.DISK_RECLAIM_JOB_KIND}), 202
 
-        result = svc.reclaim(keys)
-        _audit('disk.reclaim', user.id, target_type='host', target_id='disk',
-               details={'keys': keys, 'freed_bytes': result.get('freed_bytes')})
-        return jsonify(result), 200
-    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
-        return unexpected_response(exc)
+    result = svc.reclaim(keys)
+    _audit('disk.reclaim', user.id, target_type='host', target_id='disk',
+           details={'keys': keys, 'freed_bytes': result.get('freed_bytes')})
+    return jsonify(result), 200
 
 
 def _audit(action, user_id, target_type=None, target_id=None, details=None):
@@ -287,28 +272,41 @@ def get_network_metrics():
 
 @system_bp.route('/health', methods=['GET'])
 def health_check():
-    """Health check endpoint - no auth required"""
-    from app.utils.crypto import is_encryption_configured
-    from app.services.settings_service import SettingsService
-    from app.utils.domain import canonical_origin
+    """Liveness + readiness, no auth required.
 
-    canonical_domain = SettingsService.get('canonical_domain', '') or ''
-    https_enabled = bool(SettingsService.get('canonical_https_enabled', False))
+    Answers 503 when the database does not respond, so container healthchecks
+    and the installer stop treating a panel that cannot serve as healthy.
+    The domain and encryption details are for signed-in callers only: they
+    describe the deployment to anyone who asks.
+    """
+    from flask_jwt_extended import verify_jwt_in_request
 
-    # Staging instances (plan 37 testbed) run with SERVERKIT_STAGING set. Echo
-    # it here so the verify step can prove WHICH instance answered and the UI
-    # can show its STAGING banner.
-    staging = env_bool('SERVERKIT_STAGING')
+    # Staging instances run with SERVERKIT_STAGING set. Echo it here so the
+    # verify step can prove WHICH instance answered and the UI can show its
+    # STAGING banner.
+    body = {'service': 'serverkit-api', 'staging': env_bool('SERVERKIT_STAGING')}
+    if not SystemService.database_reachable():
+        current_app.logger.error('Health check: database unreachable')
+        return jsonify({**body, 'status': 'unhealthy', 'database': 'unreachable'}), 503
 
-    return jsonify({
-        'status': 'healthy',
-        'service': 'serverkit-api',
-        'encryption_configured': is_encryption_configured(),
-        'canonical_domain': canonical_domain,
-        'canonical_https_enabled': https_enabled,
-        'canonical_origin': canonical_origin(canonical_domain, https_enabled) if canonical_domain else None,
-        'staging': staging,
-    }), 200
+    try:
+        signed_in = verify_jwt_in_request(optional=True) is not None and get_jwt_identity() is not None
+    except Exception:  # an expired or revoked token is just an anonymous probe
+        signed_in = False
+    if signed_in:
+        from app.utils.crypto import is_encryption_configured
+        from app.services.settings_service import SettingsService
+        from app.utils.domain import canonical_origin
+        canonical_domain = SettingsService.get('canonical_domain', '') or ''
+        https_enabled = bool(SettingsService.get('canonical_https_enabled', False))
+        body.update({
+            'encryption_configured': is_encryption_configured(),
+            'canonical_domain': canonical_domain,
+            'canonical_https_enabled': https_enabled,
+            'canonical_origin': (canonical_origin(canonical_domain, https_enabled)
+                                 if canonical_domain else None),
+        })
+    return jsonify({**body, 'status': 'healthy'}), 200
 
 
 @system_bp.route('/notices', methods=['GET'])
@@ -457,7 +455,7 @@ def set_capacity_profile():
     """Record an operator's profile change made after install."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     profile = data.get('profile')
 
     try:
@@ -491,7 +489,7 @@ def set_timezone():
     """Set server timezone (admin only)."""
     require_admin_user()
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'timezone' not in data:
         return jsonify({'error': 'Timezone is required'}), 400
 
@@ -503,56 +501,3 @@ def set_timezone():
         return jsonify(result), 400
 
 
-@system_bp.route('/processes', methods=['GET'])
-@jwt_required()
-def get_processes():
-    require_admin_user()
-
-    processes = []
-    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'status']):
-        try:
-            pinfo = proc.info
-            if pinfo['cpu_percent'] > 0 or pinfo['memory_percent'] > 0.1:
-                processes.append({
-                    'pid': pinfo['pid'],
-                    'name': pinfo['name'],
-                    'cpu_percent': pinfo['cpu_percent'],
-                    'memory_percent': round(pinfo['memory_percent'], 2),
-                    'status': pinfo['status']
-                })
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
-
-    # Sort by CPU usage
-    processes.sort(key=lambda x: x['cpu_percent'], reverse=True)
-
-    return jsonify({
-        'processes': processes[:50]  # Top 50 processes
-    }), 200
-
-
-@system_bp.route('/services', methods=['GET'])
-@jwt_required()
-def get_services():
-    require_admin_user()
-
-    # Common services to check
-    service_names = ['nginx', 'mysql', 'postgresql', 'redis', 'docker', 'php-fpm']
-    services = []
-
-    for name in service_names:
-        running = False
-        for proc in psutil.process_iter(['name']):
-            try:
-                if name.lower() in proc.info['name'].lower():
-                    running = True
-                    break
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-
-        services.append({
-            'name': name,
-            'status': 'running' if running else 'stopped'
-        })
-
-    return jsonify({'services': services}), 200

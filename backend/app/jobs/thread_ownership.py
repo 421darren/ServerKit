@@ -18,7 +18,7 @@ LIFECYCLE_DURABLE_CANDIDATE = 'durable_candidate'
 
 THREAD_OWNERSHIP = {
     'app/utils/background_loop.py:start:self._run': {
-        'owner': 'BackgroundLoop helper (plan 77 E5)',
+        'owner': 'BackgroundLoop helper',
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': (
             'The ONE spawn site for Event-stopped process polling loops; '
@@ -69,7 +69,7 @@ THREAD_OWNERSHIP = {
         'lifecycle': LIFECYCLE_BOUNDED_DELIVERY,
         'rationale': 'Low-latency delivery attempt is owned and recoverable by its persisted command row.',
     },
-    'app/services/agent_fleet_service.py:upgrade_servers:dispatch_agent_command': {
+    'app/services/agent_fleet_service.py:upgrade_servers:self._dispatch_in_app': {
         'owner': 'agent fleet upgrade',
         'lifecycle': LIFECYCLE_BOUNDED_FANOUT,
         'rationale': 'Parallel delivery fan-out creates persisted agent command state.',
@@ -118,6 +118,11 @@ THREAD_OWNERSHIP = {
         'owner': 'log stream session',
         'lifecycle': LIFECYCLE_REQUEST_STREAM,
         'rationale': 'Tail lifetime is coupled to a caller-provided stop event.',
+    },
+    'app/services/log_service.py:tail_log:_stop_when_asked': {
+        'owner': 'log stream session',
+        'lifecycle': LIFECYCLE_REQUEST_STREAM,
+        'rationale': 'Waits on the stream stop event and kills tail, which a blocked read cannot notice.',
     },
     'app/services/metrics_history_service.py:start_collection:collection_loop': {
         'owner': 'metrics history collector',

@@ -157,7 +157,7 @@ def _collect_job_failures():
 
 
 def _collect_restore_confidence():
-    """Per-policy restore-proof summary (plan 23): last run + verify level, last
+    """Per-policy restore-proof summary: last run + verify level, last
     drill age/status, cadence, offsite evidence level. Counts and states only —
     no paths, no secrets, matching the bundle's scrub discipline."""
     from datetime import datetime

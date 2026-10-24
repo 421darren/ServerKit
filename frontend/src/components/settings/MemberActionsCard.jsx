@@ -3,7 +3,7 @@ import api from '../../services/api';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
-// Admin control for the member-action escape hatch (plan 19 Phase 5 / plan 29 #13).
+// Admin control for the member-action escape hatch.
 // Curated, parameterized actions a workspace member may run for an app they can
 // reach (no free text ever reaches a shell; every run is audit-logged). On by
 // default — this surface just makes the flag visible so an operator can turn the
@@ -46,9 +46,9 @@ const MemberActionsCard = () => {
 
     return (
         <div className="settings-card">
-            <h3>{t('app.memberActionsCard.memberActions', 'Member Actions')}</h3>
+            <h3>{t('app.memberActionsCard.memberActions', 'Member actions')}</h3>
             <p className="form-help form-help--flush">
-                {t('app.memberActionsCard.letWorkspaceMembersRunASmall', 'Let workspace members run a small set of curated, parameterized actions (like adjusting an app\'s backup frequency) for apps they can reach. Every action is validated against a fixed schema and audit-logged — no free text ever reaches the server shell. Turn this off to disable the whole member-action surface.')}
+                {t('app.memberActionsCard.letWorkspaceMembersRunASmall', "Let workspace members run a small set of curated, parameterized actions (like adjusting a service's backup frequency) for services they can reach. Every action is validated against a fixed schema and audit-logged, so no free text ever reaches the server shell. Turn this off to disable the whole member-action surface.")}
             </p>
 
             <div className="form-group">
@@ -64,7 +64,7 @@ const MemberActionsCard = () => {
 
             <div className="form-actions">
                 <Button variant="default" onClick={handleSave} disabled={saving}>
-                    {saving ? 'Saving…' : 'Save'}
+                    {saving ? t('common.saving', 'Saving…') : t('common.actions.save', 'Save')}
                 </Button>
                 {message && (
                     <span className={`timezone-message timezone-message--inline ${message.type}`}>

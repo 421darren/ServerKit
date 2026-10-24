@@ -1,4 +1,4 @@
-"""BackgroundLoop — the one shape for process-lifetime polling loops (plan 77 E5).
+"""BackgroundLoop — the one shape for process-lifetime polling loops.
 
 The 13 LIFECYCLE_PROCESS_LOOP threads each hand-rolled the same dance: a
 bool flag (or Event), a daemon Thread, a try/except around the tick (some

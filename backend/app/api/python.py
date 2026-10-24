@@ -1,12 +1,14 @@
-# Bucket: PER-APP (plan 29 #9). Per-app Python runtime routes gate on the shared
+# Bucket: PER-APP. Per-app Python runtime routes gate on the shared
 # app-access seam (can_access_app for reads, can_edit_app for mutations);
 # host-level interpreter management stays admin-only.
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.middleware.rbac import admin_required
 from app.models import User, Application
 from app.services.python_service import PythonService
 from app import db
+from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 python_bp = Blueprint('python', __name__)
 
@@ -21,13 +23,13 @@ def get_app_or_404(app_id, current_user_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return None, ({'error': 'Application not found'}, 404)
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return None, ({'error': 'Access denied'}, 403)
+        raise permission_denied()
 
     if app.app_type not in ['flask', 'django']:
-        return None, ({'error': 'Application is not a Python app'}, 400)
+        return None, ({'error': 'This service is not a Python service'}, 400)
 
     return app, None
 
@@ -50,7 +52,7 @@ def get_versions():
 @admin_required
 def create_flask_app():
     """Create a new Flask application."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -101,7 +103,7 @@ def create_flask_app():
     return jsonify({
         'success': True,
         'app_id': app.id,
-        'message': 'Flask application created successfully'
+        'message': 'Flask service created'
     }), 201
 
 
@@ -109,7 +111,7 @@ def create_flask_app():
 @admin_required
 def create_django_app():
     """Create a new Django application."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -161,7 +163,7 @@ def create_django_app():
         'success': True,
         'app_id': app.id,
         'project_name': result.get('project_name'),
-        'message': 'Django application created successfully'
+        'message': 'Django service created'
     }), 201
 
 
@@ -201,7 +203,7 @@ def install_packages(app_id):
     if error:
         return jsonify(error[0]), error[1]
 
-    data = request.get_json()
+    data = json_object()
     packages = data.get('packages') if data else None
 
     result = PythonService.install_requirements(app.root_path, packages)
@@ -254,7 +256,7 @@ def set_env_vars(app_id):
     if error:
         return jsonify(error[0]), error[1]
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'env_vars' not in data:
         return jsonify({'error': 'env_vars is required'}), 400
 
@@ -363,7 +365,7 @@ def update_gunicorn_config(app_id):
     if error:
         return jsonify(error[0]), error[1]
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'content' not in data:
         return jsonify({'error': 'content is required'}), 400
 
@@ -395,7 +397,7 @@ def collect_static(app_id):
         return jsonify(error[0]), error[1]
 
     if app.app_type != 'django':
-        return jsonify({'error': 'Only supported for Django apps'}), 400
+        return jsonify({'error': 'This only works for Django services'}), 400
 
     result = PythonService.collect_static(app.root_path, app.app_type)
     return jsonify(result), 200 if result['success'] else 400
@@ -411,7 +413,7 @@ def run_command(app_id):
     if error:
         return jsonify(error[0]), error[1]
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'command' not in data:
         return jsonify({'error': 'command is required'}), 400
 
@@ -435,7 +437,7 @@ def delete_app(app_id):
     if error:
         return jsonify(error[0]), error[1]
 
-    data = request.get_json() or {}
+    data = json_object()
     remove_files = data.get('remove_files', False)
 
     result = PythonService.delete_app(app.name, app.root_path, remove_files)

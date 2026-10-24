@@ -46,7 +46,7 @@ class DbAdminSsoService:
     # ── choke-point: ALL docker interaction goes through here (tests stub it) ──
     @classmethod
     def _docker(cls, args, timeout=60):
-        """Run ``docker <args>`` — via DockerService.run (§G3).
+        """Run ``docker <args>`` — via DockerService.run.
 
         The named seam stays because this service's tests stub it; the wrapper
         body does not.
@@ -132,9 +132,9 @@ class DbAdminSsoService:
 
         driver = _ADMINER_DRIVERS.get(managed.engine)
         if not driver:
-            return {'error': 'unsupported engine'}
+            return {'error': 'unsupported engine', 'code': 'unsupported_engine'}
         if not cls._docker_available():
-            return {'error': 'Docker required'}
+            return {'error': 'Docker required', 'code': 'docker_required'}
 
         expires_at = datetime.utcnow() + timedelta(minutes=SHADOW_TTL_MINUTES)
         username = f'sk_sso_{secrets.token_hex(3)}'

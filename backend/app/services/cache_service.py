@@ -142,7 +142,7 @@ def cached(key_template, ttl=300):
 
 def ttl_cached(ttl, key_fn=None):
     """Cache a function's return through CacheService for ``ttl`` seconds
-    (plan 77 F2 — replaces hand-rolled module-level ``{'data':…,'timestamp':…}``
+    (replaces hand-rolled module-level ``{'data':…,'timestamp':…}``
     TTL dicts; Redis benefits apply automatically wherever configured).
 
     The cached value must be JSON-serializable (the Redis path serializes).

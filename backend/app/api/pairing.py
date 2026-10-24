@@ -25,6 +25,7 @@ from app.services.pairing_service import (
     AlreadyClaimedError,
     ExpiredEnrollmentError,
 )
+from app.api._request import json_object
 
 pairing_bp = Blueprint('pairing', __name__)
 
@@ -34,7 +35,7 @@ def _enrollment_creds():
     enrollment_id = request.headers.get('X-Enrollment-Id')
     enrollment_secret = request.headers.get('X-Enrollment-Secret')
     if not enrollment_id and request.is_json:
-        body = request.get_json(silent=True) or {}
+        body = json_object(optional=True)
         enrollment_id = body.get('enrollment_id')
         enrollment_secret = body.get('enrollment_secret')
     return enrollment_id, enrollment_secret
@@ -50,7 +51,7 @@ def _error_response(exc: PairingError):
 @pairing_bp.route('/enroll', methods=['POST'])
 @limiter.limit("10 per minute")
 def enroll():
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     pubkey = data.get('pubkey')
     passphrase = data.get('passphrase')
     machine_id = data.get('machine_id')
@@ -79,7 +80,7 @@ def enroll():
 @limiter.limit("30 per minute")
 def code_refresh():
     enrollment_id, enrollment_secret = _enrollment_creds()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     force = bool(body.get('force', False))
     try:
         result = pairing_service.rotate_code(enrollment_id, enrollment_secret, force=force)
@@ -92,7 +93,7 @@ def code_refresh():
 @limiter.limit("30 per minute")
 def code_freeze():
     enrollment_id, enrollment_secret = _enrollment_creds()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     frozen = bool(body.get('frozen', True))
     try:
         result = pairing_service.set_freeze(enrollment_id, enrollment_secret, frozen=frozen)
@@ -120,7 +121,7 @@ def poll():
     # given enrollment, so read it once before the long-poll loop.
     signature = request.headers.get('X-Enrollment-Signature')
     if not signature and request.is_json:
-        signature = (request.get_json(silent=True) or {}).get('signature')
+        signature = json_object(optional=True).get('signature')
 
     deadline = time.time() + 25.0  # leave headroom under typical proxy timeouts
     poll_interval = 1.0
@@ -149,7 +150,7 @@ def poll():
 @limiter.limit("20 per minute")
 def lookup():
     """Pre-flight: confirm a code exists (without revealing details)."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     code = data.get('code', '')
     pending = pairing_service.find_by_code(code)
     if not pending:
@@ -167,7 +168,7 @@ def lookup():
 @limiter.limit("5 per 10 minute")
 def claim():
     user_id = int(get_jwt_identity())
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     code = data.get('code')
     passphrase = data.get('passphrase')
     name = data.get('name')
@@ -184,7 +185,7 @@ def claim():
             name=name,
             group_id=group_id,
             # Recorded for the pairing audit trail — the real operator IP once
-            # TRUST_PROXY_HEADERS is on (ProxyFix-corrected), not nginx's (plan 48).
+            # TRUST_PROXY_HEADERS is on (ProxyFix-corrected), not nginx's.
             ip_address=request.remote_addr,
         )
     except PairingError as exc:

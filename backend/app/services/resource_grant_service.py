@@ -57,12 +57,30 @@ class ResourceGrantService:
             return True
         return ResourceGrantService.grant_role(user.id, 'application', app.id) == 'editor'
 
+    @classmethod
+    def get_app_for(cls, user, app_id, *, write=False, conceal=False):
+        """The live application ``user`` may read (or edit, with ``write``).
+
+        A missing app is a 404. A denied caller gets a 403, or the same 404 as
+        a missing app when ``conceal`` is set, for surfaces that must not
+        reveal that the app exists.
+        """
+        from app.exceptions import not_found, permission_denied
+        from app.models.application import Application
+        app = Application.query_active().filter_by(id=app_id).first()
+        if app is None:
+            raise not_found('service')
+        allowed = cls.can_edit_app if write else cls.can_access_app
+        if user is None or not allowed(user, app):
+            raise not_found('service') if conceal else permission_denied()
+        return app
+
     @staticmethod
     def can_operate_app(user, app):
         """Operate (member+) access to an application. Folds every path to the
         app into one capability tier (see rbac.app_access_tier) and admits
         anyone at 'member' or above: owner, panel admin, an editor grant, or a
-        workspace member/admin/owner. The member-write seam (plan 19 Phase 4)."""
+        workspace member/admin/owner. The member-write seam."""
         from app.middleware.rbac import app_access_tier, _APP_ROLE_RANK
         tier = app_access_tier(user, app)
         return tier is not None and _APP_ROLE_RANK[tier] >= _APP_ROLE_RANK['member']

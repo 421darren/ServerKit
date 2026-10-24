@@ -15,6 +15,7 @@ import { useDeployments } from '../../hooks/useDeployments';
 import { getDeployStatus, formatRelativeTime, formatDuration } from '../../utils/serviceTypes';
 import EmptyState from '../EmptyState';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Deployment status → tone and env-var change action → tone both come from
 // the ONE shared status vocabulary (ds/status).
@@ -190,9 +191,9 @@ const EventsTab = ({ appId }) => {
             type: 'date',
             value: (event) => event.at || null,
             sortValue: (event) => event.ts,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             render: (event) => (
-                <span title={event.at ? new Date(event.at).toLocaleString() : ''}>
+                <span title={event.at ? formatDateTime(event.at) : ''}>
                     {formatRelativeTime(event.at)}
                 </span>
             ),
@@ -267,7 +268,7 @@ const EventsTab = ({ appId }) => {
             type: 'text',
             value: (event) => event.actor,
             sortValue: (event) => event.actor,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             render: (event) => event.actor,
         },
     ];
@@ -306,7 +307,7 @@ const EventsTab = ({ appId }) => {
         return (
             <EmptyState
                 icon={History}
-                title={t('app.eventsTab.failedToLoadActivity', 'Failed to load activity')}
+                title={t('app.eventsTab.failedToLoadActivity', "Couldn't load activity.")}
                 description={error}
                 action={<Button variant="outline" onClick={refresh}>{t('common.actions.retry', 'Retry')}</Button>}
             />
@@ -364,7 +365,6 @@ const EventsTab = ({ appId }) => {
                 // made only deploy entries expandable.
                 onRowClick={(event) => { if (event.kind === 'deploy') setDeployDetail(event); }}
                 rowClassName={(event) => (event.kind === 'deploy' ? '' : 'is-static')}
-                tableClassName="data-table"
                 emptyTitle="No activity matches your search."
                 emptyMessage=""
                 footer={(
@@ -388,7 +388,7 @@ const EventsTab = ({ appId }) => {
                 open={!!deployDetail}
                 onOpenChange={(open) => { if (!open) setDeployDetail(null); }}
                 title={deployDetail?.text || t('app.eventsTab.deployment', 'Deployment')}
-                subtitle={deployDetail?.at ? new Date(deployDetail.at).toLocaleString() : ''}
+                subtitle={deployDetail?.at ? formatDateTime(deployDetail.at) : ''}
             >
                 {deployDetail?.deploy && (
                     <>

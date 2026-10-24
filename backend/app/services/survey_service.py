@@ -1,4 +1,4 @@
-"""Server survey service — read-only "flights" over a paired agent (plan 27).
+"""Server survey service — read-only "flights" over a paired agent.
 
 Observe mode's heart is a *read-only survey*: the agent flies a declarative
 probe catalog against a paired Linux box and returns a structured payload; the

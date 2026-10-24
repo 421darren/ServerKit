@@ -215,7 +215,7 @@ class BackupPolicyService:
         keys: name, root_path, target_type, site (wp only), app, plus
         db_config (database) / file_paths (files) for the non-resource targets.
         """
-        # Checked first: extension-registered kinds (plan 52 D4 — e.g.
+        # Checked first: extension-registered kinds (e.g.
         # 'wordpress_site' while the WordPress extension is installed) own
         # their resolution. An unrecognised type must NEVER reach the
         # application fallthrough at the bottom (it would back up the wrong
@@ -262,7 +262,7 @@ class BackupPolicyService:
         if policy.target_type == 'files':
             meta = policy.get_target_meta()
             file_paths = list(meta.get('paths') or [])
-            # Appliance tier (plan 35): a manifest disk backs a named docker
+            # Appliance tier: a manifest disk backs a named docker
             # volume, so back up its live HOST mountpoint, not the in-container
             # path. Falls back to `paths` when the volume isn't resolvable yet.
             vol_mount = meta.get('volume_mount')
@@ -276,7 +276,7 @@ class BackupPolicyService:
                         file_paths = [host_path]
                 except Exception:
                     pass
-            # Unit disks live in a synthetic per-container docker volume (plan 35);
+            # Unit disks live in a synthetic per-container docker volume;
             # resolve its live mountpoint directly by name.
             docker_volume = meta.get('docker_volume')
             if docker_volume:
@@ -314,7 +314,7 @@ class BackupPolicyService:
         from app.models.application import Application
         app = Application.query_active().filter_by(id=policy.target_id).first()
         if not app:
-            raise BackupPolicyError('Application not found')
+            raise BackupPolicyError('Service not found')
         if not app.root_path:
             raise BackupPolicyError('Target path not found')
         return {
@@ -336,7 +336,7 @@ class BackupPolicyService:
         env['SERVERKIT_TARGET_PATH'] = target['root_path'] or ''
         try:
             # shell=True stays: this is an operator-authored hook, and running
-            # it through a shell is the documented contract (plan 75 anti-goal).
+            # it through a shell is the documented contract (anti-goal).
             result = run_checked(
                 hook, shell=True, cwd=target['root_path'] or None, env=env,
                 timeout=600,
@@ -942,7 +942,7 @@ class BackupPolicyService:
         }
 
     # ------------------------------------------------------------------ #
-    # Restore-proof view (plan 23 Phase 3) — the "last proven restore" badge
+    # Restore-proof view — the "last proven restore" badge
     # ------------------------------------------------------------------ #
 
     # A drilled policy reads as "stale" once its last successful drill is older

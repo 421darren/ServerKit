@@ -227,9 +227,8 @@ class SecretService:
     @classmethod
     def resolve_env_dict(cls, vault_id: int, prefix: str = '') -> Dict[str, str]:
         """Resolve vault secrets to an env-style dict (server-side use only)."""
-        secrets = Secret.query.filter_by(vault_id=vault_id).all()
         env = {}
-        for s in secrets:
+        for s in Secret.query.filter_by(vault_id=vault_id).all():
             if s.is_expired:
                 continue
             value = s.value

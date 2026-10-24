@@ -7,6 +7,7 @@ import { Cpu, MemoryStick, HardDrive, TrendingUp } from 'lucide-react';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { formatDate, formatTime } from '@/utils/intl';
 
 // Chart series colors — redesign "infra console" palette (see
 // docs/REDESIGN_MAP.md). Kept as hex (not CSS var()) on purpose: var() does not
@@ -79,11 +80,11 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
             const date = new Date(isoString);
             const tz = safeTimeZone(timezone);
             if (period === '1h' || period === '6h' || period === '24h') {
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: tz });
+                return formatTime(date, { parts: { hour: '2-digit', minute: '2-digit', timeZone: tz } });
             } else if (period === '7d') {
-                return date.toLocaleDateString([], { weekday: 'short', hour: '2-digit', timeZone: tz });
+                return formatDate(date, { parts: { weekday: 'short', hour: '2-digit', timeZone: tz } });
             } else {
-                return date.toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: tz });
+                return formatDate(date, { parts: { month: 'short', day: 'numeric', timeZone: tz } });
             }
         }
 
@@ -132,7 +133,7 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
     if (error) {
         return (
             <div className="metrics-graph-card error">
-                <span>{t('app.metricsGraph.failedToLoadMetricsHistory', 'Failed to load metrics history')}</span>
+                <span>{t('app.metricsGraph.failedToLoadMetricsHistory', "Couldn't load metrics history.")}</span>
             </div>
         );
     }
@@ -171,7 +172,7 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
                 <div className="metrics-graph-header">
                     <div className="graph-title">
                         <TrendingUp size={16} />
-                        <span>{t('app.metricsGraph.systemMetrics', 'System Metrics')}</span>
+                        <span>{t('app.metricsGraph.systemMetrics', 'System metrics')}</span>
                     </div>
                     <div className="period-selector">
                         {periods.map(p => (
@@ -195,7 +196,7 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
                                 </linearGradient>
                             </defs>
                             <XAxis dataKey="time" tick={false} axisLine={false} />
-                            <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                             <Tooltip content={<CustomTooltip />} />
                             <Area
                                 type="monotone"
@@ -230,7 +231,7 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
         <div className="metrics-graph-card">
             <div className="metrics-graph-header">
                 <div className="graph-title">
-                    <span>{t('app.metricsGraph.realTimePerformance', 'Real-time Performance')}</span>
+                    <span>{t('app.metricsGraph.realTimePerformance', 'Real-time performance')}</span>
                 </div>
                 <div className="metrics-filter-legend">
                     <SharedButton variant="unstyled" type="button"
@@ -288,14 +289,14 @@ const MetricsGraph = ({ compact = false, timezone, serverId }) => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#27272a" opacity={0.5} />
                         <XAxis
                             dataKey="time"
-                            tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                            tick={{ fontSize: 12, fill: '#a1a1aa' }}
                             axisLine={{ stroke: '#27272a' }}
                             tickLine={false}
                             interval="preserveStartEnd"
                         />
                         <YAxis
                             domain={yDomain}
-                            tick={{ fontSize: 11, fill: '#a1a1aa' }}
+                            tick={{ fontSize: 12, fill: '#a1a1aa' }}
                             axisLine={{ stroke: '#27272a' }}
                             tickLine={false}
                             tickFormatter={(value) => `${value}%`}

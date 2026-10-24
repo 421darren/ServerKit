@@ -1,13 +1,12 @@
 """Fail2ban management API — service status, jail overview, ban/unban, and
-one-click install, moved out of the host's security suite (plan 47 Ph3c /
-plan 55 Phase 3).
+one-click install, moved out of the host's security suite.
 
 The write-half seam stays core: the panel's ``Fail2banJailService`` owns the
 managed per-site jails AND the status/probe + unban primitives, so managed
 brute-force protection keeps working with this extension absent. This module
 delegates those three calls to core and carries only the management-surface
 code (install, manual ban, cross-jail ban listing). Host-level fail2ban
-surfaces stay admin-only (plan 29 #9 bucket).
+surfaces stay admin-only.
 """
 import ipaddress
 import re

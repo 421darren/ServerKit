@@ -1,4 +1,4 @@
-"""A/B slot deploys for apps (plan 87 §B).
+"""A/B slot deploys for apps.
 
 The panel's own updater builds the new version into the idle slot while the
 live one serves, flips a symlink, health-checks, and flips back if the check
@@ -6,7 +6,7 @@ fails. This is the same idea for the apps ServerKit runs:
 
 1. the new release boots in the IDLE slot, on its own loopback port, while
    the live slot keeps serving;
-2. it must pass the health gate there (§A3) — a release that never becomes
+2. it must pass the health gate there — a release that never becomes
    healthy is torn down and the site never noticed;
 3. the switch is ``app.port = <idle slot port>`` + ``write_app_vhost`` (which
    runs ``nginx -t`` and restores the old vhost on failure) — so every reader
@@ -296,7 +296,7 @@ class SlotDeployService:
             return {'success': True, 'slots': cls.status(app)}
         if deploy_settings.get(app, 'compose_data_split'):
             return {'success': False,
-                    'error': 'This app\'s stateful services live in a shared data project now; '
+                    'error': 'This service\'s stateful containers live in a shared data project now; '
                              'it keeps deploying through slots.'}
         # Opting out keeps the slots until the next deploy, which goes back to
         # the in-place path and folds them away (release_slots).
@@ -315,7 +315,7 @@ class SlotDeployService:
         """
         from app.services.deployment_service import DeploymentService
         if not app.slot_deploys_enabled or app.active_slot not in SLOTS:
-            return {'success': False, 'error': 'Slot deploys are not on for this app.'}
+            return {'success': False, 'error': 'Slot deploys are not on for this service.'}
         standby = AppSlot.query.filter_by(application_id=app.id,
                                           slot=other(app.active_slot)).first()
         if (standby is None or standby.state not in ('standby', 'stopped')
@@ -388,7 +388,7 @@ class SlotDeployService:
         reuse = (idle.image_ref == image and idle.state in ('standby', 'stopped')
                  and idle.container_name and DockerService.get_container(idle.container_name))
 
-        # ---- snapshot + release (§D): once, before the switch, old slot live
+        # ---- snapshot + release: once, before the switch, old slot live
         from app.services import release_phase_service as release
         stage('Snapshot')
         release.snapshot_databases(app, deployment, log)
@@ -500,7 +500,7 @@ class SlotDeployService:
         return None
 
     # ------------------------------------------------------------------ #
-    # Deploy (compose, §C)
+    # Deploy (compose)
     # ------------------------------------------------------------------ #
     @classmethod
     def deploy_compose(cls, app, deployment, log=None, stage=None, reuse_standby=False) -> Dict:
@@ -643,7 +643,7 @@ class SlotDeployService:
         return cls.deploy_compose(app, rollback_deployment, log=log)
 
     # ------------------------------------------------------------------ #
-    # The one-time data split (§C)
+    # The one-time data split
     # ------------------------------------------------------------------ #
     @classmethod
     def compose_split_preview(cls, app) -> Dict:

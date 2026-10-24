@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import useSettingFocus from '../../hooks/useSettingFocus';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '@/utils/intl';
 
 const ProfileTab = () => {
     const { t } = useTranslation();
@@ -44,8 +45,7 @@ const ProfileTab = () => {
     return (
         <div className="settings-section">
             <div className="section-header">
-                <h2>{t('app.profileTab.profileSettings', 'Profile Settings')}</h2>
-                <p>{t('app.profileTab.updateYourPersonalInformation', 'Update your personal information')}</p>
+                <h2>{t('app.profileTab.profileSettings', 'Profile settings')}</h2>
             </div>
 
             {message && (
@@ -66,7 +66,7 @@ const ProfileTab = () => {
                 </div>
 
                 <div className="form-group">
-                    <Label htmlFor="profile-email">{t('app.profileTab.emailAddress', 'Email Address')}</Label>
+                    <Label htmlFor="profile-email">{t('app.profileTab.emailAddress', 'Email address')}</Label>
                     <Input
                         id="profile-email" type="email"
                         value={formData.email}
@@ -82,17 +82,17 @@ const ProfileTab = () => {
                 </div>
 
                 <div className="form-group">
-                    <Label htmlFor="profile-member-since">{t('app.profileTab.memberSince', 'Member Since')}</Label>
+                    <Label htmlFor="profile-member-since">{t('app.profileTab.memberSince', 'Member since')}</Label>
                     <Input
                         id="profile-member-since" type="text"
-                        value={user?.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                        value={user?.created_at ? formatDate(user.created_at) : '-'}
                         readOnly
                     />
                 </div>
 
                 <div className="form-actions">
                     <Button type="submit" variant="default" disabled={loading}>
-                        {loading ? 'Saving...' : 'Save Changes'}
+                        {loading ? t('common.saving', 'Saving…') : t('app.profileTab.saveChanges', 'Save changes')}
                     </Button>
                 </div>
             </form>

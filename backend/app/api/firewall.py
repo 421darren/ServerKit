@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from ..middleware.rbac import admin_required, viewer_required
 from ..services.firewall_service import FirewallService
 from ..services.metadata_guard_service import MetadataGuardService, SETTING_KEY
+from app.api._request import json_object
 
 firewall_bp = Blueprint('firewall', __name__)
 
@@ -40,7 +41,7 @@ def enable_firewall():
     so this is the only thing standing between a click and a locked-out box.
     Resend with force=true to override.
     """
-    data = request.get_json() or {}
+    data = json_object()
     firewall = data.get('firewall')
     force = bool(data.get('force'))
 
@@ -58,7 +59,7 @@ def enable_firewall():
 @admin_required
 def disable_firewall():
     """Disable the firewall."""
-    data = request.get_json() or {}
+    data = json_object()
     firewall = data.get('firewall')
 
     result = FirewallService.disable(firewall)
@@ -84,7 +85,7 @@ def get_rules():
 @admin_required
 def add_rule():
     """Add a firewall rule."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -107,7 +108,7 @@ def add_rule():
 @viewer_required
 def rule_removal_preflight():
     """Would removing this rule cut off SSH? Lets the UI warn before the click."""
-    data = request.get_json() or {}
+    data = json_object()
     rule_type = data.get('type')
     kwargs = {k: v for k, v in data.items() if k not in ('type', 'force')}
     return jsonify(FirewallService.check_ssh_rule_removal(rule_type, **kwargs)), 200
@@ -122,7 +123,7 @@ def remove_rule():
     that is currently enforcing — deleting it would close the caller's own
     session. Resend with force=true to override.
     """
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -147,7 +148,7 @@ def remove_rule():
 @admin_required
 def block_ip():
     """Quick block an IP address."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -177,7 +178,7 @@ def block_ip():
 @admin_required
 def unblock_ip():
     """Unblock an IP address."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -210,7 +211,7 @@ def get_blocked_ips():
 @admin_required
 def allow_port():
     """Allow a port through the firewall."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -233,7 +234,7 @@ def allow_port():
 @admin_required
 def deny_port():
     """Remove a port from the firewall."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -272,7 +273,7 @@ def get_zones():
 @admin_required
 def set_default_zone():
     """Set default firewalld zone."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'success': False, 'error': 'Request body required'}), 400
@@ -301,7 +302,7 @@ def get_metadata_guard():
 @admin_required
 def set_metadata_guard():
     """Enable or disable the cloud metadata egress guard."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'enabled' not in data:
         return jsonify({'error': "Request body with 'enabled' required"}), 400
@@ -323,7 +324,7 @@ def set_metadata_guard():
 @admin_required
 def install_firewall():
     """Install a firewall (ufw or firewalld)."""
-    data = request.get_json() or {}
+    data = json_object()
     firewall = data.get('firewall', 'ufw')
 
     result = FirewallService.install_firewall(firewall)

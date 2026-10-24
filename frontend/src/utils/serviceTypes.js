@@ -1,10 +1,12 @@
+import { formatDuration as formatDurationIntl } from '@/utils/intl';
+
 // Categorical palette: literal hex on purpose (consumed as inline styles in
 // JS). Values follow the redesign palette in styles/_theme-variables.scss —
 // green #3ddc97 / red #fb6f6f / amber #f5b945 / accent #6d7cff /
 // cyan #49c7f0 / violet #b07bf5, neutral gray #646b7a.
 const SERVICE_TYPES = {
     // Tab order note: ops/waf/build/deploy were merged in from the retired
-    // ApplicationDetail page (§1 feature unification), then relocated into the
+    // ApplicationDetail page, then relocated into the
     // Settings sub-nav to declutter the top strip — Container Ops + Git & Deploy
     // + Build live under Settings, WAF under Settings → Security. Type-gating of
     // those sections is handled in SettingsTab (ops = Docker only; waf = Docker +
@@ -70,14 +72,16 @@ const STATUS_CONFIG = {
 const DEPLOY_STATUS = {
     success: { labelKey: 'app.serviceTypes.live', label: 'Live', color: '#3ddc97' },
     failed: { labelKey: 'common.state.failed', label: 'Failed', color: '#fb6f6f' },
-    in_progress: { labelKey: 'app.serviceTypes.inProgress', label: 'In Progress', color: '#f5b945' },
-    rolled_back: { labelKey: 'app.serviceTypes.rolledBack', label: 'Rolled Back', color: '#646b7a' },
+    in_progress: { labelKey: 'app.serviceTypes.inProgress', label: 'In progress', color: '#f5b945' },
+    rolled_back: { labelKey: 'app.serviceTypes.rolledBack', label: 'Rolled back', color: '#646b7a' },
     pending: { labelKey: 'app.serviceTypes.pending', label: 'Pending', color: '#49c7f0' },
 };
 
 export function getServiceType(appType) {
     return SERVICE_TYPES[appType] || {
-        label: appType?.charAt(0).toUpperCase() + appType?.slice(1) || 'Unknown',
+        ...(appType
+            ? { label: appType.charAt(0).toUpperCase() + appType.slice(1) }
+            : { labelKey: 'app.serviceTypes.unknown', label: 'Unknown' }),
         color: '#646b7a',
         bgColor: 'rgba(100, 107, 122, 0.1)',
         borderColor: 'rgba(100, 107, 122, 0.2)',
@@ -111,12 +115,9 @@ export function isDockerApp(appType) {
 // from this module keep working.
 export { formatRelativeTime } from '@/utils/time';
 
+// A deploy with no recorded duration (or 0) shows '-'.
 export function formatDuration(seconds) {
-    if (!seconds || seconds < 0) return '-';
-    if (seconds < 60) return `${Math.round(seconds)}s`;
-    const min = Math.floor(seconds / 60);
-    const sec = Math.round(seconds % 60);
-    return `${min}m ${sec}s`;
+    return seconds ? formatDurationIntl(seconds) : '-';
 }
 
 export { SERVICE_TYPES, STATUS_CONFIG, DEPLOY_STATUS };

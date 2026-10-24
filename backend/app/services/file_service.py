@@ -33,6 +33,23 @@ from app.exceptions import (
 from app.utils.formatting import format_bytes
 
 
+def _install_roots(install_dir: str) -> List[str]:
+    """*install_dir* plus its blue/green sibling when it is an update slot.
+
+    Updates install into the idle slot (``/opt/serverkit-a`` / ``-b``) and
+    flip the ``/opt/serverkit`` symlink, so the previous version — with its
+    own ``.env`` and JWT key — stays on disk next to the running one.
+    Protecting only the running slot leaves that copy readable.
+    """
+    roots = [install_dir]
+    parent, name = os.path.split(install_dir)
+    if name.endswith(('-a', '-b')):
+        base = name[:-2]
+        roots += [os.path.join(parent, f'{base}-{s}') for s in ('a', 'b')
+                  if f'{base}-{s}' != name]
+    return roots
+
+
 class FileService:
     """Service for file system operations."""
 
@@ -69,7 +86,7 @@ class FileService:
         os.path.join(os.path.dirname(__file__), '..', '..'))
     _INSTALL_DIR = os.path.realpath(os.path.join(_BACKEND_DIR, '..'))
     PROTECTED_ROOTS = [
-        _INSTALL_DIR,
+        *_install_roots(_INSTALL_DIR),
         _BACKEND_DIR,  # covers flat layouts (e.g. code at /app, install=/ inert)
         os.path.realpath(paths.SERVERKIT_CONFIG_DIR),
     ]

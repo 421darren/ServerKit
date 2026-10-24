@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services import saved_view_service
+from app.api._request import json_object
 
 views_bp = Blueprint('views', __name__)
 
@@ -19,7 +20,7 @@ def list_views():
 @views_bp.route('', methods=['POST'])
 @jwt_required()
 def create_view():
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     view = saved_view_service.create_view(
         get_jwt_identity(),
         body.get('page'),
@@ -33,7 +34,7 @@ def create_view():
 @views_bp.route('/<int:view_id>', methods=['PUT'])
 @jwt_required()
 def update_view(view_id):
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     view = saved_view_service.update_view(get_jwt_identity(), view_id, body)
     return jsonify(view)
 

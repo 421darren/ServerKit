@@ -1,4 +1,4 @@
-// Bundled seed themes shipped with the panel (plan 60).
+// Bundled seed themes shipped with the panel.
 //
 // These are the always-present gallery entries — the "default" stock look plus
 // a handful of first-party skins — so the Theme Gallery has content on day one

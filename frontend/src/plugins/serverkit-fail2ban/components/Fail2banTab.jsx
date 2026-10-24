@@ -1,5 +1,4 @@
-// Fail2ban tab, moved verbatim from the host's Security page (plan 47 Ph3c /
-// plan 55 Phase 3). Host imports (@/components/ui/*, ds, ds/grid, hooks,
+// Fail2ban tab, moved verbatim from the host's Security page. Host imports (@/components/ui/*, ds, ds/grid, hooks,
 // contexts) now come through 'serverkit-sdk'; the API client is the
 // extension's own services/fail2ban.js. Styling stays in the panel core's
 // _security.scss — this bundle ships no styles of its own.

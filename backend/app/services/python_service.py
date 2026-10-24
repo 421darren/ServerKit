@@ -4,7 +4,7 @@ import json
 import secrets
 from pathlib import Path
 
-from app.utils.system import ServiceControl, run_checked
+from app.utils.system import ServiceControl, app_process_env, run_checked
 
 
 class PythonService:
@@ -73,7 +73,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             python_path = shutil.which(f'python{version}')
             if python_path:
                 try:
-                    result = run_checked([python_path, '--version'], timeout=None)
+                    result = run_checked([python_path, '--version'])
                     if result['success']:
                         full_version = result['output'].strip().replace('Python ', '')
                         versions.append({
@@ -99,7 +99,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
         python_path = shutil.which('python3')
         if python_path:
             try:
-                result = run_checked([python_path, '--version'], timeout=None)
+                result = run_checked([python_path, '--version'])
                 if result['success']:
                     return result['output'].strip().replace('Python ', '')
             except Exception:
@@ -176,7 +176,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             return []
 
         try:
-            result = run_checked([pip_path, 'list', '--format=json'], timeout=None)
+            result = run_checked([pip_path, 'list', '--format=json'])
             if result['success']:
                 return json.loads(result['output'])
             return []
@@ -193,7 +193,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
             return {'success': False, 'error': 'Virtual environment not found'}
 
         try:
-            result = run_checked([pip_path, 'freeze'], timeout=None)
+            result = run_checked([pip_path, 'freeze'])
             if result['success']:
                 req_file = os.path.join(app_path, 'requirements.txt')
                 with open(req_file, 'w') as f:
@@ -251,7 +251,7 @@ SECRET_KEY={secrets.token_hex(32)}
             return {
                 'success': True,
                 'app_path': app_path,
-                'message': 'Flask application created successfully'
+                'message': 'Flask service created'
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
@@ -336,7 +336,7 @@ application = get_wsgi_application()
                 'success': True,
                 'app_path': app_path,
                 'project_name': project_name,
-                'message': 'Django application created successfully'
+                'message': 'Django service created'
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
@@ -524,7 +524,7 @@ application = get_wsgi_application()
 
         try:
             # Prepare environment
-            env = os.environ.copy()
+            env = app_process_env()
             env['PATH'] = f"{os.path.join(venv_path, 'bin')}:{env.get('PATH', '')}"
             env['VIRTUAL_ENV'] = venv_path
 
@@ -557,7 +557,7 @@ application = get_wsgi_application()
         elif app_type == 'flask':
             # Flask-Migrate
             return PythonService.run_command(app_path, 'flask db upgrade')
-        return {'success': False, 'error': 'Unknown app type'}
+        return {'success': False, 'error': 'Unknown service type'}
 
     @staticmethod
     def collect_static(app_path, app_type='django'):

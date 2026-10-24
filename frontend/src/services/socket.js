@@ -69,7 +69,7 @@ class SocketService {
             this.emit('notification', data);
         });
 
-        // Deploy Console live push (plan 51): batched log lines + status
+        // Deploy Console live push: batched log lines + status
         // summaries for a deployment job. Accelerator over after_id polling.
         this.socket.on('deploy_log', (data) => {
             this.emit('deploy_log', data);

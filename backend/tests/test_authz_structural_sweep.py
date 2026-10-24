@@ -14,10 +14,9 @@ converter form) it enforces:
       (``admin_required`` / ``require_app_member``) or a gate CALL in its body.
 
 Gate calls are recognised robustly: the canonical family
-(``can_access_app`` / ``can_operate_app`` / ``can_edit_app`` / ``can_admin_app``
-and the WP ``_guard_app`` / ``_guard_sealed_app``), PLUS any *local* helper in the
-same file whose own body reaches one of those (env_vars' ``check_app_access``,
-previews' ``_get_app_or_404``, waf's ``_get_application_or_404`` …) or performs an
+(``require_app``, ``can_access_app`` / ``can_operate_app`` / ``can_edit_app`` /
+``can_admin_app`` and the WP ``_guard_app`` / ``_guard_sealed_app``), PLUS any
+*local* helper in the same file whose own body reaches one of those or performs an
 explicit admin check (``is_admin``). Auto-discovering wrappers means the sweep
 follows the code instead of a brittle hand-maintained name list.
 
@@ -68,6 +67,7 @@ def _route_files():
 # Canonical per-app gates + WP guards. A handler (or a helper it calls) that
 # references any of these is authorization-gated for the target app.
 CANONICAL_GATES = {
+    'require_app',  # app/api/_access.py: the shared per-app loader
     'can_access_app', 'can_operate_app', 'can_edit_app', 'can_admin_app',
     '_guard_app', '_guard_sealed_app',
 }
@@ -116,7 +116,7 @@ def _is_per_app(paths):
 def _discover_gate_helpers(source, tree):
     """Names of functions in this module that themselves reach a gate — either a
     canonical gate call or an explicit admin check. These are the file-local
-    wrappers (check_app_access, _get_app_or_404, _require_admin, …) that callers
+    wrappers (e.g. a file's ``_require_admin``) that callers
     delegate to; recognising them lets the sweep follow the code."""
     helpers = set()
     for node in ast.walk(tree):

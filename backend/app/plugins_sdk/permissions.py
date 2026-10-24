@@ -50,7 +50,7 @@ class PermissionDenied(PermissionError):
 
 
 # ---------------------------------------------------------------------------
-# Usage observation (plan 55 task 7)
+# Usage observation (task 7)
 #
 # In-memory and per-process on purpose: this answers "what has this extension
 # actually done since the panel started", which is a live-process question. It

@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy import func, and_
 
 from app import db
-from app.models.server import Server, ServerMetrics
+from app.models.server import ServerMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -249,66 +249,6 @@ class ServerMetricsService:
             'data': data,
             'coverage': cls.coverage(hours_back),
         }
-
-    @classmethod
-    def get_multi_server_comparison(cls, server_ids: List[str], metric: str = 'cpu',
-                                     period: str = '24h') -> Dict[str, Any]:
-        """Get metrics comparison across multiple servers.
-
-        Args:
-            server_ids: List of server UUIDs
-            metric: 'cpu', 'memory', 'disk', or 'network'
-            period: Time period
-
-        Returns:
-            Dict with comparison data for each server
-        """
-        hours_back = {
-            '1h': 1,
-            '6h': 6,
-            '24h': 24,
-            '7d': 24 * 7,
-        }.get(period, 24)
-
-        cutoff = datetime.utcnow() - timedelta(hours=hours_back)
-
-        result = {
-            'metric': metric,
-            'period': period,
-            'servers': {}
-        }
-
-        metric_column = {
-            'cpu': ServerMetrics.cpu_percent,
-            'memory': ServerMetrics.memory_percent,
-            'disk': ServerMetrics.disk_percent,
-        }.get(metric, ServerMetrics.cpu_percent)
-
-        for server_id in server_ids:
-            # Get server info
-            server = Server.query.get(server_id)
-            if not server:
-                continue
-
-            # Query metrics
-            records = ServerMetrics.query.filter(
-                ServerMetrics.server_id == server_id,
-                ServerMetrics.timestamp >= cutoff
-            ).order_by(ServerMetrics.timestamp.asc()).all()
-
-            # Calculate statistics
-            values = [getattr(r, metric_column.key) for r in records if getattr(r, metric_column.key) is not None]
-
-            result['servers'][server_id] = {
-                'name': server.name,
-                'current': values[-1] if values else None,
-                'avg': round(sum(values) / len(values), 1) if values else None,
-                'min': round(min(values), 1) if values else None,
-                'max': round(max(values), 1) if values else None,
-                'points': len(values)
-            }
-
-        return result
 
     @classmethod
     def cleanup_old_metrics(cls) -> Dict[str, int]:

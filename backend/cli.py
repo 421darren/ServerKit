@@ -41,6 +41,11 @@ def load_env():
 # Load env before any other imports that might use config
 _env_loaded = load_env()
 
+# A CLI command is a one-shot beside the running panel: it must not start a
+# second job consumer, scheduler and relay (the boot reconcile would mark the
+# panel's in-flight deploys failed). Queued work is run by the panel itself.
+os.environ.setdefault('SERVERKIT_SKIP_BACKGROUND', '1')
+
 from werkzeug.security import generate_password_hash
 from app import create_app, db
 from app.models import User

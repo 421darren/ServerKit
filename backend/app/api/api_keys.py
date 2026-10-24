@@ -1,12 +1,14 @@
 """API Key management endpoints."""
 from datetime import datetime
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.middleware.rbac import get_current_user
 from app.middleware.api_scope_middleware import SCOPES, require_scope
 from app.services.api_key_service import ApiKeyService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
+from app.exceptions import not_found
+from app.api._request import json_object
 
 api_keys_bp = Blueprint('api_keys', __name__)
 
@@ -39,7 +41,7 @@ def create_key():
     if not user or not user.is_developer:
         return jsonify({'error': 'Developer access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     name = data.get('name')
     if not name:
         return jsonify({'error': 'Name is required'}), 400
@@ -80,7 +82,7 @@ def get_key(key_id):
     """Get API key details."""
     user = get_current_user()
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
     api_key = ApiKeyService.get_key(key_id, user.id)
     if not api_key:
@@ -99,7 +101,7 @@ def update_key(key_id):
     if not user or not user.is_developer:
         return jsonify({'error': 'Developer access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     api_key = ApiKeyService.update_key(
         key_id=key_id,
         user_id=user.id,
@@ -119,7 +121,7 @@ def revoke_key(key_id):
     """Revoke an API key."""
     user = get_current_user()
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
     api_key = ApiKeyService.revoke_key(key_id, user.id)
     if not api_key:
@@ -142,7 +144,7 @@ def rotate_key(key_id):
     """Rotate an API key (revoke + recreate with same config)."""
     user = get_current_user()
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
     new_key, raw_key = ApiKeyService.rotate_key(key_id, user.id)
     if not new_key:

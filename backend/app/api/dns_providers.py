@@ -6,10 +6,11 @@ still be able to connect a DNS provider. They keep the historical
 /api/v1/email/dns-providers paths (the routes originally lived in the email
 API before the extraction) so existing frontends keep working.
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 
 from app.middleware.rbac import admin_required, viewer_required
 from app.services.dns_provider_service import DNSProviderService
+from app.api._request import json_object
 
 dns_providers_bp = Blueprint('dns_providers', __name__)
 
@@ -26,7 +27,7 @@ def list_dns_providers():
 @admin_required
 def add_dns_provider():
     """Add a DNS provider."""
-    data = request.get_json()
+    data = json_object()
     if not data or not data.get('name') or not data.get('provider') or not data.get('api_key'):
         return jsonify({'success': False, 'error': 'Name, provider, and api_key are required'}), 400
     result = DNSProviderService.add_provider(

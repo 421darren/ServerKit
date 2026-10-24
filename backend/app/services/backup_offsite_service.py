@@ -1,4 +1,4 @@
-"""Offsite verification hardening (plan 23 Phase 4).
+"""Offsite verification hardening.
 
 For remote-copy policies, prove the offsite object actually matches — not just
 "the upload call returned":
@@ -67,7 +67,7 @@ class BackupOffsiteService:
     def _destination_of(run):
         """A stable key for the destination a run's offsite copy lives in. Today
         every run shares one configured provider (one group), but the day a
-        second bucket/provider lands (plan 36) each destination samples on its
+        second bucket/provider lands each destination samples on its
         own — so a full backup is never left unproven because a different
         destination happened to win the single-sample lottery."""
         meta = run.get_metadata() or {}
@@ -85,8 +85,8 @@ class BackupOffsiteService:
 
     @classmethod
     def _sample_per_destination(cls, runs, seed):
-        """One deterministically sampled run per distinct destination (plan 30
-        #10 / Decision 7). A no-op vs the old one-run-total behaviour while
+        """One deterministically sampled run per distinct destination. A no-op
+        vs the old one-run-total behaviour while
         storage is single-provider; correct the day a second destination exists."""
         groups = {}
         for r in runs:

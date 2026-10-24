@@ -83,9 +83,16 @@ def _import_aliases(tree: ast.Module) -> dict[str, str]:
 
 
 def _is_controller(tree: ast.Module, aliases: dict[str, str]) -> bool:
+    """A module that creates a Blueprint or registers routes on one. The
+    second half matters: an area module that adds routes to a blueprint
+    imported from elsewhere would otherwise escape the scan entirely."""
     return any(
-        isinstance(node, ast.Call)
-        and _dotted_name(node.func, aliases) in {'Blueprint', 'flask.Blueprint'}
+        (isinstance(node, ast.Call)
+         and _dotted_name(node.func, aliases) in {'Blueprint', 'flask.Blueprint'})
+        or (isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(
+            isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute)
+            and dec.func.attr == 'route'
+            for dec in node.decorator_list))
         for node in ast.walk(tree)
     )
 

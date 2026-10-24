@@ -54,7 +54,7 @@ def _slot_app(name):
 
 
 def _slot_state(name, content):
-    """Which slot the captured vhost points at (plan 87).
+    """Which slot the captured vhost points at.
 
     A slot app's vhost proxies to the live slot's port; restoring the file
     without restoring the slot would point nginx at a standby that may be

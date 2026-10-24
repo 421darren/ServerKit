@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Copy, Check, AlertTriangle } from 'lucide-react';
+import { useState, useId } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import Modal from '../Modal';
 import ApiKeyScopesModal from '../api/ApiKeyScopesModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { copyToClipboard } from '@/utils/clipboard';
+import CopyField from '../CopyField';
 import { useTranslation } from 'react-i18next';
 
 const TIER_OPTIONS = [
@@ -16,12 +16,12 @@ const TIER_OPTIONS = [
 
 const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const [name, setName] = useState('');
     const [scopes, setScopes] = useState(['*']);
     const [tier, setTier] = useState('standard');
     const [expiresAt, setExpiresAt] = useState('');
     const [saving, setSaving] = useState(false);
-    const [copied, setCopied] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -39,28 +39,15 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
         }
     };
 
-    const copyKey = async () => {
-        if (createdKey && await copyToClipboard(createdKey)) {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-
     // Show created key view
     if (createdKey) {
         return (
-            <Modal open={true} onClose={onClose} title={t('app.apiKeyModal.apiKeyCreated', 'API Key Created')} className="api-key-modal">
+            <Modal open={true} onClose={onClose} title={t('app.apiKeyModal.apiKeyCreated', 'API key created')} className="api-key-modal">
                         <div className="api-key-modal__warning">
                             <AlertTriangle size={16} />
                             <span>{t('app.apiKeyModal.copyThisKeyNowItWill', 'Copy this key now. It will not be shown again.')}</span>
                         </div>
-                        <div className="api-key-modal__key-display">
-                            <code>{createdKey}</code>
-                            <Button variant="outline" size="sm" onClick={copyKey}>
-                                {copied ? <Check size={14} /> : <Copy size={14} />}
-                                {copied ? 'Copied' : 'Copy'}
-                            </Button>
-                        </div>
+                        <CopyField value={createdKey} label={t('app.apiKeyModal.apiKey', 'API key')} secret />
                     <div className="modal-footer">
                         <Button variant="default" onClick={onClose}>{t('common.actions.done', 'Done')}</Button>
                     </div>
@@ -69,12 +56,13 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
     }
 
     return (
-        <Modal open={true} onClose={onClose} title={t('app.apiKeyModal.createApiKey', 'Create API Key')} className="api-key-modal">
+        <Modal open={true} onClose={onClose} title={t('app.apiKeyModal.createApiKey', 'Create API key')} className="api-key-modal">
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body">
                         <div className="form-group">
-                            <Label>{t('common.labels.name', 'Name')}</Label>
+                            <Label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</Label>
                             <Input
+                                id={`${fieldId}-name`}
                                 type="text"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
@@ -106,8 +94,9 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
                         </div>
 
                         <div className="form-group">
-                            <Label>{t('app.apiKeyModal.expirationOptional', 'Expiration (optional)')}</Label>
+                            <Label htmlFor={`${fieldId}-expires`}>{t('app.apiKeyModal.expirationOptional', 'Expiration (optional)')}</Label>
                             <Input
+                                id={`${fieldId}-expires`}
                                 type="datetime-local"
                                 value={expiresAt}
                                 onChange={e => setExpiresAt(e.target.value)}
@@ -118,7 +107,7 @@ const ApiKeyModal = ({ onClose, onSubmit, createdKey }) => {
                     <div className="modal-footer">
                         <Button type="button" variant="outline" onClick={onClose}>{t('common.actions.cancel', 'Cancel')}</Button>
                         <Button type="submit" variant="default" disabled={saving || !name.trim()}>
-                            {saving ? 'Creating...' : 'Create Key'}
+                            {saving ? t('app.apiKeyModal.creating', 'Creating…') : t('app.apiKeyModal.createKey', 'Create key')}
                         </Button>
                     </div>
                 </form>

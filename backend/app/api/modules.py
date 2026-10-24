@@ -3,13 +3,14 @@
 Read is available to any authenticated user (the frontend needs it to hide nav
 and guard routes); flipping a toggle is admin-only.
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services import module_service
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 modules_bp = Blueprint('modules', __name__)
 
@@ -31,7 +32,7 @@ def set_module(name):
     if name not in module_service.MODULES:
         return jsonify({'error': f'Unknown module: {name}'}), 404
 
-    data = request.get_json() or {}
+    data = json_object()
     if 'enabled' not in data:
         return jsonify({'error': 'enabled (boolean) required'}), 400
 

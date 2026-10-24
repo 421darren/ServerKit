@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../contexts/useToast.js';
@@ -15,6 +15,8 @@ import { useWorkspace } from '../contexts/useWorkspace.js';
 import { useAuth } from '../contexts/useAuth.js';
 import { useServerMutation, useServerQuery } from '../hooks/useServerQuery';
 import { useTranslation } from 'react-i18next';
+import { toastError } from '@/utils/errorMessage';
+import { formatDate } from '@/utils/intl';
 
 // Preset views. `servers` and `users` are quota CEILINGS, not usage, so there
 // is no column to express "near capacity" against.
@@ -79,11 +81,12 @@ const formatSince = (iso) => {
     const d = new Date(iso);
     return Number.isNaN(d.getTime())
         ? null
-        : d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+        : formatDate(d, { parts: { month: 'short', year: 'numeric' } });
 };
 
 const Workspaces = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const navigate = useNavigate();
     const { activeWorkspaceId } = useWorkspace();
@@ -104,9 +107,10 @@ const Workspaces = () => {
     const {
         data: workspaces = [],
         isLoading: loading,
+        error: loadError,
+        refetch: refetchWorkspaces,
     } = useServerQuery(['workspaces'], loadWorkspaces, {
         staleTime: 30_000,
-        onError: () => toast.error(t('app.workspaces.failedToLoadWorkspaces', 'Failed to load workspaces')),
     });
     const createWorkspace = useServerMutation(
         (values) => api.createWorkspace(values),
@@ -118,7 +122,7 @@ const Workspaces = () => {
             {isAdmin && (
                 <Button size="sm" onClick={() => setShowCreateModal(true)}>
                     <Plus size={16} />
-                    {t('app.workspaces.newWorkspace', 'New Workspace')}
+                    {t('app.workspaces.newWorkspace', 'New workspace')}
                 </Button>
             )}
             <SearchField
@@ -136,7 +140,7 @@ const Workspaces = () => {
             setShowCreateModal(false);
             setForm({ name: '', description: '', max_servers: 0, max_users: 0, primary_color: '#6d7cff' });
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.workspaces.couldntCreate', "Couldn't create the workspace."), err);
         }
     };
 
@@ -185,9 +189,9 @@ const Workspaces = () => {
         },
         { key: 'slug', headerKey: 'app.workspaces.slug', header: 'Slug', sortable: true, cellClassName: 'sk-cell-mono', render: (ws) => `/${ws.slug}` },
         // Numeric sorts: unlimited (0/unset) sorts last.
-        { key: 'members', headerKey: 'app.workspaces.members', header: 'Members', sortable: true, sortValue: (ws) => ws.member_count ?? null, cellClassName: 'sk-cell-mono', render: (ws) => ws.member_count ?? 0 },
-        { key: 'servers', headerKey: 'common.labels.servers', header: 'Servers', sortable: true, sortValue: (ws) => (ws.max_servers > 0 ? ws.max_servers : null), cellClassName: 'sk-cell-mono', render: (ws) => (ws.max_servers > 0 ? ws.max_servers : '—') },
-        { key: 'users', headerKey: 'app.workspaces.users', header: 'Users', sortable: true, sortValue: (ws) => (ws.max_users > 0 ? ws.max_users : null), cellClassName: 'sk-cell-mono', render: (ws) => (ws.max_users > 0 ? ws.max_users : '—') },
+        { key: 'members', headerKey: 'app.workspaces.members', header: 'Members', sortable: true, sortValue: (ws) => ws.member_count ?? null, cellClassName: 'sk-cell-dim', render: (ws) => ws.member_count ?? 0 },
+        { key: 'servers', headerKey: 'common.labels.servers', header: 'Servers', sortable: true, sortValue: (ws) => (ws.max_servers > 0 ? ws.max_servers : null), cellClassName: 'sk-cell-dim', render: (ws) => (ws.max_servers > 0 ? ws.max_servers : '—') },
+        { key: 'users', headerKey: 'app.workspaces.users', header: 'Users', sortable: true, sortValue: (ws) => (ws.max_users > 0 ? ws.max_users : null), cellClassName: 'sk-cell-dim', render: (ws) => (ws.max_users > 0 ? ws.max_users : '—') },
         {
             key: 'status',
             headerKey: 'common.labels.status', header: 'Status',
@@ -231,6 +235,9 @@ const Workspaces = () => {
             noun="workspaces"
             builtinViews={WORKSPACE_VIEWS}
             totalCount={workspaces.length}
+            error={loadError}
+            errorTitle={t('app.workspaces.couldntLoadWorkspaces', "Couldn't load workspaces.")}
+            onRetry={() => refetchWorkspaces().catch(() => {})}
             items={shownWorkspaces}
             columns={columns}
             keyField="id"
@@ -252,7 +259,7 @@ const Workspaces = () => {
                 : 'Workspaces isolate servers by team or project. Ask an admin to create one.'}
             emptyAction={isAdmin ? (
                 <Button onClick={() => setShowCreateModal(true)}>
-                    {t('app.workspaces.newWorkspace', 'New Workspace')}
+                    {t('app.workspaces.newWorkspace', 'New workspace')}
                 </Button>
             ) : null}
             filteredEmptyIcon={LayoutGrid}
@@ -263,7 +270,7 @@ const Workspaces = () => {
             <Modal
                 open={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
-                title={t('app.workspaces.createWorkspace', 'Create Workspace')}
+                title={t('app.workspaces.createWorkspace', 'New workspace')}
                 footer={(
                     <>
                         <Button variant="outline" onClick={() => setShowCreateModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
@@ -271,32 +278,33 @@ const Workspaces = () => {
                             onClick={handleCreate}
                             disabled={!form.name || createWorkspace.isPending}
                         >
-                            {createWorkspace.isPending ? 'Creating…' : 'Create'}
+                            {createWorkspace.isPending ? t('app.workspaces.creating', 'Creating…') : t('common.actions.create', 'Create')}
                         </Button>
                     </>
                 )}
             >
                 <div className="form-group">
-                    <label>{t('common.labels.name', 'Name')}</label>
-                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('app.workspaces.myTeam', 'My Team')} />
+                    <label htmlFor={`${fieldId}-name`}>{t('common.labels.name', 'Name')}</label>
+                    <Input id={`${fieldId}-name`} value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t('app.workspaces.myTeam', 'My team')} />
                 </div>
                 <div className="form-group">
-                    <label>{t('common.labels.description', 'Description')}</label>
-                    <Textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
+                    <label htmlFor={`${fieldId}-description`}>{t('common.labels.description', 'Description')}</label>
+                    <Textarea id={`${fieldId}-description`} value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
                 </div>
                 <div className="form-row">
                     <div className="form-group">
-                        <label>{t('app.workspaces.maxServers0Unlimited', 'Max Servers (0 = unlimited)')}</label>
-                        <Input type="number" value={form.max_servers} onChange={e => setForm({...form, max_servers: parseInt(e.target.value) || 0})} />
+                        <label htmlFor={`${fieldId}-max-servers`}>{t('app.workspaces.maxServers0Unlimited', 'Max servers (0 = unlimited)')}</label>
+                        <Input id={`${fieldId}-max-servers`} type="number" value={form.max_servers} onChange={e => setForm({...form, max_servers: parseInt(e.target.value) || 0})} />
                     </div>
                     <div className="form-group">
-                        <label>{t('app.workspaces.maxUsers0Unlimited', 'Max Users (0 = unlimited)')}</label>
-                        <Input type="number" value={form.max_users} onChange={e => setForm({...form, max_users: parseInt(e.target.value) || 0})} />
+                        <label htmlFor={`${fieldId}-max-users`}>{t('app.workspaces.maxUsers0Unlimited', 'Max users (0 = unlimited)')}</label>
+                        <Input id={`${fieldId}-max-users`} type="number" value={form.max_users} onChange={e => setForm({...form, max_users: parseInt(e.target.value) || 0})} />
                     </div>
                 </div>
                 <div className="form-group">
-                    <label>{t('app.workspaces.brandColor', 'Brand Color')}</label>
+                    <label htmlFor={`${fieldId}-color`}>{t('app.workspaces.brandColor', 'Brand color')}</label>
                     <input
+                        id={`${fieldId}-color`}
                         type="color"
                         className="workspace-color-input"
                         value={form.primary_color}

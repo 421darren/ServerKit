@@ -1,13 +1,12 @@
 """Malware scanner API — ClamAV status/install/definitions, file/directory
 scans, job-backed app-docroot scans (YARA + ClamAV), quarantine, and YARA
-rule management, moved out of the host's security suite (plan 47 Ph3d /
-plan 55 Phase 3).
+rule management, moved out of the host's security suite.
 
 Routes keep their historical paths under the shared ``/api/v1/security``
 url_prefix, so the frontend client is a drop-in. The scan-history log and
 the notification fan-out stay core (``SecurityService``); this blueprint
 carries only the scanner/quarantine surface. Host-level malware surfaces
-stay admin-only (plan 29 #9 bucket). Job registration for
+stay admin-only. Job registration for
 ``security.malware_scan`` happens through the manifest's ``jobs`` key —
 no import-time ``register_jobs()`` call here.
 """

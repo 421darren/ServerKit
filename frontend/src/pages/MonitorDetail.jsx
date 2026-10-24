@@ -17,6 +17,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useRecordVisit } from '@/hooks/useRecordVisit';
 import FavoriteStar from '@/components/FavoriteStar';
 import EmptyState from '../components/EmptyState';
+import ErrorState from '../components/ErrorState';
 import UptimeBars from '../components/monitoring/UptimeBars';
 import { monitorStateOf } from '../components/monitoring/monitorShared';
 import {
@@ -33,6 +34,9 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { usePolling } from '@/hooks/usePolling';
 import { useTranslation } from 'react-i18next';
+import { toastError } from '@/utils/errorMessage';
+import { formatDate, formatTime } from '@/utils/intl';
+import { formatUptimePercent } from '@/utils/uptime';
 
 const POLL_MS = 15000;
 
@@ -40,7 +44,7 @@ const SECTIONS = [
     { value: 'performance', labelKey: 'app.monitorDetail.performance', label: 'Performance', icon: <Activity size={14} /> },
     { value: 'uptime', labelKey: 'common.labels.uptime', label: 'Uptime', icon: <BarChart3 size={14} /> },
     { value: 'checks', labelKey: 'app.monitorDetail.checkLog', label: 'Check log', icon: <Rows3 size={14} /> },
-    { value: 'config', labelKey: 'app.monitorDetail.configuration', label: 'Configuration', icon: <SlidersHorizontal size={14} /> },
+    { value: 'config', labelKey: 'app.monitorDetail.configuration', label: 'Settings', icon: <SlidersHorizontal size={14} /> },
 ];
 
 const RANGES = [
@@ -119,10 +123,6 @@ function percentile(values, p) {
     return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
 }
 
-function formatUptime(value) {
-    return value == null ? '—' : `${Number(value).toFixed(2)}%`;
-}
-
 function certDaysLeft(iso) {
     if (!iso) return null;
     return Math.round((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -143,6 +143,8 @@ export default function MonitorDetail() {
     const [uptime, setUptime] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [loadError, setLoadError] = useState(null);
+    const [uptimeError, setUptimeError] = useState(null);
     const [section, setSection] = useState('performance');
     const [rangeHours, setRangeHours] = useState(24);
     const [selectedDay, setSelectedDay] = useState(null);
@@ -162,13 +164,21 @@ export default function MonitorDetail() {
             const [monitorRes, historyRes, uptimeRes] = await Promise.all([
                 api.getMonitor(monitorId),
                 api.getMonitorHistory(monitorId, { hours: rangeHours, limit: 300 }),
-                api.getMonitorUptime(monitorId, 90).catch(() => null),
+                // The 90-day bars are optional: a failure is recorded so the
+                // uptime panel says so, instead of reading as "no history yet".
+                api.getMonitorUptime(monitorId, 90).then(
+                    (data) => { setUptimeError(null); return data; },
+                    (err) => { setUptimeError(err); return undefined; },
+                ),
             ]);
             setMonitor(monitorRes);
             setChecks(historyRes?.checks || []);
-            setUptime(uptimeRes || null);
+            if (uptimeRes !== undefined) setUptime(uptimeRes || null);
+            setLoadError(null);
+            setNotFound(false);
         } catch (err) {
-            if (String(err.message || '').toLowerCase().includes('not found')) setNotFound(true);
+            if (err.status === 404 || String(err.message || '').toLowerCase().includes('not found')) setNotFound(true);
+            else setLoadError(err);
         } finally {
             setLoading(false);
         }
@@ -214,7 +224,7 @@ export default function MonitorDetail() {
             type: 'date',
             value: (c) => c.checked_at || null,
             sortValue: (c) => (c.checked_at ? new Date(c.checked_at).getTime() : null),
-            render: (c) => new Date(c.checked_at).toLocaleTimeString(),
+            render: (c) => formatTime(c.checked_at),
         },
         {
             // Split from the HTTP code beside it. This cell used to print the
@@ -301,6 +311,18 @@ export default function MonitorDetail() {
         );
     }
 
+    if (loadError && !monitor) {
+        return (
+            <PageLayout className="monitor-detail" icon={<ArrowLeft size={18} />} title={t('app.monitorDetail.monitor', 'Monitor')}>
+                <ErrorState
+                    title={t('app.monitorDetail.couldntLoadMonitor', "Couldn't load this monitor.")}
+                    error={loadError}
+                    onRetry={load}
+                />
+            </PageLayout>
+        );
+    }
+
     if (notFound || !monitor) {
         return (
             <PageLayout className="monitor-detail" icon={<ArrowLeft size={18} />} title={t('app.monitorDetail.monitor', 'Monitor')}>
@@ -333,7 +355,7 @@ export default function MonitorDetail() {
             if (successMessage) toast.success(successMessage);
             await load();
         } catch (err) {
-            toast.error(err.message || t('app.monitorDetail.actionFailed', 'Action failed'));
+            toastError(toast, t('app.monitorDetail.actionFailed', "Couldn't run that action."), err);
         } finally {
             setBusy(false);
         }
@@ -354,7 +376,7 @@ export default function MonitorDetail() {
     const onDelete = async () => {
         const ok = await confirm({
             title: t('app.monitorDetail.deleteThisMonitor', 'Delete this monitor?'),
-            message: t('app.monitorDetail.andItsCheckHistoryWillBe', '“{{name}}” and its check history will be removed. Any open incident is resolved first.', { name: monitor.name }),
+            message: t('app.monitorDetail.andItsCheckHistoryWillBe', '"{{name}}" and its check history will be removed. Any open incident is resolved first.', { name: monitor.name }),
             confirmText: t('common.actions.delete', 'Delete'),
             variant: 'danger',
         });
@@ -364,7 +386,7 @@ export default function MonitorDetail() {
             toast.success(t('app.monitorDetail.monitorDeleted', 'Monitor deleted'));
             navigate('/monitoring/monitors');
         } catch (err) {
-            toast.error(err.message || t('app.monitorDetail.couldNotDeleteTheMonitor', 'Could not delete the monitor'));
+            toastError(toast, t('app.monitorDetail.couldNotDeleteTheMonitor', "Couldn't delete the monitor."), err);
         }
     };
 
@@ -373,7 +395,7 @@ export default function MonitorDetail() {
             className="monitor-detail"
             icon={<ArrowLeft size={18} />}
             title={monitor.name}
-            meta={`${monitor.check_type} · ${monitor.check_target || 'bound site'} · every ${monitor.check_interval}s`}
+            meta={t('app.monitorDetail.headerMeta', '{{type}} · {{target}} · every {{interval}}s', { type: monitor.check_type, target: monitor.check_target || t('app.monitorDetail.boundService', 'Bound service'), interval: monitor.check_interval })}
             actions={(
                 <>
                     <FavoriteStar type="monitor" id={monitor.id} path={`/monitoring/monitors/${monitor.id}`} label={monitor.name} />
@@ -401,6 +423,8 @@ export default function MonitorDetail() {
                 <span>{monitor.name}</span>
             </nav>
 
+            {loadError && <ErrorState compact error={loadError} onRetry={load} />}
+
             <KpiBand>
                 <MetricCard
                     label={t('app.monitorDetail.responseNow', 'Response now')} tone="cyan" icon={<Zap size={17} />}
@@ -413,10 +437,10 @@ export default function MonitorDetail() {
                 </MetricCard>
                 <MetricCard
                     label={t('app.monitorDetail.uptime30d', 'Uptime (30d)')} tone="accent" icon={<CheckCircle2 size={17} />}
-                    value={formatUptime(monitor.uptime_30d)}
+                    value={formatUptimePercent(monitor.uptime_30d)}
                 >
                     <div className="mon-kpi-sub">
-                        24h {formatUptime(monitor.uptime_24h)} {t('app.monitorDetail.7d', '· 7d')} {formatUptime(monitor.uptime_7d)}
+                        24h {formatUptimePercent(monitor.uptime_24h)} {t('app.monitorDetail.7d', '· 7d')} {formatUptimePercent(monitor.uptime_7d)}
                     </div>
                 </MetricCard>
                 <MetricCard
@@ -424,18 +448,20 @@ export default function MonitorDetail() {
                     value={downMinutes ?? '—'} unit={downMinutes != null ? 'min' : undefined}
                 >
                     <div className="mon-kpi-sub">
-                        {uptime?.days ? `${uptime.days.filter((d) => d.state !== 'none' && d.state !== 'up').length} bad days` : 'no history yet'}
+                        {uptime?.days
+                            ? t('app.monitorDetail.badDays', { count: uptime.days.filter((d) => d.state !== 'none' && d.state !== 'up').length, defaultValue_one: '{{count}} bad day', defaultValue_other: '{{count}} bad days' })
+                            : uptimeError ? '—' : t('app.monitorDetail.noHistoryYet', 'No history yet')}
                     </div>
                 </MetricCard>
                 <MetricCard
                     label={t('app.monitorDetail.certificate', 'Certificate')}
                     tone={certDays == null ? 'accent' : certDays < 0 ? 'red' : certDays < 21 ? 'amber' : 'green'}
                     icon={<Lock size={17} />}
-                    value={certDays == null ? 'n/a' : certDays < 0 ? 'Expired' : certDays}
+                    value={certDays == null ? 'n/a' : certDays < 0 ? t('app.monitorDetail.expired', 'Expired') : certDays}
                     unit={certDays != null && certDays >= 0 ? 'days' : undefined}
                 >
                     <div className="mon-kpi-sub">
-                        {monitor.cert_issuer || (isHttpish ? 'not read yet' : 'no TLS on this check')}
+                        {monitor.cert_issuer || (isHttpish ? t('app.monitorDetail.notReadYet', 'Not read yet') : t('app.monitorDetail.noTlsOnThisCheck', 'No TLS on this check'))}
                     </div>
                 </MetricCard>
             </KpiBand>
@@ -453,7 +479,7 @@ export default function MonitorDetail() {
                         <div>
                             <h3>{t('app.monitorDetail.responseTime', 'Response time')}</h3>
                             <span className="mon-panel-sub">
-                                {series.length} sample{series.length === 1 ? '' : 's'} {t('app.monitorDetail.inThisWindow', 'in this window')}
+                                {t('app.monitorDetail.samplesInWindow', { count: series.length, defaultValue_one: '1 sample in this window', defaultValue_other: '{{count}} samples in this window' })}
                             </span>
                         </div>
                         <SegControl
@@ -464,7 +490,7 @@ export default function MonitorDetail() {
                     </div>
                     {series.length === 0 ? (
                         <p className="mon-panel-hint">
-                            {t('app.monitorDetail.noTimedSamplesYetTheFirst', 'No timed samples yet — the first check lands within')} {monitor.check_interval}s.
+                            {t('app.monitorDetail.noTimedSamplesYetTheFirst', 'No timed samples yet. The first check lands within')} {monitor.check_interval}s.
                         </p>
                     ) : (
                         <>
@@ -493,7 +519,7 @@ export default function MonitorDetail() {
                     <div className="mon-panel">
                         <div className="mon-panel__header">
                             <div>
-                                <h3>{t('app.monitorDetail.uptimeLast90Days', 'Uptime — last 90 days')}</h3>
+                                <h3>{t('app.monitorDetail.uptimeLast90Days', 'Uptime (last 90 days)')}</h3>
                                 <span className="mon-panel-sub">{t('app.monitorDetail.clickADayForItsDetail', 'Click a day for its detail')}</span>
                             </div>
                             <div className="mon-uptime-summary">
@@ -501,11 +527,14 @@ export default function MonitorDetail() {
                                     ['30d', monitor.uptime_30d], ['90d', monitor.uptime_90d]].map(([label, value]) => (
                                     <div key={label}>
                                         <span className="mon-statstrip__label">{label}</span>
-                                        <span className="mon-statstrip__value">{formatUptime(value)}</span>
+                                        <span className="mon-statstrip__value">{formatUptimePercent(value)}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
+                        {uptimeError && (
+                            <ErrorState compact error={uptimeError} onRetry={load} />
+                        )}
                         <UptimeBars
                             days={uptime?.days || []}
                             selected={selectedDay?.date}
@@ -524,8 +553,8 @@ export default function MonitorDetail() {
                                     <h3>{selectedDay.date}</h3>
                                     <span className="mon-panel-sub">
                                         {selectedDay.state === 'none'
-                                            ? 'Not monitored on this day'
-                                            : `${selectedDay.checks} checks · ${selectedDay.down_checks} failed · ${formatUptime(selectedDay.uptime)} uptime`}
+                                            ? t('app.monitorDetail.notMonitoredOnThisDay', 'Not monitored on this day')
+                                            : t('app.monitorDetail.daySummary', { count: selectedDay.checks, failed: selectedDay.down_checks, uptime: formatUptimePercent(selectedDay.uptime), defaultValue_one: '{{count}} check · {{failed}} failed · {{uptime}} uptime', defaultValue_other: '{{count}} checks · {{failed}} failed · {{uptime}} uptime' })}
                                     </span>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => setSelectedDay(null)}>{t('common.actions.close', 'Close')}</Button>
@@ -548,17 +577,17 @@ export default function MonitorDetail() {
                         {monitor.cert_expires_at ? (
                             <dl className="mon-inforows">
                                 <div><dt>{t('app.monitorDetail.issuer', 'Issuer')}</dt><dd>{monitor.cert_issuer || '—'}</dd></div>
-                                <div><dt>{t('app.monitorDetail.expires', 'Expires')}</dt><dd>{new Date(monitor.cert_expires_at).toLocaleDateString()}</dd></div>
+                                <div><dt>{t('app.monitorDetail.expires', 'Expires')}</dt><dd>{formatDate(monitor.cert_expires_at)}</dd></div>
                                 <div>
                                     <dt>{t('app.monitorDetail.remaining', 'Remaining')}</dt>
-                                    <dd>{certDays < 0 ? `${-certDays} days ago` : `${certDays} days`}</dd>
+                                    <dd>{certDays < 0 ? t('app.monitorDetail.daysAgo', { count: -certDays, defaultValue_one: '{{count}} day ago', defaultValue_other: '{{count}} days ago' }) : t('app.monitorDetail.days', { count: certDays, defaultValue_one: '{{count}} day', defaultValue_other: '{{count}} days' })}</dd>
                                 </div>
                             </dl>
                         ) : (
                             <p className="mon-panel-hint">
                                 {isHttpish && monitor.check_target?.startsWith('https://')
-                                    ? 'Not read yet — it is captured on the next probe.'
-                                    : 'This check does not negotiate TLS.'}
+                                    ? t('app.monitorDetail.certNotReadYet', 'Not read yet. It is captured on the next probe.')
+                                    : t('app.monitorDetail.checkHasNoTls', "This check doesn't negotiate TLS.")}
                             </p>
                         )}
                     </div>
@@ -596,31 +625,28 @@ export default function MonitorDetail() {
 
                     <GridChips {...chrome.chipProps} />
 
-                    <div className="mon-panel mon-panel--flush">
-                        <DataTable
-                            {...chrome.tableProps}
-                            tableClassName="sk-dtable monitor-checks-table"
-                            data={rows}
-                            keyField="id"
-                            sorts={sorts}
-                            onSortsChange={setSorts}
-                            rowClassName={(c) => (c.status === 'up' ? undefined : 'is-bad')}
-                            emptyState={(
-                                <EmptyState
-                                    icon={Activity}
-                                    title={t('app.monitorDetail.noChecksInThisWindowYet', 'No checks in this window yet.')}
-                                />
-                            )}
-                            columns={chrome.columns}
-                            footer={(
-                                <DataTableFooter
-                                    shown={chrome.shownCount}
-                                    total={rows.length}
-                                    noun="check"
-                                />
-                            )}
-                        />
-                    </div>
+                    <DataTable
+                        {...chrome.tableProps}
+                        data={rows}
+                        keyField="id"
+                        sorts={sorts}
+                        onSortsChange={setSorts}
+                        rowClassName={(c) => (c.status === 'up' ? undefined : 'is-bad')}
+                        emptyState={(
+                            <EmptyState
+                                icon={Activity}
+                                title={t('app.monitorDetail.noChecksInThisWindowYet', 'No checks in this window yet.')}
+                            />
+                        )}
+                        columns={chrome.columns}
+                        footer={(
+                            <DataTableFooter
+                                shown={chrome.shownCount}
+                                total={rows.length}
+                                noun="check"
+                            />
+                        )}
+                    />
 
                     <GridFilterDrawer {...chrome.drawerProps} />
                 </>
@@ -632,7 +658,7 @@ export default function MonitorDetail() {
                         <div className="mon-panel__header"><div><h3>{t('app.monitorDetail.check', 'Check')}</h3></div></div>
                         <dl className="mon-inforows">
                             <div><dt>{t('common.labels.type', 'Type')}</dt><dd>{monitor.check_type}</dd></div>
-                            <div><dt>{t('common.labels.target', 'Target')}</dt><dd>{monitor.check_target || 'bound site'}</dd></div>
+                            <div><dt>{t('common.labels.target', 'Target')}</dt><dd>{monitor.check_target || t('app.monitorDetail.boundService', 'Bound service')}</dd></div>
                             <div><dt>{t('app.monitorDetail.interval', 'Interval')}</dt><dd>{monitor.check_interval}s</dd></div>
                             <div><dt>{t('app.monitorDetail.timeout', 'Timeout')}</dt><dd>{monitor.check_timeout}s</dd></div>
                             {isHttpish && <div><dt>{t('app.monitorDetail.method', 'Method')}</dt><dd>{monitor.check_method}</dd></div>}
@@ -657,7 +683,7 @@ export default function MonitorDetail() {
                         <dl className="mon-inforows">
                             <div>
                                 <dt>{t('app.monitorDetail.openAnIncidentAfter', 'Open an incident after')}</dt>
-                                <dd>{(monitor.retries ?? 0) + 1} {t('app.monitorDetail.failedCheck', 'failed check')}{(monitor.retries ?? 0) + 1 === 1 ? '' : 's'}</dd>
+                                <dd>{t('app.monitorDetail.failedChecks', { count: (monitor.retries ?? 0) + 1, defaultValue_one: '1 failed check', defaultValue_other: '{{count}} failed checks' })}</dd>
                             </div>
                             <div><dt>{t('app.monitorDetail.currentFailureStreak', 'Current failure streak')}</dt><dd>{monitor.consecutive_failures ?? 0}</dd></div>
                             <div>

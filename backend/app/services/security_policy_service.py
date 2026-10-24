@@ -1,4 +1,4 @@
-"""Panel security policy — the require-2FA enrollment policy (plan 29 Phase 2).
+"""Panel security policy — the require-2FA enrollment policy.
 
 Evaluates, per user, whether the panel's *require two-factor* policy is satisfied,
 still within its grace window, or must be enforced now. The three outcomes are:
@@ -8,12 +8,12 @@ still within its grace window, or must be enforced now. The three outcomes are:
     'enforce' — policy on, no 2FA, grace window elapsed → gate the session
 
 The grace window is anchored on ``max(user.created_at, policy_enabled_at)`` so
-flipping the policy ON never insta-locks a veteran account (plan 29 Decision 4).
+flipping the policy ON never insta-locks a veteran account.
 ``policy_enabled_at`` is stamped the moment the policy transitions off→on and
 lives in the same SettingsService map as the toggle itself — no new table.
 
 SSO accounts (``auth_provider`` other than ``local``) are exempt: their identity
-provider owns the second factor (plan 29, security_policy_service ok/nudge/enforce
+provider owns the second factor (security_policy_service ok/nudge/enforce
 + SSO-exempt).
 """
 from datetime import datetime, timedelta
@@ -83,7 +83,7 @@ class SecurityPolicyService:
         """The later of the account's creation and the policy's activation.
 
         Anchoring on the max means a long-lived account still gets the FULL grace
-        window when the policy is first switched on (plan 29 Decision 4)."""
+        window when the policy is first switched on."""
         anchor = getattr(user, 'created_at', None) or datetime.utcnow()
         enabled_at = cls.policy_enabled_at()
         if enabled_at and enabled_at > anchor:

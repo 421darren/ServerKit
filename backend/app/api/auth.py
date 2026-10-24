@@ -19,7 +19,10 @@ from app.services import login_link_service
 from app.services import auth_throttle_service
 from app.utils.client_ip import get_client_ip
 from app.utils.i18n import normalize_language
-from app.exceptions import AuthenticationError, ConflictError, PermissionDeniedError, ValidationError
+from app.exceptions import (
+    AuthenticationError, ConflictError, PermissionDeniedError, ValidationError, not_found,
+)
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +76,7 @@ def get_setup_status():
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("3 per minute")
 def register():
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -193,7 +196,7 @@ def complete_onboarding():
     """Complete the onboarding wizard and mark setup as done."""
     user = require_admin_user()
 
-    data = request.get_json() or {}
+    data = json_object()
     use_cases = data.get('use_cases', [])
 
     # Validate use_cases
@@ -206,7 +209,7 @@ def complete_onboarding():
 
     # Slugs the wizard installed (recorded for Setup Health / support). The
     # actual installs happen client-side via the plugin install endpoints; this
-    # just persists what onboarding did (plan 47).
+    # just persists what onboarding did.
     installed_extensions = data.get('installed_extensions', [])
     if not isinstance(installed_extensions, list):
         return jsonify({'error': 'installed_extensions must be a list'}), 400
@@ -214,7 +217,7 @@ def complete_onboarding():
         s for s in installed_extensions if isinstance(s, str) and s.strip()
     ]
 
-    # Security posture (plan 47 Ph5) — persisted separately from use_cases so
+    # Security posture — persisted separately from use_cases so
     # posture and purpose stay orthogonal. Absent/invalid falls back to the
     # lean default rather than failing the whole onboarding.
     security_posture = data.get('security_posture', 'minimal')
@@ -230,7 +233,7 @@ def complete_onboarding():
                         user_id=user.id)
 
     # Keep the panel lean: suppress wizard-optional flagships (WordPress) the
-    # user didn't install so the boot seeder won't re-add them (plan 47).
+    # user didn't install so the boot seeder won't re-add them.
     try:
         from app.services import plugin_service
         plugin_service.finalize_setup_flagships()
@@ -260,7 +263,7 @@ def login():
             'error': 'Too many failed login attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -344,12 +347,12 @@ def login():
 def create_login_link():
     """Mint a single-use login URL. The raw token is returned exactly once."""
     current = require_admin_user()
-    data = request.get_json() or {}
+    data = json_object()
 
     target_id = data.get('user_id') or current.id
     target = User.query.get(target_id)
     if not target:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
     bound_ip = (data.get('bound_ip') or '').strip() or None
     if bound_ip and len(bound_ip) > 64:
@@ -420,7 +423,7 @@ def redeem_login_link():
             'error': 'Too many failed attempts. Try again later.'
         }), 429, {'Retry-After': str(retry_after)}
 
-    data = request.get_json() or {}
+    data = json_object()
     token = data.get('token')
 
     user, reason = login_link_service.redeem(token, client_ip)
@@ -565,7 +568,7 @@ def get_current_user():
     user = User.query.get(current_user_id)
 
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
     return jsonify({'user': user.to_dict()}), 200
 
@@ -595,9 +598,9 @@ def update_current_user():
     user = User.query.get(current_user_id)
 
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
 
-    data = request.get_json() or {}
+    data = json_object()
 
     if 'password' in data:
         import time
@@ -677,7 +680,7 @@ def passkey_register_options():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        raise not_found('user')
     options = PasskeyService.begin_registration(user)
     return jsonify(options), 200
 
@@ -690,8 +693,8 @@ def passkey_register():
     user_id = get_jwt_identity()
     user = User.query.get(user_id)
     if not user:
-        return jsonify({'error': 'User not found'}), 404
-    data = request.get_json() or {}
+        raise not_found('user')
+    data = json_object()
     credential = data.get('credential')
     device_name = data.get('device_name', 'Passkey')
     if not credential:
@@ -723,7 +726,7 @@ def passkey_delete(passkey_id):
 def passkey_auth_options():
     """Begin WebAuthn authentication (public, challenge only)."""
     from app.services.passkey_service import PasskeyService
-    data = request.get_json() or {}
+    data = json_object()
     user_id = data.get('user_id')
     user = User.query.get(user_id) if user_id else None
     options = PasskeyService.begin_authentication(user)
@@ -736,7 +739,7 @@ def passkey_authenticate():
     """Verify a WebAuthn assertion and issue JWT tokens."""
     from app.services.passkey_service import PasskeyService
     from app.services import sso_service
-    data = request.get_json() or {}
+    data = json_object()
     credential = data.get('credential')
     user_id = data.get('user_id')
     if not credential:

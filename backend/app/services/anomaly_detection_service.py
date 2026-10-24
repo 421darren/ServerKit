@@ -184,15 +184,15 @@ class AnomalyDetectionService:
         """
         with self._lock:
             known = self._known_ips[server_id]
-            is_new = ip_address not in known
+            if ip_address in known:
+                return False
+            # Resolved/acknowledged alerts still prove this address is known.
+            # Read before populating the cache so a DB failure remains retryable.
+            existing = SecurityAlert.query.filter_by(
+                server_id=server_id, source_ip=ip_address, alert_type='new_ip'
+            ).first()
+            is_new = existing is None
             known.add(ip_address)
-
-        # The in-memory set is empty after every backend restart, so check the
-        # alert history too: an address that already has a new_ip alert for
-        # this server (in any status) is not new, and must not raise a fresh
-        # "First connection" alert on every restart.
-        if is_new and self._has_new_ip_history(server_id, ip_address):
-            is_new = False
 
         if is_new and self.THRESHOLDS['new_ip_alert']:
             self._create_alert(
@@ -246,18 +246,6 @@ class AnomalyDetectionService:
                 'nonce_prefix': nonce[:8] if nonce else None
             }
         )
-
-    def _has_new_ip_history(self, server_id: str, ip_address: str) -> bool:
-        """True if a new_ip alert already exists for this server and address."""
-        try:
-            return SecurityAlert.query.filter(
-                SecurityAlert.alert_type == 'new_ip',
-                SecurityAlert.server_id == server_id,
-                SecurityAlert.source_ip == ip_address,
-            ).first() is not None
-        except Exception as e:
-            print(f"[AnomalyDetection] new_ip history lookup failed: {e}")
-            return False
 
     def _create_alert(
         self,
@@ -408,30 +396,6 @@ class AnomalyDetectionService:
                 ]
                 if not self._command_counts[server_id]:
                     del self._command_counts[server_id]
-
-    def load_known_ips(self):
-        """
-        Load known IPs from database.
-
-        Should be called on startup to populate the known IPs cache.
-        """
-        try:
-            from app.models.server import AgentSession
-
-            sessions = AgentSession.query.filter(
-                AgentSession.ip_address.isnot(None)
-            ).all()
-
-            with self._lock:
-                for session in sessions:
-                    if session.server_id and session.ip_address:
-                        self._known_ips[session.server_id].add(session.ip_address)
-
-            print(f"[AnomalyDetection] Loaded known IPs for {len(self._known_ips)} servers")
-
-        except Exception as e:
-            print(f"[AnomalyDetection] Error loading known IPs: {e}")
-
 
 # Global instance
 anomaly_detection_service = AnomalyDetectionService()

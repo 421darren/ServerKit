@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import useTabParam from '../hooks/useTabParam';
 import { Upload, Check, AlertTriangle, Archive, Clock, Database, Package, FolderArchive, HardDrive, History, Cloud, RefreshCw, Trash2, Plus, FileArchive, DollarSign } from 'lucide-react';
 import api from '../services/api';
@@ -12,6 +12,8 @@ import { FormField, FormRow } from '../components/FormField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { InfoList, InfoItem } from '../components/InfoList';
 import {
     Pill, SearchField, SegControl, DataTable, DataTableFooter,
 } from '@/components/ds';
@@ -32,6 +34,8 @@ import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useTranslation } from 'react-i18next';
 import useFocusParam from '../hooks/useFocusParam';
 import { Card as SharedCard, CardHeader as SharedCardHeader, CardContent as SharedCardContent } from '@/components/ui/card';
+import { toastError } from '@/utils/errorMessage';
+import { formatDateTime } from '@/utils/intl';
 
 // `backups` is kept as an alias so old /backups/backups links still resolve to
 // the archive, which now answers to `snapshots`.
@@ -127,13 +131,14 @@ const SNAPSHOT_VIEWS = [
 
 const Backups = () => {
     const { t } = useTranslation();
+    const fieldId = useId();
     const toast = useToast();
     const { confirm } = useConfirm();
     const [backups, setBackups] = useState([]);
     const [stats, setStats] = useState(null);
     const scheduleStore = useBackupSchedules();
     const { schedules, refresh: reloadSchedules } = scheduleStore;
-    // Backup scheduling held by ServerKit Cloud (plan 25): the page and local
+    // Backup scheduling held by ServerKit Cloud: the page and local
     // restore stay, the scheduling and destination surfaces become the card.
     const { isControlHeld, profile: managedProfile } = useManagedProfile();
     const backupsManaged = isControlHeld('backup-scheduling');
@@ -262,7 +267,7 @@ const Backups = () => {
                     host: backupForm.dbHost
                 } : null;
                 await api.backupApplication(parseInt(backupForm.applicationId), backupForm.includeDb, dbConfig);
-                toast.success(t('app.backups.applicationBackupCreated', 'Application backup created'));
+                toast.success(t('app.backups.applicationBackupCreated', 'Service backup created'));
             } else if (backupForm.type === 'database') {
                 await api.backupDatabase(
                     backupForm.dbType,
@@ -288,19 +293,19 @@ const Backups = () => {
             resetBackupForm();
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntCreateBackup', "Couldn't create the backup."), err);
         }
     };
 
     const handleDeleteBackup = async (backupPath) => {
-        const confirmed = await confirm({ title: t('app.backups.deleteBackup', 'Delete Backup'), message: t('app.backups.areYouSureYouWantTo', 'Are you sure you want to delete this backup?') });
+        const confirmed = await confirm({ title: t('app.backups.deleteBackup', 'Delete backup'), message: t('app.backups.areYouSureYouWantTo', "Delete this backup? This can't be undone.") });
         if (!confirmed) return;
         try {
             await api.deleteBackup(backupPath);
             toast.success(t('app.backups.backupDeleted', 'Backup deleted'));
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntDeleteBackup', "Couldn't delete the backup."), err);
         }
     };
 
@@ -311,7 +316,7 @@ const Backups = () => {
             toast.success(t('app.backups.backupUploadedToRemoteStorage', 'Backup uploaded to remote storage'));
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntUploadBackup', "Couldn't upload the backup to remote storage."), err);
         } finally {
             setUploadingBackup(null);
         }
@@ -319,7 +324,7 @@ const Backups = () => {
 
     const handleRestore = async () => {
         if (!selectedBackup) return;
-        const restoreConfirmed = await confirm({ title: t('app.backups.restoreBackup', 'Restore Backup'), message: t('app.backups.areYouSureYouWantTo3', 'Are you sure you want to restore this backup? This may overwrite existing data.'), variant: 'warning' });
+        const restoreConfirmed = await confirm({ title: t('app.backups.restoreBackup', 'Restore backup'), message: t('app.backups.areYouSureYouWantTo3', 'Restore this backup? This may overwrite existing data.'), variant: 'warning' });
         if (!restoreConfirmed) return;
 
         try {
@@ -334,9 +339,9 @@ const Backups = () => {
             }
             setShowRestoreModal(false);
             setSelectedBackup(null);
-            toast.success(t('app.backups.backupRestoredSuccessfully', 'Backup restored successfully'));
+            toast.success(t('app.backups.backupRestoredSuccessfully', 'Backup restored'));
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntRestore', "Couldn't restore the backup."), err);
         }
     };
 
@@ -349,7 +354,7 @@ const Backups = () => {
     };
 
     const handleRemoveSchedule = async (scheduleId) => {
-        const confirmed = await confirm({ title: t('app.backups.removeSchedule', 'Remove Schedule'), message: t('app.backups.areYouSureYouWantTo5', 'Are you sure you want to remove this schedule?') });
+        const confirmed = await confirm({ title: t('app.backups.removeSchedule', 'Delete schedule'), message: t('app.backups.areYouSureYouWantTo5', 'Delete this schedule? Backups stop running on it.'), confirmText: t('common.actions.delete', 'Delete') });
         if (!confirmed) return;
         await scheduleStore.remove(scheduleId);
     };
@@ -361,7 +366,7 @@ const Backups = () => {
             toast.success(t('app.backups.settingsSaved', 'Settings saved'));
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntSaveConfig', "Couldn't save the backup settings."), err);
         }
     };
 
@@ -378,7 +383,7 @@ const Backups = () => {
             const summary = await api.getBackupCostSummary().catch(() => null);
             setCostSummary(summary || null);
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntSaveRates', "Couldn't save the storage cost rates."), err);
         } finally {
             setSavingRates(false);
         }
@@ -388,10 +393,10 @@ const Backups = () => {
         e.preventDefault();
         try {
             await api.updateStorageConfig(storageForm);
-            toast.success(t('app.backups.storageConfigurationSaved', 'Storage configuration saved'));
+            toast.success(t('app.backups.storageConfigurationSaved', 'Storage settings saved'));
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntSaveStorage', "Couldn't save the storage settings."), err);
         }
     };
 
@@ -402,24 +407,24 @@ const Backups = () => {
             if (result.success) {
                 toast.success(result.message);
             } else {
-                toast.error(result.error);
+                toastError(toast, t('app.backups.couldntConnectStorage', "Couldn't connect to the storage."), result.error);
             }
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntConnectStorage', "Couldn't connect to the storage."), err);
         } finally {
             setTestingConnection(false);
         }
     };
 
     const handleCleanup = async () => {
-        const confirmed = await confirm({ title: t('app.backups.cleanupBackups', 'Cleanup Backups'), message: t('app.backups.thisWillDeleteBackupsOlderThan', 'This will delete backups older than {{retentiondays}} days. Continue?', { retentiondays: configForm.retention_days }), variant: 'warning' });
+        const confirmed = await confirm({ title: t('app.backups.cleanupBackups', 'Cleanup backups'), message: t('app.backups.thisWillDeleteBackupsOlderThan', 'This will delete backups older than {{retentiondays}} days. Continue?', { retentiondays: configForm.retention_days }), variant: 'warning' });
         if (!confirmed) return;
         try {
             const result = await api.cleanupBackups(configForm.retention_days);
             toast.success(result.message);
             loadData();
         } catch (err) {
-            toast.error(err.message);
+            toastError(toast, t('app.backups.couldntCleanUp', "Couldn't clean up old backups."), err);
         }
     };
 
@@ -439,7 +444,7 @@ const Backups = () => {
     };
 
     const formatTimestamp = (timestamp) => {
-        return new Date(timestamp).toLocaleString();
+        return formatDateTime(timestamp);
     };
 
     const formatMoney = (n) => {
@@ -546,7 +551,7 @@ const Backups = () => {
             type: 'num',
             value: (b) => b.size || 0,
             sortValue: (b) => b.size || 0,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             render: (backup) => formatBytes(backup.size, { defaultValue: '0 B' }),
         },
         {
@@ -584,11 +589,12 @@ const Backups = () => {
             type: 'num',
             value: monthlyCost,
             sortValue: monthlyCost,
-            cellClassName: 'sk-cell-mono',
+            cellClassName: 'sk-cell-dim',
             render: (backup) => formatMoney(monthlyCost(backup)),
         },
         {
             key: 'actions',
+            width: '1%',
             header: '',
             sortable: false,
             hideable: false,
@@ -602,7 +608,7 @@ const Backups = () => {
                                 setSelectedBackup(backup);
                                 setShowRestoreModal(true);
                             }}
-                            title={t('app.backups.restoreThisSnapshot', 'Restore this snapshot')}
+                            title={t('app.backups.restoreThisSnapshot', 'Restore this backup')}
                             aria-label={t('app.backups.restore', 'Restore {{name}}', { name: backup.name })}
                         >
                             <History size={15} />
@@ -626,7 +632,7 @@ const Backups = () => {
                         type="button"
                         className="bk-iconbtn bk-iconbtn--danger"
                         onClick={() => handleDeleteBackup(backup.path)}
-                        title={t('app.backups.deleteThisSnapshot', 'Delete this snapshot')}
+                        title={t('app.backups.deleteThisSnapshot', 'Delete this backup')}
                         aria-label={t('app.backups.delete', 'Delete {{name}}', { name: backup.name })}
                     >
                         <Trash2 size={15} />
@@ -692,7 +698,7 @@ const Backups = () => {
                 <SearchField
                     value={search}
                     onSearch={setSearch}
-                    placeholder={t('app.backups.searchSnapshots', 'Search snapshots…')}
+                    placeholder={t('app.backups.searchSnapshots', 'Search backups…')}
                 />
             )}
         </>
@@ -762,9 +768,9 @@ const Backups = () => {
                     {backups.length === 0 ? (
                         <EmptyState
                             icon={FileArchive}
-                            title={t('app.backups.noBackups', 'No Backups')}
-                            description={t('app.backups.noBackupsFoundCreateYourFirst', 'No backups found. Create your first backup to get started.')}
-                            action={<Button onClick={() => setShowBackupModal(true)}>{t('app.backups.createBackup', 'Create Backup')}</Button>}
+                            title={t('app.backups.noBackups', 'No backups')}
+                            description={t('app.backups.noBackupsFoundCreateYourFirst', 'No backups found. Create your first backup.')}
+                            action={<Button onClick={() => setShowBackupModal(true)}>{t('app.backups.createBackup', 'Create backup')}</Button>}
                         />
                     ) : searchedBackups.length === 0 ? (
                         /* Only the SEARCH can empty the list here — a column
@@ -773,27 +779,25 @@ const Backups = () => {
                            that undoes it lives in the header menu. */
                         <EmptyState
                             icon={FileArchive}
-                            title={t('app.backups.noSnapshotsMatch', 'No snapshots match “{{value}}”.', { value: search.trim() })}
+                            title={t('app.backups.noSnapshotsMatch', 'No backups match "{{value}}".', { value: search.trim() })}
                         />
                     ) : (
-                        <div className="bk-card">
-                            <DataTable
-                                {...chrome.tableProps}
-                                columns={chrome.columns}
-                                data={searchedBackups}
-                                keyField="path"
-                                sorts={sorts}
-                                onSortsChange={setSorts}
-                                tableClassName="bk-table"
-                                footer={(
-                                    <DataTableFooter
-                                        shown={chrome.shownCount}
-                                        total={backups.length}
-                                        noun="snapshot"
-                                    />
-                                )}
-                            />
-                        </div>
+                        <DataTable
+                            {...chrome.tableProps}
+                            columns={chrome.columns}
+                            data={searchedBackups}
+                            keyField="path"
+                            sorts={sorts}
+                            onSortsChange={setSorts}
+                            className="bk-table"
+                            footer={(
+                                <DataTableFooter
+                                    shown={chrome.shownCount}
+                                    total={backups.length}
+                                    noun="snapshot"
+                                />
+                            )}
+                        />
                     )}
 
                     <GridFilterDrawer {...chrome.drawerProps} />
@@ -863,13 +867,13 @@ const Backups = () => {
                             )}
                             <fieldset disabled={!!storageConfig?.managed_by_cloud} className="bk-storage-fieldset">
                             <form onSubmit={handleSaveStorageConfig}>
-                                <FormField label={t('app.backups.storageProvider', 'Storage Provider')} hint={t('app.backups.s3CompatibleWorksWithAwsS3', 'S3-Compatible works with AWS S3, MinIO and Wasabi.')}>
+                                <FormField label={t('app.backups.storageProvider', 'Storage provider')} hint={t('app.backups.s3CompatibleWorksWithAwsS3', 'S3-compatible works with AWS S3, MinIO and Wasabi.')}>
                                     <SegControl
                                         value={storageForm.provider}
                                         onChange={(provider) => setStorageForm({...storageForm, provider})}
                                         options={[
-                                            { value: 'local', labelKey: 'app.backups.localOnly', label: 'Local Only' },
-                                            { value: 's3', labelKey: 'app.backups.s3Compatible', label: 'S3-Compatible' },
+                                            { value: 'local', labelKey: 'app.backups.localOnly', label: 'Local only' },
+                                            { value: 's3', labelKey: 'app.backups.s3Compatible', label: 'S3-compatible' },
                                             { value: 'b2', labelKey: 'app.backups.backblazeB2', label: 'Backblaze B2' },
                                         ]}
                                     />
@@ -877,9 +881,9 @@ const Backups = () => {
 
                                 {storageForm.provider === 's3' && (
                                     <div className="storage-provider-config">
-                                        <h4>{t('app.backups.s3CompatibleStorage', 'S3-Compatible Storage')}</h4>
+                                        <h4>{t('app.backups.s3CompatibleStorage', 'S3-compatible storage')}</h4>
                                         <FormRow>
-                                            <FormField label={t('app.backups.bucketName', 'Bucket Name')} htmlFor="s3-bucket">
+                                            <FormField label={t('app.backups.bucketName', 'Bucket name')} htmlFor="s3-bucket">
                                                 <Input
                                                     id="s3-bucket"
                                                     type="text"
@@ -900,7 +904,7 @@ const Backups = () => {
                                             </FormField>
                                         </FormRow>
                                         <FormRow>
-                                            <FormField label={t('app.backups.accessKey', 'Access Key')} htmlFor="s3-access-key">
+                                            <FormField label={t('app.backups.accessKey', 'Access key')} htmlFor="s3-access-key">
                                                 <Input
                                                     id="s3-access-key"
                                                     type="text"
@@ -910,7 +914,7 @@ const Backups = () => {
                                                     required
                                                 />
                                             </FormField>
-                                            <FormField label={t('app.backups.secretKey', 'Secret Key')} htmlFor="s3-secret-key">
+                                            <FormField label={t('app.backups.secretKey', 'Secret key')} htmlFor="s3-secret-key">
                                                 <Input
                                                     id="s3-secret-key"
                                                     type="password"
@@ -921,7 +925,7 @@ const Backups = () => {
                                             </FormField>
                                         </FormRow>
                                         <FormRow>
-                                            <FormField label={t('app.backups.customEndpointUrl', 'Custom Endpoint URL')} htmlFor="s3-endpoint" hint={t('app.backups.optionalForMinioWasabi', 'Optional, for MinIO/Wasabi')}>
+                                            <FormField label={t('app.backups.customEndpointUrl', 'Custom endpoint URL')} htmlFor="s3-endpoint" hint={t('app.backups.optionalForMinioWasabi', 'Optional, for MinIO/Wasabi')}>
                                                 <Input
                                                     id="s3-endpoint"
                                                     type="text"
@@ -930,7 +934,7 @@ const Backups = () => {
                                                     placeholder="https://s3.example.com"
                                                 />
                                             </FormField>
-                                            <FormField label={t('app.backups.pathPrefix', 'Path Prefix')} htmlFor="s3-path-prefix">
+                                            <FormField label={t('app.backups.pathPrefix', 'Path prefix')} htmlFor="s3-path-prefix">
                                                 <Input
                                                     id="s3-path-prefix"
                                                     type="text"
@@ -947,7 +951,7 @@ const Backups = () => {
                                     <div className="storage-provider-config">
                                         <h4>{t('app.backups.backblazeB2', 'Backblaze B2')}</h4>
                                         <FormRow>
-                                            <FormField label={t('app.backups.bucketName', 'Bucket Name')} htmlFor="b2-bucket">
+                                            <FormField label={t('app.backups.bucketName', 'Bucket name')} htmlFor="b2-bucket">
                                                 <Input
                                                     id="b2-bucket"
                                                     type="text"
@@ -957,7 +961,7 @@ const Backups = () => {
                                                     required
                                                 />
                                             </FormField>
-                                            <FormField label={t('app.backups.s3CompatibleEndpointUrl', 'S3-Compatible Endpoint URL')} htmlFor="b2-endpoint">
+                                            <FormField label={t('app.backups.s3CompatibleEndpointUrl', 'S3-compatible endpoint URL')} htmlFor="b2-endpoint">
                                                 <Input
                                                     id="b2-endpoint"
                                                     type="text"
@@ -969,7 +973,7 @@ const Backups = () => {
                                             </FormField>
                                         </FormRow>
                                         <FormRow>
-                                            <FormField label={t('app.backups.applicationKeyId', 'Application Key ID')} htmlFor="b2-key-id">
+                                            <FormField label={t('app.backups.applicationKeyId', 'Application key ID')} htmlFor="b2-key-id">
                                                 <Input
                                                     id="b2-key-id"
                                                     type="text"
@@ -978,7 +982,7 @@ const Backups = () => {
                                                     required
                                                 />
                                             </FormField>
-                                            <FormField label={t('app.backups.applicationKey', 'Application Key')} htmlFor="b2-app-key">
+                                            <FormField label={t('app.backups.applicationKey', 'Application key')} htmlFor="b2-app-key">
                                                 <Input
                                                     id="b2-app-key"
                                                     type="password"
@@ -988,7 +992,7 @@ const Backups = () => {
                                                 />
                                             </FormField>
                                         </FormRow>
-                                        <FormField label={t('app.backups.pathPrefix', 'Path Prefix')} htmlFor="b2-path-prefix">
+                                        <FormField label={t('app.backups.pathPrefix', 'Path prefix')} htmlFor="b2-path-prefix">
                                             <Input
                                                 id="b2-path-prefix"
                                                 type="text"
@@ -1027,7 +1031,7 @@ const Backups = () => {
                                 )}
 
                                 <div className="form-actions">
-                                    <Button type="submit">{t('app.backups.saveStorageConfig', 'Save Storage Config')}</Button>
+                                    <Button type="submit">{t('app.backups.saveStorageConfig', 'Save storage settings')}</Button>
                                     {storageForm.provider !== 'local' && (
                                         <Button
                                             type="button"
@@ -1038,7 +1042,7 @@ const Backups = () => {
                                             {testingConnection ? (
                                                 <><RefreshCw size={16} className="spinning" /> {t('app.backups.testing', 'Testing…')}</>
                                             ) : (
-                                                <><Check size={16} /> {t('app.backups.testConnection', 'Test Connection')}</>
+                                                <><Check size={16} /> {t('app.backups.testConnection', 'Test connection')}</>
                                             )}
                                         </Button>
                                     )}
@@ -1055,7 +1059,7 @@ const Backups = () => {
                 <>
                     <SharedCard variant="legacy" className="card">
                         <SharedCardHeader variant="legacy" className="card-header">
-                            <h3>{t('app.backups.backupSettings', 'Backup Settings')}</h3>
+                            <h3>{t('app.backups.backupSettings', 'Backup settings')}</h3>
                         </SharedCardHeader>
                         <SharedCardContent variant="legacy" className="card-body">
                             <form onSubmit={handleSaveConfig}>
@@ -1066,11 +1070,11 @@ const Backups = () => {
                                             checked={configForm.enabled}
                                             onChange={(e) => setConfigForm({...configForm, enabled: e.target.checked})}
                                         />
-                                        <span>{t('app.backups.enableScheduledBackups', 'Enable Scheduled Backups')}</span>
+                                        <span>{t('app.backups.enableScheduledBackups', 'Enable scheduled backups')}</span>
                                     </label>
                                 </FormField>
 
-                                <FormField label={t('app.backups.retentionPeriodDays', 'Retention Period (days)')} htmlFor="retention-days" hint={t('app.backups.backupsOlderThanThisWillBe', 'Backups older than this will be deleted during cleanup')}>
+                                <FormField label={t('app.backups.retentionPeriodDays', 'Retention period (days)')} htmlFor="retention-days" hint={t('app.backups.backupsOlderThanThisWillBe', 'Backups older than this will be deleted during cleanup.')}>
                                     <Input
                                         id="retention-days"
                                         type="number"
@@ -1082,10 +1086,10 @@ const Backups = () => {
                                 </FormField>
 
                                 <div className="form-actions">
-                                    <Button type="submit">{t('app.backups.saveSettings', 'Save Settings')}</Button>
+                                    <Button type="submit">{t('app.backups.saveSettings', 'Save settings')}</Button>
                                     <Button type="button" variant="outline" onClick={handleCleanup}>
                                         <Trash2 size={16} />
-                                        {t('app.backups.runCleanupNow', 'Run Cleanup Now')}
+                                        {t('app.backups.runCleanupNow', 'Run cleanup now')}
                                     </Button>
                                 </div>
                             </form>
@@ -1098,11 +1102,11 @@ const Backups = () => {
                         </SharedCardHeader>
                         <SharedCardContent variant="legacy" className="card-body">
                             <p className="form-help">
-                                {t('app.backups.serverkitIsFreeTheseAreYour', 'ServerKit is free — these are your own storage costs. Local is your server disk (leave at 0 if you don\'t track it). S3/B2 are your cloud provider\'s $/GB/month.')}
+                                {t('app.backups.serverkitIsFreeTheseAreYour', "ServerKit is free. These are your own storage costs. Local is your server disk (leave at 0 if you don't track it). S3/B2 are your cloud provider's $/GB/month.")}
                             </p>
                             <form onSubmit={handleSaveRates}>
                                 <FormRow>
-                                    <FormField label={t('app.backups.localGbMonth', 'Local ($/GB/month)')} htmlFor="rate-local" hint={t('app.backups.yourServerDiskUsuallyFree', 'Your server disk — usually free')}>
+                                    <FormField label={t('app.backups.localGbMonth', 'Local ($/GB/month)')} htmlFor="rate-local" hint={t('app.backups.yourServerDiskUsuallyFree', 'Your server disk (usually free)')}>
                                         <Input
                                             id="rate-local"
                                             type="number"
@@ -1149,34 +1153,41 @@ const Backups = () => {
             )}
 
             {/* Create Backup Modal */}
-            <Modal open={showBackupModal} onClose={() => setShowBackupModal(false)} title={t('app.backups.createBackup', 'Create Backup')}>
+            <Modal open={showBackupModal} onClose={() => setShowBackupModal(false)} title={t('app.backups.createBackup', 'Create backup')}>
                         <form onSubmit={handleCreateBackup} data-walkthrough="backup-create-form">
                                 <div className="form-group">
-                                    <label>{t('app.backups.backupType', 'Backup Type')}</label>
-                                    <select
+                                    <label htmlFor="backup-type">{t('app.backups.backupType', 'Backup type')}</label>
+                                    <Select
                                         value={backupForm.type}
-                                        onChange={(e) => setBackupForm({...backupForm, type: e.target.value})}
+                                        onValueChange={(type) => setBackupForm({...backupForm, type})}
                                     >
-                                        <option value="application">{t('app.backups.application', 'Application')}</option>
-                                        <option value="database">{t('app.backups.databaseOnly', 'Database Only')}</option>
-                                        <option value="files">{t('app.backups.filesDirectories', 'Files / Directories')}</option>
-                                    </select>
+                                        <SelectTrigger id="backup-type"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="application">{t('app.backups.application', 'Service')}</SelectItem>
+                                            <SelectItem value="database">{t('app.backups.databaseOnly', 'Database only')}</SelectItem>
+                                            <SelectItem value="files">{t('app.backups.filesDirectories', 'Files / directories')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {backupForm.type === 'application' && (
                                     <>
                                         <div className="form-group">
-                                            <label>{t('app.backups.application', 'Application')}</label>
-                                            <select
+                                            <label htmlFor="backup-application">{t('app.backups.application', 'Service')}</label>
+                                            <Select
                                                 value={backupForm.applicationId}
-                                                onChange={(e) => setBackupForm({...backupForm, applicationId: e.target.value})}
+                                                onValueChange={(applicationId) => setBackupForm({...backupForm, applicationId})}
                                                 required
                                             >
-                                                <option value="">{t('app.backups.selectApplication', 'Select Application')}</option>
-                                                {apps.map(app => (
-                                                    <option key={app.id} value={app.id}>{app.name}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger id="backup-application">
+                                                    <SelectValue placeholder={t('app.backups.selectApplication', 'Select service')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {apps.map(app => (
+                                                        <SelectItem key={app.id} value={String(app.id)}>{app.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
 
                                         <div className="form-group">
@@ -1186,7 +1197,7 @@ const Backups = () => {
                                                     checked={backupForm.includeDb}
                                                     onChange={(e) => setBackupForm({...backupForm, includeDb: e.target.checked})}
                                                 />
-                                                <span>{t('app.backups.includeDatabase', 'Include Database')}</span>
+                                                <span>{t('app.backups.includeDatabase', 'Include database')}</span>
                                             </label>
                                         </div>
                                     </>
@@ -1195,8 +1206,9 @@ const Backups = () => {
                                 {backupForm.type === 'files' && (
                                     <>
                                         <div className="form-group">
-                                            <label>{t('app.backups.backupNameOptional', 'Backup Name (optional)')}</label>
+                                            <label htmlFor={`${fieldId}-backup-name`}>{t('app.backups.backupNameOptional', 'Backup name (optional)')}</label>
                                             <Input
+                                                id={`${fieldId}-backup-name`}
                                                 type="text"
                                                 value={backupForm.fileName}
                                                 onChange={(e) => setBackupForm({...backupForm, fileName: e.target.value})}
@@ -1204,15 +1216,16 @@ const Backups = () => {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label>{t('app.backups.fileDirectoryPathsOnePerLine', 'File/Directory Paths (one per line)')}</label>
+                                            <label htmlFor={`${fieldId}-file-paths`}>{t('app.backups.fileDirectoryPathsOnePerLine', 'File/Directory Paths (one per line)')}</label>
                                             <Textarea
+                                                id={`${fieldId}-file-paths`}
                                                 value={backupForm.filePaths}
                                                 onChange={(e) => setBackupForm({...backupForm, filePaths: e.target.value})}
                                                 placeholder={"/etc/nginx/nginx.conf\n/var/www/mysite/config\n/home/user/.env"}
                                                 rows={5}
                                                 required
                                             />
-                                            <span className="form-help">{t('app.backups.enterAbsolutePathsToFilesOr', 'Enter absolute paths to files or directories to backup')}</span>
+                                            <span className="form-help">{t('app.backups.enterAbsolutePathsToFilesOr', 'Enter absolute paths to files or directories to backup.')}</span>
                                         </div>
                                     </>
                                 )}
@@ -1220,19 +1233,23 @@ const Backups = () => {
                                 {(backupForm.type === 'database' || backupForm.includeDb) && (
                                     <>
                                         <div className="form-group">
-                                            <label>{t('app.backups.databaseType', 'Database Type')}</label>
-                                            <select
+                                            <label htmlFor="backup-db-type">{t('app.backups.databaseType', 'Database type')}</label>
+                                            <Select
                                                 value={backupForm.dbType}
-                                                onChange={(e) => setBackupForm({...backupForm, dbType: e.target.value})}
+                                                onValueChange={(dbType) => setBackupForm({...backupForm, dbType})}
                                             >
-                                                <option value="mysql">{t('app.backups.mysql', 'MySQL')}</option>
-                                                <option value="postgresql">{t('app.backups.postgresql', 'PostgreSQL')}</option>
-                                            </select>
+                                                <SelectTrigger id="backup-db-type"><SelectValue /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="mysql">{t('app.backups.mysql', 'MySQL')}</SelectItem>
+                                                    <SelectItem value="postgresql">{t('app.backups.postgresql', 'PostgreSQL')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
 
                                         <div className="form-group">
-                                            <label>{t('app.backups.databaseName', 'Database Name')}</label>
+                                            <label htmlFor={`${fieldId}-db-name`}>{t('app.backups.databaseName', 'Database name')}</label>
                                             <Input
+                                                id={`${fieldId}-db-name`}
                                                 type="text"
                                                 value={backupForm.dbName}
                                                 onChange={(e) => setBackupForm({...backupForm, dbName: e.target.value})}
@@ -1242,8 +1259,9 @@ const Backups = () => {
 
                                         <div className="form-row">
                                             <div className="form-group">
-                                                <label>{t('common.labels.username', 'Username')}</label>
+                                                <label htmlFor={`${fieldId}-db-user`}>{t('common.labels.username', 'Username')}</label>
                                                 <Input
+                                                    id={`${fieldId}-db-user`}
                                                     type="text"
                                                     value={backupForm.dbUser}
                                                     onChange={(e) => setBackupForm({...backupForm, dbUser: e.target.value})}
@@ -1251,8 +1269,9 @@ const Backups = () => {
                                             </div>
 
                                             <div className="form-group">
-                                                <label>{t('common.labels.password', 'Password')}</label>
+                                                <label htmlFor={`${fieldId}-db-password`}>{t('common.labels.password', 'Password')}</label>
                                                 <Input
+                                                    id={`${fieldId}-db-password`}
                                                     type="password"
                                                     value={backupForm.dbPassword}
                                                     onChange={(e) => setBackupForm({...backupForm, dbPassword: e.target.value})}
@@ -1261,8 +1280,9 @@ const Backups = () => {
                                         </div>
 
                                         <div className="form-group">
-                                            <label>{t('app.backups.host', 'Host')}</label>
+                                            <label htmlFor={`${fieldId}-db-host`}>{t('app.backups.host', 'Host')}</label>
                                             <Input
+                                                id={`${fieldId}-db-host`}
                                                 type="text"
                                                 value={backupForm.dbHost}
                                                 onChange={(e) => setBackupForm({...backupForm, dbHost: e.target.value})}
@@ -1274,7 +1294,7 @@ const Backups = () => {
                                 <Button type="button" variant="outline" onClick={() => setShowBackupModal(false)}>
                                     {t('common.actions.cancel', 'Cancel')}
                                 </Button>
-                                <Button type="submit" data-walkthrough="backup-create-submit">{t('app.backups.createBackup', 'Create Backup')}</Button>
+                                <Button type="submit" data-walkthrough="backup-create-submit">{t('app.backups.createBackup', 'Create backup')}</Button>
                             </div>
                         </form>
             </Modal>
@@ -1289,37 +1309,25 @@ const Backups = () => {
             />
 
             {/* Restore Modal */}
-            <Modal open={showRestoreModal && !!selectedBackup} onClose={() => setShowRestoreModal(false)} title={t('app.backups.restoreBackup', 'Restore Backup')}>
+            <Modal open={showRestoreModal && !!selectedBackup} onClose={() => setShowRestoreModal(false)} title={t('app.backups.restoreBackup', 'Restore backup')}>
                         {selectedBackup && (<>
                             <div className="bk-restore-warn">
                                 <AlertTriangle size={18} />
                                 <span><b>{t('app.backups.warning', 'Warning:')}</b> {t('app.backups.restoringThisBackupWillOverwriteExisting', 'restoring this backup will overwrite existing data. This action cannot be undone.')}</span>
                             </div>
-                            <div className="bk-restore-details">
-                                <div className="sk-info-row">
-                                    <span className="k">{t('app.backups.backupName', 'Backup Name')}</span>
-                                    <span className="v">{selectedBackup.name || selectedBackup.app_name}</span>
-                                </div>
-                                <div className="sk-info-row">
-                                    <span className="k">{t('common.labels.type', 'Type')}</span>
-                                    <span className="v">{selectedBackup.type}</span>
-                                </div>
-                                <div className="sk-info-row">
-                                    <span className="k">{t('common.labels.created', 'Created')}</span>
-                                    <span className="v">{formatTimestamp(selectedBackup.timestamp)}</span>
-                                </div>
-                                <div className="sk-info-row">
-                                    <span className="k">{t('common.labels.size', 'Size')}</span>
-                                    <span className="v">{formatBytes(selectedBackup.size, { defaultValue: '0 B' })}</span>
-                                </div>
-                            </div>
+                            <InfoList>
+                                <InfoItem label={t('app.backups.backupName', 'Backup name')} value={selectedBackup.name || selectedBackup.app_name} />
+                                <InfoItem label={t('common.labels.type', 'Type')} value={selectedBackup.type} />
+                                <InfoItem label={t('common.labels.created', 'Created')} value={formatTimestamp(selectedBackup.timestamp)} />
+                                <InfoItem label={t('common.labels.size', 'Size')} value={formatBytes(selectedBackup.size, { defaultValue: '0 B' })} />
+                            </InfoList>
                         </>)}
                         <div className="modal-actions">
                             <Button variant="outline" onClick={() => setShowRestoreModal(false)}>
                                 {t('common.actions.cancel', 'Cancel')}
                             </Button>
                             <Button variant="destructive" onClick={handleRestore}>
-                                {t('app.backups.restoreBackup', 'Restore Backup')}
+                                {t('app.backups.restoreBackup', 'Restore backup')}
                             </Button>
                         </div>
             </Modal>

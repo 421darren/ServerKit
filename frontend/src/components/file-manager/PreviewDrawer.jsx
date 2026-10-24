@@ -6,6 +6,7 @@ import ImageThumb from './ImageThumb';
 import { getFileType } from './fileTypes';
 import { highlightLine, fileExt } from './highlight';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Above this the highlighted view would render too many DOM nodes — fall back
 // to the plain read-only textarea.
@@ -84,7 +85,7 @@ export default function PreviewDrawer({
                     )}
                     <div className="meta-item meta-item-wide">
                         <span className="meta-label">{t('app.previewDrawer.modified', 'Modified')}</span>
-                        <span className="meta-value">{new Date(file.modified).toLocaleString()}</span>
+                        <span className="meta-value">{formatDateTime(file.modified)}</span>
                     </div>
                 </div>
 
@@ -125,7 +126,7 @@ export default function PreviewDrawer({
                     ) : file.is_editable ? (
                         <div className="editor-wrap">
                             <div className="editor-toolbar">
-                                <span className="editor-status">{editing ? 'Editing' : 'Read-only'}</span>
+                                <span className="editor-status">{editing ? t('app.previewDrawer.editing', 'Editing') : t('app.previewDrawer.readOnly', 'Read-only')}</span>
                                 <div className="editor-buttons">
                                     {!editing ? (
                                         <Button size="sm" onClick={onStartEdit}>
@@ -184,7 +185,7 @@ export default function PreviewDrawer({
                             <EyeOff size={48} strokeWidth={1.5} />
                             <p>{t('app.previewDrawer.previewNotAvailableForThisFile', 'Preview not available for this file type')}</p>
                             <Button onClick={() => onDownload(file)}>
-                                <Download size={16} /> {t('app.previewDrawer.downloadFile', 'Download File')}
+                                <Download size={16} /> {t('app.previewDrawer.downloadFile', 'Download file')}
                             </Button>
                         </div>
                     )}

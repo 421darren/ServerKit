@@ -7,7 +7,9 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.middleware.rbac import admin_required
+from app.exceptions import NotFoundError
 from app.services import recycle_bin_service
+from app.api._request import json_object
 
 recycle_bin_bp = Blueprint('recycle_bin', __name__)
 
@@ -53,14 +55,16 @@ def purge(kind, record_id):
     except KeyError:
         return jsonify({'error': f'Unknown kind: {kind}'}), 400
     if not ok:
-        return jsonify({'error': err}), 404 if err == 'not found' else 400
+        if err is recycle_bin_service.PURGE_NOT_FOUND:
+            raise NotFoundError('Item not found in the recycle bin')
+        return jsonify({'error': err}), 400
     return jsonify({'success': True})
 
 
 @recycle_bin_bp.route('/purge-expired', methods=['POST'])
 @admin_required
 def purge_expired():
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     days = body.get('retention_days', recycle_bin_service.DEFAULT_RETENTION_DAYS)
     try:
         days = max(1, int(days))

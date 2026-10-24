@@ -12,6 +12,18 @@ class SystemService:
     """Service for collecting system metrics and information."""
 
     @staticmethod
+    def database_reachable():
+        """True when the panel database answers ``SELECT 1``."""
+        from sqlalchemy import text
+        from app import db
+        try:
+            db.session.execute(text('SELECT 1'))
+            return True
+        except Exception:
+            db.session.rollback()
+            return False
+
+    @staticmethod
     def get_size(bytes_val):
         """Convert bytes to human readable format."""
         return format_bytes(bytes_val, suffix_sep='')
@@ -117,7 +129,7 @@ class SystemService:
     def get_network_metrics(cls):
         """Get network usage metrics.
 
-        Probe honesty (plan 75 §A3): mirrors the disk I/O block — when
+        Probe honesty: mirrors the disk I/O block — when
         net_io_counters/net_if_* fail or return nothing, the corresponding
         section is None/empty rather than raising (which would kill the whole
         live metrics broadcast) or fabricating zeros.

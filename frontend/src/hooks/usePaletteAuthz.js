@@ -11,14 +11,14 @@ const ALWAYS_VISIBLE = new Set(
 );
 
 /**
- * The palette's authz gate (plan 41, Phase 1 #3). Mirrors exactly what the
+ * The palette's authz gate. Mirrors exactly what the
  * sidebar shows so a member's palette can't surface admin surface:
  *   - `adminOnly` items require an admin.
  *   - Items tied to a sidebar `navId` respect the active workspace's per-role
  *     nav-permission map (same source as applyWorkspaceNavPermissions), which
  *     only ever NARROWS a member's view.
  *   - Items whose capability ServerKit Cloud holds under the managed profile
- *     (plan 25) leave the palette too, same as they leave every sidebar preset.
+ * leave the palette too, same as they leave every sidebar preset.
  *
  * Note: this intentionally does NOT apply personal sidebar-preset hiding — a page
  * you hid from your sidebar for tidiness stays reachable via the palette.

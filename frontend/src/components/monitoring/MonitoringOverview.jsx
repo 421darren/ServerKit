@@ -12,6 +12,7 @@ import MonitorsSummary from './MonitorsSummary';
 import DiskReclaimModal from './DiskReclaimModal';
 import { HOST_SCOPE, useScopeMetrics, trendOf } from './useMonitorScope';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 const PERIODS = ['1h', '6h', '24h', '7d'];
 
@@ -279,7 +280,7 @@ export default function MonitoringOverview({
                 <section className="monitoring-panel">
                     <div className="monitoring-panel__header">
                         <div>
-                            <h3>{t('app.monitoringOverview.memoryDisk', 'Memory & disk')}</h3>
+                            <h3>{t('app.monitoringOverview.memoryDisk', 'Memory and disk')}</h3>
                             <span className="mon-panel-sub">{scopeLabel} {t('app.monitoringOverview.percentUsedLast', '· percent used · last')} {period}</span>
                         </div>
                         <div className="mon-legend">
@@ -372,7 +373,7 @@ export default function MonitoringOverview({
                         <h3>{t('app.monitoringOverview.speedTest', 'Speed test')}</h3>
                         <Button size="sm" variant="outline" onClick={onRunSpeedTest} disabled={speedTestRunning}>
                             <Zap size={14} />
-                            {speedTestRunning ? 'Running…' : 'Run test'}
+                            {speedTestRunning ? t('app.monitoringOverview.running', 'Running…') : t('app.monitoringOverview.runTest', 'Run test')}
                         </Button>
                     </div>
                     {speedTest?.last_result ? (
@@ -399,14 +400,14 @@ export default function MonitoringOverview({
                                 </Pill>
                                 <span>
                                     {t('app.monitoringOverview.tested', 'Tested')} {speedTest.last_result.tested_at
-                                        ? new Date(speedTest.last_result.tested_at).toLocaleString()
+                                        ? formatDateTime(speedTest.last_result.tested_at)
                                         : 'never'}
                                 </span>
                             </div>
                         </>
                     ) : (
                         <p className="mon-panel-hint">
-                            {t('app.monitoringOverview.noSpeedTestYetRunOne', 'No speed test yet — run one to measure this server\'s connection.')}
+                            {t('app.monitoringOverview.noSpeedTestYetRunOne', "No speed test yet. Run one to measure this server's connection.")}
                         </p>
                     )}
                 </section>
@@ -425,7 +426,7 @@ function ChartBody({ loading, values, children }) {
     if (!values || values.length < 2) {
         return (
             <p className="mon-panel-hint">
-                {t('app.monitoringOverview.noHistoryYetForThisHost', 'No history yet for this host — samples are collected on the monitoring interval.')}
+                {t('app.monitoringOverview.noHistoryYetForThisHost', 'No history yet for this host. Samples are collected on the monitoring interval.')}
             </p>
         );
     }

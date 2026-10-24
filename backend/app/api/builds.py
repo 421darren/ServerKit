@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). Per-app build routes gate via the app-grant
+# Bucket: PER-APP. Per-app build routes gate via the app-grant
 # family (can_access_app / can_edit_app). See docs/WORKSPACE_SCOPING.md.
 """
 Build and Deployment API Endpoints
@@ -17,6 +17,8 @@ from app.models import User, Application, Deployment
 from app.services.build_service import BuildService
 from app.services.deployment_service import DeploymentService
 from app.services.resource_grant_service import ResourceGrantService
+from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 builds_bp = Blueprint('builds', __name__)
 
@@ -32,10 +34,10 @@ def get_build_config(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     config = BuildService.get_app_build_config(app_id)
     if not config:
@@ -50,9 +52,9 @@ def configure_build(app_id):
     """Configure build settings for an app."""
     app = Application.query_active().filter_by(id=app_id).first()
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -96,10 +98,10 @@ def detect_build_method(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     detection = BuildService.detect_build_method(app.root_path)
     return jsonify(detection), 200
@@ -114,10 +116,10 @@ def get_nixpacks_plan(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     result = BuildService.get_nixpacks_plan(app.root_path)
     return jsonify(result), 200 if result.get('success') else 400
@@ -134,12 +136,12 @@ def trigger_build(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     no_cache = data.get('no_cache', False)
 
     result = BuildService.build(app_id, no_cache=no_cache)
@@ -155,10 +157,10 @@ def get_build_logs(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     limit = request.args.get('limit', 20, type=int)
     logs = BuildService.get_build_logs(app_id, limit)
@@ -174,10 +176,10 @@ def get_build_log_detail(app_id, timestamp):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     log = BuildService.get_build_log_detail(app_id, timestamp)
     if log:
@@ -200,7 +202,7 @@ def clear_build_cache(app_id):
 def deploy_app(app_id):
     """Deploy an application (build + deploy).
 
-    Every deploy is a job (plan 51 D7): by default this enqueues an `app_deploy`
+    Every deploy is a job: by default this enqueues an `app_deploy`
     DeploymentJob and returns 202 + {deploy_job_id} so the UI can open the live
     Deploy Console. `?wait=true` preserves the old synchronous contract for
     CLI/tests (runs inline, returns the deployment result body).
@@ -210,12 +212,12 @@ def deploy_app(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     no_cache = data.get('no_cache', False)
     version_tag = data.get('version_tag')
     wait = request.args.get('wait', 'false').lower() == 'true'
@@ -253,10 +255,10 @@ def get_deployments(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     limit = request.args.get('limit', 20, type=int)
     offset = request.args.get('offset', 0, type=int)
@@ -279,13 +281,13 @@ def get_deployment(deployment_id):
 
     deployment = Deployment.query.get(deployment_id)
     if not deployment:
-        return jsonify({'error': 'Deployment not found'}), 404
+        raise not_found('deployment')
 
     app = Application.query_active().filter_by(id=deployment.app_id).first()
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     include_logs = request.args.get('include_logs', 'false').lower() == 'true'
     return jsonify(deployment.to_dict(include_logs=include_logs)), 200
@@ -300,13 +302,13 @@ def get_deployment_diff(deployment_id):
 
     deployment = Deployment.query.get(deployment_id)
     if not deployment:
-        return jsonify({'error': 'Deployment not found'}), 404
+        raise not_found('deployment')
 
     app = Application.query_active().filter_by(id=deployment.app_id).first()
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     diff = DeploymentService.get_deployment_diff(deployment_id)
     if diff:
@@ -325,12 +327,12 @@ def rollback(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_edit_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
-    data = request.get_json() or {}
+    data = json_object()
     target_version = data.get('version')  # Optional - if not provided, rolls back to previous
 
     result = DeploymentService.rollback(
@@ -351,10 +353,10 @@ def get_current_deployment(app_id):
     app = Application.query_active().filter_by(id=app_id).first()
 
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     if not ResourceGrantService.can_access_app(user, app):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     deployment = DeploymentService.get_current_deployment(app_id)
     if deployment:

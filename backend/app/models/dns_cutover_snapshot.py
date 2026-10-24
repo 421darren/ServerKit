@@ -7,7 +7,7 @@ from app.models.json_column_mixin import JsonColumnMixin
 
 class DnsCutoverSnapshot(JsonColumnMixin, db.Model):
     """A point-in-time capture of a domain's live DNS records, taken right before
-    a migration cutover flips them to the new box (plan 27 Phase 6 #13, Decision 6).
+    a migration cutover flips them to the new box.
 
     ServerKit's DNS activity ledger (:class:`~app.models.dns_change.DnsChange`)
     only records the *after* value of each write, so it cannot power a revert. A
@@ -21,7 +21,7 @@ class DnsCutoverSnapshot(JsonColumnMixin, db.Model):
     * **cutover**  — the record(s) were repointed at the new box.
     * **reverted** — the snapshot was re-applied, restoring the pre-cutover state.
     * **reverted_with_deletions** — as *reverted*, plus records the cutover
-      *created* (no predecessor in the snapshot) were deleted (plan 31 #3).
+      *created* (no predecessor in the snapshot) were deleted.
     """
 
     __tablename__ = 'dns_cutover_snapshots'
@@ -36,7 +36,7 @@ class DnsCutoverSnapshot(JsonColumnMixin, db.Model):
     # JSON list of the records captured before cutover (the world to restore).
     records_json = db.Column(db.Text, nullable=True)
     # JSON list of records the cutover CREATED (no snapshot predecessor); revert
-    # deletes these so the world is restored byte-for-byte (plan 31 #3).
+    # deletes these so the world is restored byte-for-byte.
     created_records_json = db.Column(db.Text, nullable=True)
 
     status = db.Column(db.String(24), nullable=False, default='captured')

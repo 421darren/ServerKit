@@ -207,13 +207,13 @@ class ApiClient {
             try {
                 fallback += `: ${new URL(response.url).pathname}`;
             } catch { /* keep the status-only message */ }
-            // Plan 79 F1: when the route names a machine `code`, the message
+            // When the route names a machine `code`, the message
             // becomes translatable — `errors.<code>` with the server's own
             // English as the inline default, so an un-keyed code degrades to
             // exactly today's behaviour. The 257 `toast.error(err.message)`
             // sites keep working unchanged and gain translations as codes land.
             const serverMessage = data.error || data.msg || fallback;
-            const err = new Error(translateServerError(data.code, serverMessage));
+            const err = new Error(translateServerError(data.code, serverMessage, data.details));
             err.status = response.status;
             err.code = data.code || null;
             err.serverMessage = serverMessage;

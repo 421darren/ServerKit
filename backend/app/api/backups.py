@@ -7,11 +7,13 @@ from app.services.backup_service import BackupService
 from app.services.backup_policy_service import BackupPolicyService, BackupPolicyError
 from app.services.storage_provider_service import StorageProviderService
 from app import db, paths
+from app.exceptions import field_required, not_found
+from app.api._request import json_object
 
 backups_bp = Blueprint('backups', __name__)
 
 
-# UI-facing metadata for the CORE target types (plan 52 D4). Extension kinds
+# UI-facing metadata for the CORE target types. Extension kinds
 # carry their own label/scopes in backup_kind_registry. 'server' is listed
 # but flagged unimplemented so the UI never shows a dead whole-server button.
 _CORE_TARGET_META = {
@@ -76,7 +78,7 @@ def get_stats():
 @admin_required
 def list_policies():
     """Global list of policy-driven backup schedules across every target type
-    (§8 unification). Optional filters: ?target_type=, ?enabled=true|false.
+. Optional filters: ?target_type=, ?enabled=true|false.
 
     Replaces the legacy filesystem schedule list (/backups/schedules) for the
     unified Backups page — one queryable view of every BackupPolicy.
@@ -124,7 +126,7 @@ def list_policies():
 @backups_bp.route('/runs', methods=['GET'])
 @admin_required
 def list_runs():
-    """Global, queryable list of backup runs across every policy (§8).
+    """Global, queryable list of backup runs across every policy.
 
     Optional filters: ?target_type=, ?status=, ?policy_id=, ?limit= (<=500).
     Each run is augmented with its policy's target_type/target_id so the unified
@@ -160,7 +162,7 @@ def list_runs():
 
 
 # --------------------------------------------------------------------------- #
-# Generic policy-driven backup CRUD by (target_type, target_id) (§8).
+# Generic policy-driven backup CRUD by (target_type, target_id).
 # One surface for every BackupPolicy target — apps, WordPress sites, databases,
 # file path-lists, servers. The per-resource mounts
 # (/apps/:id/backup-policy, /wordpress/sites/:id/backup-policy) remain as
@@ -185,7 +187,7 @@ def get_target_policy(target_type, target_id):
 def update_target_policy(target_type, target_id):
     """Update a policy. Body may include target_subtype/target_meta (needed to
     describe database/files targets) plus the usual schedule/retention fields."""
-    data = request.get_json() or {}
+    data = json_object()
     subtype = data.pop('target_subtype', None)
     meta = data.pop('target_meta', None)
     try:
@@ -227,7 +229,7 @@ def restore_target_run(target_type, target_id, run_id):
     try:
         BackupPolicyService.validate_target_type(target_type)
         policy = BackupPolicyService.get_or_create_policy(target_type, target_id)
-        job = BackupPolicyService.request_restore(policy, run_id, request.get_json() or {})
+        job = BackupPolicyService.request_restore(policy, run_id, json_object())
     except BackupPolicyError as e:
         return jsonify({'error': str(e)}), 400
     return jsonify({'success': True, 'job_id': job.id}), 202
@@ -269,7 +271,7 @@ def get_config():
 @admin_required
 def update_config():
     """Update backup configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -293,7 +295,7 @@ def get_cost_rates():
 def update_cost_rates():
     """Update storage-cost rates. Accepts {rates:{local,s3,b2}} or the flat dict."""
     from app.services.backup_cost_service import BackupCostService
-    data = request.get_json() or {}
+    data = json_object()
     rates = BackupCostService.save_rates(data.get('rates') if 'rates' in data else data)
     return jsonify({'success': True, 'rates': rates}), 200
 
@@ -345,18 +347,18 @@ def cost_summary():
 @admin_required
 def backup_application():
     """Backup an application."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
     app_id = data.get('application_id')
     if not app_id:
-        return jsonify({'error': 'application_id is required'}), 400
+        raise field_required('application_id')
 
     app = Application.query_active().filter_by(id=app_id).first()
     if not app:
-        return jsonify({'error': 'Application not found'}), 404
+        raise not_found('service')
 
     result = BackupService.backup_application(
         app_name=app.name,
@@ -372,7 +374,7 @@ def backup_application():
 @admin_required
 def backup_database():
     """Backup a database."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -397,7 +399,7 @@ def backup_database():
 @admin_required
 def backup_files():
     """Backup specific files and directories."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -418,10 +420,10 @@ def backup_files():
 @admin_required
 def restore_application():
     """Restore an application from backup."""
-    data = request.get_json()
+    data = json_object()
 
     if not data or 'backup_path' not in data:
-        return jsonify({'error': 'backup_path is required'}), 400
+        raise field_required('backup_path')
 
     result = BackupService.restore_application(
         backup_path=data['backup_path'],
@@ -435,7 +437,7 @@ def restore_application():
 @admin_required
 def restore_database():
     """Restore a database from backup."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -473,7 +475,7 @@ def delete_backup(backup_path):
 @admin_required
 def cleanup_backups():
     """Clean up old backups."""
-    data = request.get_json() or {}
+    data = json_object()
     retention_days = data.get('retention_days')
 
     result = BackupService.cleanup_old_backups(retention_days)
@@ -495,7 +497,7 @@ def list_schedules():
 @admin_required
 def add_schedule():
     """Add a backup schedule."""
-    data = request.get_json()
+    data = json_object()
 
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -521,7 +523,7 @@ def add_schedule():
 @admin_required
 def update_schedule(schedule_id):
     """Update a backup schedule."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -558,7 +560,7 @@ def get_storage_config():
 @admin_required
 def update_storage_config():
     """Update storage provider configuration."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -586,9 +588,9 @@ def test_storage_connection():
 @admin_required
 def upload_to_remote():
     """Upload a local backup to remote storage."""
-    data = request.get_json()
+    data = json_object()
     if not data or 'backup_path' not in data:
-        return jsonify({'error': 'backup_path is required'}), 400
+        raise field_required('backup_path')
 
     backup_path = os.path.realpath(data['backup_path'])
 
@@ -600,7 +602,7 @@ def upload_to_remote():
     elif os.path.isfile(backup_path):
         result = StorageProviderService.upload_file(backup_path)
     else:
-        return jsonify({'error': 'Backup not found'}), 404
+        raise not_found('backup')
 
     return jsonify(result), 200 if result['success'] else 400
 
@@ -609,7 +611,7 @@ def upload_to_remote():
 @admin_required
 def verify_remote_backup():
     """Verify a backup exists and matches on remote storage."""
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
@@ -640,9 +642,9 @@ def list_remote_backups():
 @admin_required
 def download_from_remote():
     """Download a backup from remote storage to local."""
-    data = request.get_json()
+    data = json_object()
     if not data or 'remote_key' not in data:
-        return jsonify({'error': 'remote_key is required'}), 400
+        raise field_required('remote_key')
 
     remote_key = data['remote_key']
     # Determine local path from remote key

@@ -1,4 +1,4 @@
-"""Tier-1 backup verification (plan 23 Phase 1).
+"""Tier-1 backup verification.
 
 Every ``backup.policy.run`` writes a ``manifest.json`` next to its archives and
 then runs a cheap, always-on verification pass over the produced archive(s):

@@ -1,4 +1,4 @@
-"""CachedRemoteIndex — the one remote-catalog engine (plan 77 F1).
+"""CachedRemoteIndex — the one remote-catalog engine.
 
 The fetch → TTL cache → last-good fallback → bundled-file fallback pipeline
 was re-implemented per catalog (extension registry, theme registry, …) and

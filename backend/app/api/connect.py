@@ -22,7 +22,7 @@ def get_status():
 @connect_bp.route('/managed-profile', methods=['GET'])
 @admin_required
 def get_managed_profile():
-    """The managed profile in force (plan 25). Read-only: the signed
+    """The managed profile in force. Read-only: the signed
     ui.managed_profile command handler is the only writer, and lifting the
     profile from ServerKit Cloud — never from here — is the only off switch
     other than expiry or revocation."""

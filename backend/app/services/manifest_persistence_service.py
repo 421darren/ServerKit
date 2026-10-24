@@ -1,4 +1,4 @@
-"""Persist a detected manifest and seed what it declares (plan 17, Phase 1).
+"""Persist a detected manifest and seed what it declares.
 
 Stops the import flow from discarding what `RepositoryManifestService` already
 parses: the health-check path, the manifest env, and (for v1 manifests) the

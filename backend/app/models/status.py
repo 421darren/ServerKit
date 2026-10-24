@@ -1,4 +1,4 @@
-"""The ONE status vocabulary for run-shaped models (plan 77 D1).
+"""The ONE status vocabulary for run-shaped models.
 
 The same terminal state has historically been spelled four ways across run
 models (``success`` in cron_run/backup_run, ``completed`` in db_snapshot and

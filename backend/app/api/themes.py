@@ -1,4 +1,4 @@
-"""Themes API (plan 60) — /api/v1/themes.
+"""Themes API — /api/v1/themes.
 
 A theme is data, not code: a validated map of CSS custom-property tokens. This
 blueprint lists themes (bundled seeds + installed), imports a pasted/uploaded
@@ -14,10 +14,12 @@ import logging
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
+from app.exceptions import NotFoundError
 from app.services import theme_service
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import require_admin_user
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +95,9 @@ def delete_theme(slug):
     user = require_admin_user()
     ok, derr = theme_service.delete_theme(slug)
     if not ok:
-        code = 404 if derr == 'Theme not found' else 400
-        return jsonify({'error': derr}), code
+        if derr is theme_service.THEME_NOT_FOUND:
+            raise NotFoundError(derr)
+        return jsonify({'error': derr}), 400
     AuditService.log(
         action=AuditLog.ACTION_RESOURCE_DELETE,
         user_id=user.id,
@@ -117,7 +120,7 @@ def set_default():
     """Set the panel-wide default theme (admin) — what login/setup and new
     users get before picking their own."""
     user = require_admin_user()
-    body = request.get_json(silent=True) or {}
+    body = json_object(optional=True)
     slug = body.get('slug')
     if not isinstance(slug, str) or not slug:
         return jsonify({'error': 'Missing slug'}), 400

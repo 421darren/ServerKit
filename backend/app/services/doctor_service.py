@@ -361,7 +361,7 @@ class DoctorService:
             return _check('db.reachable', 'Database', 'fail', f'Query failed: {e}')
 
     # ------------------------------------------------------------------ #
-    # Site-DNS sweep (plan 26/31): do the managed site domains still resolve,
+    # Site-DNS sweep: do the managed site domains still resolve,
     # and do they point at this server? Each unresolved public domain becomes a
     # fail row, repairable via a connected DNS provider when one is set up.
     # ------------------------------------------------------------------ #
@@ -555,7 +555,7 @@ class DoctorService:
             logger.warning('could not send dns.unresolved notification: %s', e)
 
     # ------------------------------------------------------------------ #
-    # Backup restore-proof (plan 23 Phase 3): is each policy's latest backup
+    # Backup restore-proof: is each policy's latest backup
     # actually restorable? Two check families per policy:
     #   backup_drill_stale.<id> — cadence'd policies whose last drill is stale /
     #                             failed / never (skipped when cadence is 'off').

@@ -11,6 +11,7 @@ from flask_jwt_extended import jwt_required
 
 from app.services.fleet_monitor_service import fleet_monitor_service
 from app.middleware.rbac import admin_required, get_current_user
+from app.api._request import json_object
 
 fleet_monitor_bp = Blueprint('fleet_monitor', __name__)
 
@@ -94,7 +95,7 @@ def get_thresholds():
 @admin_required
 def create_threshold():
     """Create or update an alert threshold."""
-    data = request.get_json()
+    data = json_object()
     result = fleet_monitor_service.upsert_threshold(data)
     if 'error' in result:
         return jsonify(result), 400
@@ -190,7 +191,7 @@ def prometheus_metrics():
     """Prometheus-compatible metrics endpoint (no JWT, uses token param).
 
     Accepts ``PROMETHEUS_TOKEN`` from the environment or the panel's own scrape
-    token, the one the Prometheus template is installed with (plan 86 §A4).
+    token, the one the Prometheus template is installed with.
     """
     from app.services import metrics_token_service
     token = request.args.get('token') or request.headers.get('X-Prometheus-Token')

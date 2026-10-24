@@ -1,6 +1,6 @@
 import { createContext } from 'react';
 
-// The managed-profile context value (plan 25). Kept in its own module so the
+// The managed-profile context value. Kept in its own module so the
 // provider (a component file) and useManagedProfile (the hook) share one
 // context object without either exporting across the react-refresh boundary.
 const ManagedProfileContext = createContext({

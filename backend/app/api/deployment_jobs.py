@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). App-linked job reads gate on the app-grant
+# Bucket: PER-APP. App-linked job reads gate on the app-grant
 # seam (can_access_app); retries require can_operate_app. App-less jobs
 # (template installs, simulated deploys) are requester-or-admin only. The
 # job list is admin-only globally and app-access-gated when app_id is given.
@@ -12,6 +12,8 @@ from app.models import User, Application
 from app.models.deployment_job import DeploymentJob, DeploymentJobLog
 from app.services.deployment_job_service import DeploymentJobService
 from app.services.resource_grant_service import ResourceGrantService
+from app.exceptions import not_found, permission_denied
+from app.api._request import json_object
 
 deployment_jobs_bp = Blueprint('deployment_jobs', __name__)
 
@@ -50,7 +52,7 @@ def _job_payload(job, user, include_plan=False, include_logs=False):
 @deployment_jobs_bp.route('/simulate', methods=['GET'])
 @jwt_required()
 def get_simulate_info():
-    """Simulated-deploy availability + scenario catalog (plan 51.5 dev tool).
+    """Simulated-deploy availability + scenario catalog (dev tool).
 
     404 when the DEMO_DEPLOYS_ENABLED gate is off (production default), so the
     surface simply doesn't exist outside dev.
@@ -77,7 +79,7 @@ def simulate_deployment():
     from flask_jwt_extended import get_jwt_identity
     from app.services.demo_deploy_service import DemoDeployService
 
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     wait = request.args.get('wait', 'false').lower() == 'true'
     result = DemoDeployService.create(
         scenario=data.get('scenario') or '',
@@ -108,12 +110,12 @@ def list_deployment_jobs():
     if app_id:
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            return jsonify({'error': 'Application not found'}), 404
+            raise not_found('service')
         if not user or app_access_tier(user, app) is None:
-            return jsonify({'error': 'Access denied'}), 403
+            raise permission_denied()
         scoped_app = app
     elif not user or not user.is_admin:
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     jobs = DeploymentJobService.list_jobs(
         status=status,
@@ -139,10 +141,10 @@ def get_deployment_job(job_id):
     include_plan = request.args.get('plan', 'false').lower() == 'true'
     job = DeploymentJob.query.get(job_id)
     if not job:
-        return jsonify({'error': 'Deployment job not found'}), 404
+        raise not_found('deployment')
     user = get_current_user()
     if not user or not _job_visible_to(user, job):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
     return jsonify({'job': _job_payload(
         job, user, include_logs=include_logs, include_plan=include_plan,
     )}), 200
@@ -151,19 +153,21 @@ def get_deployment_job(job_id):
 @deployment_jobs_bp.route('/<job_id>/retry', methods=['POST'])
 @jwt_required()
 def retry_deployment_job(job_id):
-    """Retry a failed deployment job by cloning it and enqueuing a fresh run
-    (plan 51 D8). Only failed jobs may be retried."""
+    """Retry a failed deployment job by cloning it and enqueuing a fresh run.
+Only failed jobs may be retried."""
     job = DeploymentJob.query.get(job_id)
     if not job:
-        return jsonify({'error': 'Deployment job not found'}), 404
+        raise not_found('deployment')
     user = get_current_user()
     if not user or not _job_operable_by(user, job):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
     result = DeploymentJobService.retry_job(job_id, user_id=get_jwt_identity())
     if not result.get('success'):
-        # Distinguish "no such job" from a state/enqueue error.
-        status = 404 if result.get('error') == 'Deployment job not found' else 400
-        return jsonify({'error': result.get('error')}), status
+        # Distinguish "no such job" from a state/enqueue error by the result's
+        # code, never by its wording.
+        if result.get('code') == 'not_found':
+            raise not_found('deployment')
+        return jsonify({'error': result.get('error')}), 400
     if result.get('job'):
         # A retry creates a pending clone. It has neither a retry nor cancel
         # endpoint at this point, matching the capability contract above.
@@ -177,10 +181,10 @@ def retry_deployment_job(job_id):
 def get_deployment_job_logs(job_id):
     job = DeploymentJob.query.get(job_id)
     if not job:
-        return jsonify({'error': 'Deployment job not found'}), 404
+        raise not_found('deployment')
     user = get_current_user()
     if not user or not _job_visible_to(user, job):
-        return jsonify({'error': 'Access denied'}), 403
+        raise permission_denied()
 
     after_id = request.args.get('after_id', type=int)
     query = DeploymentJobLog.query.filter_by(job_id=job_id)

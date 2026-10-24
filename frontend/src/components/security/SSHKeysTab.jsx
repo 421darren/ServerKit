@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { KeyRound } from 'lucide-react';
 import api from '../../services/api';
 import { useToast } from '../../contexts/useToast.js';
 import { useConfirm } from '@/hooks/useConfirm';
 import EmptyState from '@/components/EmptyState';
+import ErrorState from '@/components/ErrorState';
 import Modal from '../Modal';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +18,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useTranslation } from 'react-i18next';
 import { Card as SharedCard } from '@/components/ui/card';
+import { errorReason } from '@/utils/errorMessage';
 
 // What the Comment cell renders when a key carries none. It has to be a real
 // value, not '': `ruleIsArmed` drops any rule whose value is empty, so
@@ -61,9 +63,11 @@ const SSH_KEY_VIEWS = [
 ];
 
 const SSHKeysTab = () => {
+    const fieldId = useId();
     const { t } = useTranslation();
     const [keys, setKeys] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newKey, setNewKey] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
@@ -83,8 +87,10 @@ const SSHKeysTab = () => {
         try {
             const data = await api.getSSHKeys();
             setKeys(data.keys || []);
+            setLoadError(null);
         } catch (error) {
             console.error('Failed to load SSH keys:', error);
+            setLoadError(error);
         } finally {
             setLoading(false);
         }
@@ -95,12 +101,12 @@ const SSHKeysTab = () => {
         setActionLoading(true);
         try {
             await api.addSSHKey(newKey);
-            toast.success(t('app.sSHKeysTab.sshKeyAddedSuccessfully', 'SSH key added successfully'));
+            toast.success(t('app.sSHKeysTab.sshKeyAddedSuccessfully', 'SSH key added'));
             setShowAddModal(false);
             setNewKey('');
             await loadKeys();
         } catch (error) {
-            toast.error(t('app.sSHKeysTab.failedToAddKey', 'Failed to add key: {{message}}', { message: error.message }));
+            toast.error(t('app.sSHKeysTab.failedToAddKey', "Couldn't add the key. {{message}}", { message: errorReason(error) }));
         } finally {
             setActionLoading(false);
         }
@@ -108,18 +114,18 @@ const SSHKeysTab = () => {
 
     const handleRemoveKey = async (keyId, comment) => {
         const confirmed = await confirm({
-            title: t('app.sSHKeysTab.removeSshKey', 'Remove SSH Key'),
-            message: t('app.sSHKeysTab.areYouSureYouWantTo', 'Are you sure you want to remove the SSH key{{value}}? This may lock you out if it\'s your only key.', { value: comment ? ` "${comment}"` : '' }),
-            confirmText: t('common.actions.remove', 'Remove'),
+            title: t('app.sSHKeysTab.removeSshKey', 'Delete SSH key'),
+            message: t('app.sSHKeysTab.areYouSureYouWantTo', "Delete the SSH key{{value}}? This may lock you out if it's your only key.", { value: comment ? ` "${comment}"` : '' }),
+            confirmText: t('common.actions.delete', 'Delete'),
             variant: 'danger',
         });
         if (!confirmed) return;
         try {
             await api.removeSSHKey(keyId);
-            toast.success(t('app.sSHKeysTab.sshKeyRemoved', 'SSH key removed'));
+            toast.success(t('app.sSHKeysTab.sshKeyRemoved', 'SSH key deleted'));
             await loadKeys();
         } catch (error) {
-            toast.error(t('app.sSHKeysTab.failedToRemoveKey', 'Failed to remove key: {{message}}', { message: error.message }));
+            toast.error(t('app.sSHKeysTab.failedToRemoveKey', "Couldn't delete the key. {{message}}", { message: errorReason(error) }));
         }
     };
 
@@ -168,7 +174,7 @@ const SSHKeysTab = () => {
             hideable: false,
             render: (key) => (
                 <Button variant="destructive" size="sm" onClick={() => handleRemoveKey(key.id, key.comment)}>
-                    {t('common.actions.remove', 'Remove')}
+                    {t('common.actions.delete', 'Delete')}
                 </Button>
             ),
         },
@@ -220,16 +226,26 @@ const SSHKeysTab = () => {
             />
             <ListToolbar>
                 <Button variant="default" size="sm" onClick={() => setShowAddModal(true)}>
-                    {t('app.sSHKeysTab.addKey', 'Add Key')}
+                    {t('app.sSHKeysTab.addKey', 'Add key')}
                 </Button>
             </ListToolbar>
 
             <GridChips {...chrome.chipProps} />
 
+            {loadError && keys.length > 0 && !loading && (
+                <ErrorState compact error={loadError} onRetry={loadKeys} />
+            )}
+
             {loading ? (
                 <SharedCard variant="legacy" className="card">
                     <div className="loading-sm">{t('common.loading', 'Loading…')}</div>
                 </SharedCard>
+            ) : loadError && keys.length === 0 ? (
+                <ErrorState
+                    title={t('app.sSHKeysTab.couldntLoadSshKeys', "Couldn't load SSH keys.")}
+                    error={loadError}
+                    onRetry={loadKeys}
+                />
             ) : keys.length === 0 ? (
                 <SharedCard variant="legacy" className="card">
                     <EmptyState
@@ -237,7 +253,7 @@ const SSHKeysTab = () => {
                         title={t('app.sSHKeysTab.noSshKeysConfiguredForRoot', 'No SSH keys configured for root user.')}
                         action={(
                             <Button variant="default" onClick={() => setShowAddModal(true)}>
-                                {t('app.sSHKeysTab.addSshKey', 'Add SSH Key')}
+                                {t('app.sSHKeysTab.addSshKey', 'Add SSH key')}
                             </Button>
                         )}
                     />
@@ -264,10 +280,11 @@ const SSHKeysTab = () => {
 
             <GridFilterDrawer {...chrome.drawerProps} />
 
-            <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.sSHKeysTab.addSshPublicKey', 'Add SSH Public Key')} size="lg">
+            <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title={t('app.sSHKeysTab.addSshPublicKey', 'Add SSH public key')} size="lg">
                 <div className="form-group">
-                    <Label>{t('app.sSHKeysTab.publicKey', 'Public Key')}</Label>
+                    <Label htmlFor={`${fieldId}-public-key`}>{t('app.sSHKeysTab.publicKey', 'Public key')}</Label>
                     <Textarea
+                        id={`${fieldId}-public-key`}
                         value={newKey}
                         onChange={(e) => setNewKey(e.target.value)}
                         placeholder={t('app.sSHKeysTab.sshRsaAaaaUserHostOr', 'ssh-rsa AAAA... user@host or ssh-ed25519 AAAA... user@host')}
@@ -278,7 +295,7 @@ const SSHKeysTab = () => {
                 <div className="modal-footer">
                     <Button variant="outline" onClick={() => setShowAddModal(false)}>{t('common.actions.cancel', 'Cancel')}</Button>
                     <Button variant="default" onClick={handleAddKey} disabled={actionLoading || !newKey.trim()}>
-                        {actionLoading ? 'Adding...' : 'Add Key'}
+                        {actionLoading ? t('app.sSHKeysTab.adding', 'Adding…') : t('app.sSHKeysTab.addKey', 'Add key')}
                     </Button>
                 </div>
             </Modal>

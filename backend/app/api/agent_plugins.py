@@ -4,6 +4,7 @@ from app.services.agent_plugin_service import AgentPluginService
 from app.services.audit_service import AuditService
 from app.models.audit_log import AuditLog
 from app.middleware.rbac import get_current_user
+from app.api._request import json_object
 
 agent_plugins_bp = Blueprint('agent_plugins', __name__)
 
@@ -32,7 +33,7 @@ def create_plugin():
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Request body required'}), 400
 
@@ -62,7 +63,7 @@ def update_plugin(plugin_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     plugin = AgentPluginService.update_plugin(plugin_id, data)
     if not plugin:
         return jsonify({'error': 'Plugin not found'}), 404
@@ -96,7 +97,7 @@ def delete_plugin(plugin_id):
 @agent_plugins_bp.route('/validate', methods=['POST'])
 @jwt_required()
 def validate_manifest():
-    data = request.get_json()
+    data = json_object()
     if not data:
         return jsonify({'error': 'Manifest data required'}), 400
     errors = AgentPluginService.validate_manifest(data)
@@ -112,7 +113,7 @@ def install_plugin(plugin_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     server_id = data.get('server_id')
     if not server_id:
         return jsonify({'error': 'server_id required'}), 400
@@ -140,7 +141,7 @@ def bulk_install_plugin(plugin_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json() or {}
+    data = json_object()
     server_ids = data.get('server_ids', [])
     if not server_ids:
         return jsonify({'error': 'server_ids required'}), 400
@@ -211,7 +212,7 @@ def update_install_config(install_id):
     if not user or not user.is_admin:
         return jsonify({'error': 'Admin access required'}), 403
 
-    data = request.get_json()
+    data = json_object()
     if not data or 'config' not in data:
         return jsonify({'error': 'config required'}), 400
 

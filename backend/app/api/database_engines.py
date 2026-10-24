@@ -1,4 +1,4 @@
-# Bucket: PER-APP (plan 29 #9). The per-app extension routes
+# Bucket: PER-APP. The per-app extension routes
 # (/<app_id>/extensions) address one installed engine, so they gate on
 # can_access_app; the catalog reads above them are system-level and carry no
 # app linkage, and every mutation is admin-only.
@@ -23,13 +23,13 @@ import logging
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.middleware.rbac import admin_required, get_current_user
-from app.models import Application
-from app.services.resource_grant_service import ResourceGrantService
+from app.middleware.rbac import admin_required
 from app.services import database_engine_extension_service as extensions
 from app.services import database_engine_service as engines
 from app.services.deployment_job_service import DeploymentJobService
 from app.services.template_service import TemplateService
+from app.api._access import require_app
+from app.api._request import json_object
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ def install_database_engine():
     so the caller navigates to the deploy console exactly as it would for any
     other template install.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
 
     plan = engines.plan_install(
         template_id=data.get('template_id'),
@@ -126,25 +126,6 @@ def list_engine_extensions():
                     'family': TemplateService.EXTENSION_FAMILY}), 200
 
 
-def _require_app_access(app_id):
-    """Ensure the caller may see this app, mirroring the per-app docker DB read.
-
-    Returns an (error_body, status) tuple to return, or None when allowed. The
-    extension listing names an instance's image, its databases and what it can
-    load — all facts about someone's application, so a bare `@jwt_required()`
-    would have let any signed-in user enumerate them across the whole panel.
-    """
-    user = get_current_user()
-    if not user:
-        return {'error': 'Unauthorized'}, 401
-    app = Application.query_active().filter_by(id=app_id).first()
-    if not app:
-        return {'error': 'Application not found'}, 404
-    if not ResourceGrantService.can_access_app(user, app):
-        return {'error': 'Access denied'}, 403
-    return None
-
-
 @database_engines_bp.route('/<int:app_id>/extensions', methods=['GET'])
 @jwt_required()
 def list_instance_extensions(app_id):
@@ -154,9 +135,7 @@ def list_instance_extensions(app_id):
     inferring it from the image name -- slower (a docker exec per extension),
     authoritative, and the only way to see what is already installed.
     """
-    denied = _require_app_access(app_id)
-    if denied:
-        return jsonify(denied[0]), denied[1]
+    require_app(app_id)
 
     probe = request.args.get('probe', 'false').lower() == 'true'
     result = extensions.instance_extensions(app_id, probe=probe)
@@ -177,7 +156,7 @@ def install_engine_extension(app_id):
     gets "your image does not carry this, install X instead" rather than a raw
     ``could not open extension control file``.
     """
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     result = extensions.install_extension(
         app_id,
         extension_id=data.get('extension_id') or data.get('id'),

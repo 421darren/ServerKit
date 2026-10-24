@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from app import db
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import ValidationError, not_found
 from app.models import Application
 from app.models.image_update import ImageUpdateCheck
 from app.services.docker_service import DockerService
@@ -17,13 +17,7 @@ class ImageUpdateService:
 
     @staticmethod
     def _docker(args, timeout=60):
-        """Run ``docker <args>`` — via DockerService.run (§G3).
-
-        The seam stays (tests stub it), but the result shape is now the one
-        every other docker caller gets. This wrapper used to hand back a raw
-        ``CompletedProcess`` while the two other private ``_docker`` wrappers
-        returned dicts — three names, three contracts.
-        """
+        """Run ``docker <args>`` via DockerService.run (tests stub this)."""
         return DockerService.run(args, timeout=timeout)
 
     @classmethod
@@ -55,7 +49,7 @@ class ImageUpdateService:
         # (and a `docker login` when a private registry is bound).
         app = Application.query_active().filter_by(id=application_id).first()
         if not app:
-            raise NotFoundError('Application not found')
+            raise not_found('service')
         image_ref = app.docker_image
         if not image_ref:
             raise ValidationError('Application has no Docker image')

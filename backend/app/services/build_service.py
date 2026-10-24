@@ -10,10 +10,11 @@ Supports:
 - Build timeout handling
 """
 
+import logging
 import os
 import subprocess
 
-from app.utils.system import run_checked
+from app.utils.system import app_process_env, run_checked
 import json
 import shutil
 import hashlib
@@ -25,6 +26,8 @@ from pathlib import Path
 
 from app import paths
 from app.utils.config_store import load_json_config
+
+logger = logging.getLogger(__name__)
 
 
 class BuildService:
@@ -546,9 +549,7 @@ class BuildService:
         }
 
         try:
-            env = os.environ.copy()
-            if env_vars:
-                env.update(env_vars)
+            env = app_process_env(env_vars)
 
             process = subprocess.Popen(
                 ['bash', '-c', build_cmd],
@@ -615,12 +616,11 @@ class BuildService:
 
         Auto-detects build method if set to 'auto'. ``image_tag`` names the
         image; a deploy passes an immutable per-deployment tag so a rollback
-        redeploys the image that actually ran, not whatever ``:latest`` is now
-        (plan 87 §A1).
+        redeploys the image that actually ran, not whatever ``:latest`` is now.
         """
         build_config = cls.get_app_build_config(app_id)
         if not build_config:
-            return {'success': False, 'error': 'Build not configured for this app'}
+            return {'success': False, 'error': 'Build is not set up for this service'}
 
         app_path = build_config['app_path']
         build_method = build_config.get('build_method', 'auto')
@@ -702,7 +702,9 @@ class BuildService:
             with open(filepath, 'w') as f:
                 json.dump(build_log, f, indent=2)
         except Exception:
-            pass
+            # The build itself is done; losing its log should not fail it,
+            # but it should not vanish without a trace either.
+            logger.exception('Could not save the build log for app %s', app_id)
 
     @classmethod
     def _update_build_stats(cls, app_id: int) -> None:

@@ -1,4 +1,4 @@
-// Managed profile (ServerKit Cloud, plan 25)
+// Managed profile (ServerKit Cloud)
 //
 // When ServerKit Cloud holds a Managed scope for this server it sends a signed
 // presentation policy naming the capabilities it has taken over. This ONE
@@ -20,7 +20,7 @@ export const MANAGED_CAPABILITY_MAP = {
         labelKey: 'managed.capability.fleet',
         label: 'Server fleet',
         noteKey: 'managed.capabilityNote.fleet',
-        note: 'Servers, Agent Fleet and Fleet Proxy',
+        note: 'Servers, agent fleet and fleet proxy',
         sidebarIds: ['servers'],
         routePrefixes: ['/servers', '/fleet', '/fleet-proxy'],
         // "Deploy to server" in Templates targets a fleet the customer no
@@ -32,7 +32,7 @@ export const MANAGED_CAPABILITY_MAP = {
         labelKey: 'managed.capability.provisioning',
         label: 'Server provisioning',
         noteKey: 'managed.capabilityNote.provisioning',
-        note: 'Cloud Servers',
+        note: 'Cloud servers',
         sidebarIds: [],
         routePrefixes: ['/cloud'],
         controls: [],
@@ -42,14 +42,14 @@ export const MANAGED_CAPABILITY_MAP = {
         labelKey: 'managed.capability.config_templates',
         label: 'Server templates',
         noteKey: 'managed.capabilityNote.config_templates',
-        note: 'Config Templates',
+        note: 'Config templates',
         sidebarIds: [],
         routePrefixes: ['/server-templates'],
         controls: [],
     },
     // Panel/agent update screens and self-update. The self-update section in
     // Settings › About collapses to the card in miniature. (The panel's
-    // self-update still runs; the card says so until plan 08's rings own it.)
+    // self-update still runs; the card says so until update rings own it.)
     updates: {
         labelKey: 'managed.capability.updates',
         label: 'Updates',

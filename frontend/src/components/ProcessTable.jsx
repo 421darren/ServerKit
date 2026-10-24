@@ -12,6 +12,7 @@ import {
 import { useTableSort } from '@/hooks/useTableSort';
 import { useColumnVisibility } from '@/hooks/useColumnVisibility';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/utils/intl';
 
 // Built-in saved views. These are the five chips that used to sit in a second
 // toolbar row on Terminal › Processes (All / Running / Sleeping / Stopped /
@@ -239,7 +240,7 @@ export function ProcessTable({
                             size="icon"
                             className="process-action-button"
                             onClick={(e) => { e.stopPropagation(); onForceKill(p); }}
-                            title={t('app.processTable.forceKill', 'Force Kill')}
+                            title={t('app.processTable.forceKill', 'Force kill')}
                             aria-label={t('app.processTable.forceKill2', 'Force kill {{name}}', { name: p.name })}
                         >
                             <AlertTriangle size={12} />
@@ -275,9 +276,8 @@ export function ProcessTable({
             onSortsChange={setSorts}
             {...chrome.tableProps}
             onRowClick={(p) => onSelect?.(p)}
-            rowClassName={(p) => (selectedPid === p.pid ? 'selected' : '')}
-            className="processes-table-wrapper"
-            tableClassName="table processes-table"
+            rowClassName={(p) => (selectedPid === p.pid ? 'is-selected' : '')}
+            className="processes-table"
             emptyTitle="No processes match this view."
             emptyMessage=""
             footer={(
@@ -333,7 +333,7 @@ export function ProcessDetailsPanel({ process, onClose, formatMemory = defaultFo
     return (
         <div className="process-details-panel">
             <div className="panel-header">
-                <h3>{t('app.processTable.processDetails', 'Process Details')}</h3>
+                <h3>{t('app.processTable.processDetails', 'Process details')}</h3>
                 <Button variant="outline" size="sm" onClick={onClose}>{t('common.actions.close', 'Close')}</Button>
             </div>
             <div className="panel-body">
@@ -347,7 +347,7 @@ export function ProcessDetailsPanel({ process, onClose, formatMemory = defaultFo
                     <DetailItem label={t('app.processTable.threads', 'Threads')} value={process.num_threads} />
                     <DetailItem
                         label={t('common.labels.created', 'Created')}
-                        value={process.create_time ? new Date(process.create_time * 1000).toLocaleString() : '-'}
+                        value={process.create_time ? formatDateTime(process.create_time * 1000) : '-'}
                     />
                 </div>
                 {process.command && (

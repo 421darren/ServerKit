@@ -99,7 +99,7 @@ class EncryptedSecret:
         server.api_secret                 # decrypts; None when empty or undecryptable
         Server.api_secret.is_set(server)  # has-a-secret masking for to_dict()
 
-    Contracts (plan 77 C1):
+    Contracts:
 
     - **Assignment raises on encrypt failure.** The historical hand-rolled
       accessors caught the exception and ``print()``-ed it, silently storing
@@ -158,7 +158,7 @@ class EncryptedSecret:
 def uuid_pk():
     """The ONE uuid primary-key shape: String(36), dashed uuid4 text.
 
-    Every uuid-keyed model uses this factory (plan 77 B3) so the format
+    Every uuid-keyed model uses this factory so the format
     decision is made once — a second format (e.g. 32-char hex) would break
     FK joins against String(36) columns. The lone pre-existing deviant is
     ai.py's String(64) hex ids, grandfathered until a data migration.
@@ -170,7 +170,7 @@ def uuid_pk():
 
 
 class TimestampMixin:
-    """created_at / updated_at in the ONE house shape (plan 77 B1).
+    """created_at / updated_at in the ONE house shape.
 
     Byte-identical to the hand-written pair::
 
@@ -200,7 +200,7 @@ class TimestampMixin:
 
 
 class RunLifecycleMixin:
-    """State transitions for run-shaped models (plan 77 D2).
+    """State transitions for run-shaped models.
 
     Ten run models hand-write ``status`` + ``started_at``/``completed_at``
     (+ duration) transitions today; this mixin is the one place they happen::
@@ -260,14 +260,14 @@ class RunLifecycleMixin:
 
 class SerializableMixin:
     """Opt-in ``to_dict()`` for models whose serialization is purely
-    mechanical (plan 77 B2).
+    mechanical.
 
     Introspects ``__table__.columns``: DateTime values auto-isoformat (the
     ternary previously pasted ~266 times), ``*_encrypted`` columns and any
     name in ``__serialize_exclude__`` are dropped, and ``serialize_extra()`` merges
     computed fields on top. A model whose dict genuinely differs from its
     columns (renames, nesting, per-caller options) keeps its hand-written
-    ``to_dict`` — this mixin is never forced (plan 75 §F's ruling stands).
+    ``to_dict`` — this mixin is never forced.
 
     Interplay with api/_query.py field selection: the mixin produces the
     FULL dict; response shaping stays _query's job.

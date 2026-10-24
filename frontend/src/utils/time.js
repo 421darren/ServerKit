@@ -1,11 +1,5 @@
-// Relative-time and duration helpers.
-//
-// Plan 79 §C: the implementations moved to `utils/intl.js`, which is the one
-// locale-aware formatting door. These names stay because ten files import
-// them and the two output shapes are deliberate — but they are now thin
-// delegations, not a second implementation. Notably the date tail of both
-// styles used to be `toLocaleDateString()` with no argument, which follows the
-// BROWSER's locale rather than the panel's.
+// Relative-time and duration helpers: thin wrappers over `utils/intl.js`
+// with two deliberate output shapes.
 //
 //   - timeAgo(iso)           compact: "just now", "4m", "3h", "2d", else a date
 //   - formatRelativeTime     verbose, now fully localized by Intl:

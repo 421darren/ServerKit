@@ -16,13 +16,14 @@ import os
 import shutil
 import tempfile
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required
 
 from app.services.buildpack_service import BuildpackService
 from app.services.git_service import GitService
 from app.services.source_connection_service import SourceConnectionService
 from app.middleware.rbac import developer_required, get_current_user
+from app.api._request import json_object
 
 buildpacks_bp = Blueprint('buildpacks', __name__)
 
@@ -46,7 +47,7 @@ def detect():
     If ``path`` is supplied it is used directly (no clone). Otherwise the repo is
     cloned shallowly to a temp workspace, inspected, and the workspace removed.
     """
-    data = request.get_json() or {}
+    data = json_object()
     # Through the one identity door: @developer_required admits API-key
     # callers, for whom reading the JWT directly raises.
     caller = get_current_user()
@@ -125,7 +126,7 @@ def generate():
 
     Body: {plan, overrides?, name?}
     """
-    data = request.get_json() or {}
+    data = json_object()
     plan = data.get('plan')
     if not isinstance(plan, dict):
         return jsonify({'error': 'plan (object) is required'}), 400

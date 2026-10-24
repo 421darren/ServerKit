@@ -1,4 +1,4 @@
-"""Organization-level chat / webhook connections (plan 24 Phase 4).
+"""Organization-level chat / webhook connections.
 
 The write + delivery half of :class:`app.models.chat_webhook.ChatWebhookConnection`
 — a shared Discord/Slack/Telegram room or a generic signed webhook that receives

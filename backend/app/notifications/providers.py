@@ -77,7 +77,7 @@ class EmailProviderService:
     def default_provider(cls):
         """The provider the Notification Bus should send through: the active
         default, else the first active one — both restricted to providers
-        flagged ``uses_notifications`` so relay-only rows are never picked (§6)."""
+        flagged ``uses_notifications`` so relay-only rows are never picked."""
         row = EmailProviderConnection.query.filter_by(
             is_default=True, is_active=True, uses_notifications=True).first()
         if row:
@@ -120,7 +120,7 @@ class EmailProviderService:
         if make_default:
             EmailProviderConnection.query.update({EmailProviderConnection.is_default: False})
 
-        # Usage flags (§6). API providers cannot be a Postfix smarthost, so
+        # Usage flags. API providers cannot be a Postfix smarthost, so
         # uses_relay is only honored for SMTP.
         uses_relay = bool(data.get('uses_relay')) and provider == 'smtp'
         row = EmailProviderConnection(
@@ -142,7 +142,7 @@ class EmailProviderService:
 
     @classmethod
     def update_usage(cls, provider_id, fields):
-        """Toggle a provider's usage flags (§6): uses_notifications, uses_relay,
+        """Toggle a provider's usage flags: uses_notifications, uses_relay,
         relay_priority. uses_relay is only honored for SMTP connections."""
         row = cls.get_provider(provider_id)
         if not row:

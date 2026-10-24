@@ -1,7 +1,6 @@
 // Fail2ban endpoints — the extension's own /api/v1/security/fail2ban client,
 // built on the panel's ApiClient via the SDK singleton. Moved out of the
-// host's services/api/security.js with the Fail2ban tab (plan 47 Ph3c /
-// plan 55 Phase 3). Same paths and bodies as the host client had, so the
+// host's services/api/security.js with the Fail2ban tab. Same paths and bodies as the host client had, so the
 // backend blueprint (same url_prefix) is a drop-in.
 import { api } from 'serverkit-sdk';
 

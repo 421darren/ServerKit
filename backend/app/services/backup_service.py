@@ -1,9 +1,8 @@
 import os
 import json
-import subprocess
+import logging
 import shutil
 import tarfile
-import gzip
 import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
@@ -17,9 +16,13 @@ from app import paths
 from app.utils import backup_crypto
 from app.utils.config_store import load_json_config, save_json_config
 from app.utils.formatting import format_bytes
-from app.utils.system import is_command_available, run_checked
+from app.utils.system import (
+    is_command_available, run_checked, run_from_gzip, run_to_gzip,
+)
 from app.services.telemetry_service import TelemetryService, generate_correlation_id
 from app.services import backup_schedule_service
+
+logger = logging.getLogger(__name__)
 
 # Unified job kind for asynchronous scheduled backups (see register_jobs).
 BACKUP_JOB_KIND = 'backup.run'
@@ -259,9 +262,7 @@ class BackupService:
                     cmd.extend(['-h', config['host']])
                 cmd.append(db_name)
 
-                with gzip.open(backup_file, 'wt') as f:
-                    result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
-                                         timeout=None)
+                result = run_to_gzip(cmd, backup_file)
 
                 if not result['success']:
                     return {'success': False, 'error': result['error']}
@@ -281,9 +282,7 @@ class BackupService:
                     cmd.extend(['-h', config['host']])
                 cmd.append(db_name)
 
-                with gzip.open(backup_file, 'wt') as f:
-                    result = run_checked(cmd, stdout=f, stderr=subprocess.PIPE,
-                                         env=env, timeout=None)
+                result = run_to_gzip(cmd, backup_file, env=env)
 
                 if not result['success']:
                     return {'success': False, 'error': result['error']}
@@ -469,19 +468,39 @@ class BackupService:
             if not restore_path:
                 restore_path = f"/var/www/{backup_info['app_name']}"
 
-            # Backup existing if present
-            if os.path.exists(restore_path):
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                backup_existing = f"{restore_path}.backup_{timestamp}"
-                shutil.move(restore_path, backup_existing)
+            # The archive holds one top-level dir named after the app's
+            # ORIGINAL directory, so extract beside the target and move that
+            # dir into place — extracting straight into the parent restored
+            # into the old name whenever restore_path was a different one.
+            parent = os.path.dirname(os.path.abspath(restore_path))
+            os.makedirs(parent, exist_ok=True)
+            staging = tempfile.mkdtemp(prefix='.restore-', dir=parent)
+            backup_existing = None
+            try:
+                # filter='data' blocks path traversal in archives
+                with tarfile.open(files_backup, 'r:gz') as tar:
+                    tar.extractall(staging, filter='data')
+                entries = os.listdir(staging)
+                if len(entries) != 1 or not os.path.isdir(os.path.join(staging, entries[0])):
+                    return {'success': False,
+                            'error': 'Invalid backup: expected one top-level directory'}
 
-            # Extract backup (filter='data' blocks path traversal in archives)
-            with tarfile.open(files_backup, 'r:gz') as tar:
-                tar.extractall(os.path.dirname(restore_path), filter='data')
+                if os.path.exists(restore_path):
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    backup_existing = f"{restore_path}.backup_{timestamp}"
+                    shutil.move(restore_path, backup_existing)
+                try:
+                    shutil.move(os.path.join(staging, entries[0]), restore_path)
+                except Exception:
+                    if backup_existing:
+                        shutil.move(backup_existing, restore_path)
+                    raise
+            finally:
+                shutil.rmtree(staging, ignore_errors=True)
 
             return {
                 'success': True,
-                'message': f'Application restored to {restore_path}',
+                'message': f'Service restored to {restore_path}',
                 'restore_path': restore_path
             }
 
@@ -516,8 +535,7 @@ class BackupService:
                     cmd.extend(['-h', host])
                 cmd.append(db_name)
 
-                with gzip.open(backup_path, 'rt') as f:
-                    result = run_checked(cmd, stdin=f, timeout=None)
+                result = run_from_gzip(cmd, backup_path)
 
             elif db_type == 'postgresql':
                 if not is_command_available('psql'):
@@ -534,8 +552,7 @@ class BackupService:
                     cmd.extend(['-h', host])
                 cmd.extend(['-d', db_name])
 
-                with gzip.open(backup_path, 'rt') as f:
-                    result = run_checked(cmd, stdin=f, env=env, timeout=None)
+                result = run_from_gzip(cmd, backup_path, env=env)
 
             else:
                 return {'success': False, 'error': f'Unknown database type: {db_type}'}
@@ -863,8 +880,11 @@ class BackupService:
                 if meta_path and os.path.exists(meta_path):
                     with open(meta_path, 'w') as f:
                         json.dump(backup_info, f, indent=2)
+            else:
+                # The row stays 'local' with its upload button; say why.
+                logger.warning('Auto-upload of %s failed: %s', backup_path, result.get('error'))
         except Exception:
-            pass
+            logger.exception('Auto-upload of %s failed', backup_path)
 
     # --- Smart backups (incremental + compression tiering) ---
 
@@ -1055,24 +1075,16 @@ class BackupService:
                 if app:
                     result = cls.backup_application(app.name, app.root_path, correlation_id=correlation_id)
                 else:
-                    result = {'success': False, 'error': f'Application "{target}" not found'}
+                    result = {'success': False, 'error': f'Service "{target}" not found'}
 
             elif backup_type == 'files':
                 paths_list = [p.strip() for p in target.split(',') if p.strip()]
                 result = cls.backup_files(paths_list, backup_name=f"scheduled_{sched.get('name', 'backup')}")
 
-            # Upload to remote if configured on this schedule
+            # Upload to remote if configured on this schedule. The operator
+            # asked for an offsite copy, so not getting one is a failure.
             if result and result.get('success') and sched.get('upload_remote', False):
-                try:
-                    from app.services.storage_provider_service import StorageProviderService
-                    backup_path = result.get('path') or result.get('backup', {}).get('path')
-                    if backup_path:
-                        if os.path.isdir(backup_path):
-                            StorageProviderService.upload_directory(backup_path)
-                        else:
-                            StorageProviderService.upload_file(backup_path)
-                except Exception:
-                    pass
+                result = cls._upload_scheduled(result)
 
             # Update schedule status
             config = cls.get_config()
@@ -1102,6 +1114,22 @@ class BackupService:
                     break
             cls.save_config(config)
             cls._send_backup_notification(sched.get('name', 'Backup'), False, str(e), correlation_id=correlation_id)
+
+    @staticmethod
+    def _upload_scheduled(result: Dict) -> Dict:
+        from app.services.storage_provider_service import StorageProviderService
+        backup_path = result.get('path') or result.get('backup', {}).get('path')
+        if not backup_path:
+            upload = {'success': False, 'error': 'the backup reported no path'}
+        elif os.path.isdir(backup_path):
+            upload = StorageProviderService.upload_directory(backup_path)
+        else:
+            upload = StorageProviderService.upload_file(backup_path)
+        if upload.get('success'):
+            return result
+        return {**result, 'success': False,
+                'error': f"Saved locally at {backup_path}, but the offsite upload "
+                         f"failed: {upload.get('error', 'unknown error')}"}
 
     @classmethod
     def _send_backup_notification(cls, backup_name: str, success: bool, message: str,
@@ -1138,7 +1166,9 @@ class BackupService:
                 'message': f'Backup {status}: {backup_name}' + (f' — {message}' if message else ''),
             }])
         except Exception:
-            pass
+            # Never break the backup flow over an alert, but a lost "backup
+            # failed" alert must at least reach the log.
+            logger.exception('Could not send the backup notification for %s', backup_name)
 
     @staticmethod
     def _format_size(size: int) -> str:

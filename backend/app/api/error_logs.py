@@ -8,6 +8,7 @@ from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
 from app.api._query import PageQuery
 from app.middleware.rbac import admin_required
 from app.services import error_log_service
+from app.api._request import json_object
 
 error_logs_bp = Blueprint('error_logs', __name__)
 
@@ -79,7 +80,7 @@ def get_error_log(error_id):
 @admin_required
 def resolve_error_log(error_id):
     """Set the resolved flag: body {"resolved": true|false}."""
-    data = request.get_json(silent=True) or {}
+    data = json_object(optional=True)
     if not isinstance(data.get('resolved'), bool):
         return jsonify({'error': 'resolved (boolean) is required'}), 400
     entry = error_log_service.set_resolved(error_id, data['resolved'])

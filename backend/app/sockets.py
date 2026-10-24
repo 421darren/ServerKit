@@ -107,8 +107,7 @@ def _server_visible(user, server_id):
     server = Server.query.populate_existing().filter_by(id=server_id).first()
     if not server:
         return False
-    return (user.is_admin or not server.workspace_id
-            or WorkspaceService.get_user_role(server.workspace_id, user.id) is not None)
+    return WorkspaceService.can_access_server(user, server)
 
 
 def _room_allowed(user, room):
@@ -159,7 +158,7 @@ def _prune_audience(room=None):
             socketio.server.leave_room(sid, room, namespace='/')
 
 
-# ==================== DECLARATIVE CHANNEL REGISTRY (plan 77 E2) ====================
+# ==================== DECLARATIVE CHANNEL REGISTRY ====================
 #
 # Eight hand-rolled subscribe/unsubscribe pairs used four different registry
 # shapes and re-checked auth inconsistently. register_channel() generates the
@@ -498,17 +497,19 @@ def handle_subscribe_logs(data):
     # Start log stream
     log_queue = log_streamer.start_stream(sid, filepath)
 
-    # Create thread to emit log updates
+    # Emit until this stream is stopped or replaced. A quiet log is not the
+    # end of the stream: giving up after 30s without a line left the client
+    # silently subscribed to nothing.
     def emit_logs():
-        while True:
+        while log_streamer.queues.get(sid) is log_queue:
             try:
-                log_data = log_queue.get(timeout=30)
-                if 'error' in log_data:
-                    socketio.emit('log_error', log_data, room=sid)
-                    break
-                socketio.emit('log_line', log_data, room=sid)
-            except:
+                log_data = log_queue.get(timeout=5)
+            except queue.Empty:
+                continue
+            if 'error' in log_data:
+                socketio.emit('log_error', log_data, room=sid)
                 break
+            socketio.emit('log_line', log_data, room=sid)
 
     thread = threading.Thread(target=emit_logs, daemon=True)
     thread.start()
@@ -583,7 +584,7 @@ def handle_leave_room(data):
 
 # ==================== DEPLOY CONSOLE STREAMING ====================
 #
-# Live push for the Deploy Console (plan 51). Room is per DeploymentJob
+# Live push for the Deploy Console. Room is per DeploymentJob
 # (`deploy_{job_id}`); the RunLogStream seam batches writes and emits one
 # `deploy_log` (a batch of persisted lines) per flush plus `deploy_status`
 # (the job summary dict) on step/terminal transitions. This is an ACCELERATOR
@@ -638,7 +639,7 @@ def emit_deploy_status(job_id: str, status: dict):
     }, room=rooms.deploy_room(job_id))
 
 
-# ==================== GENERALIZED RUN ENVELOPE (plan 77 E1) ====================
+# ==================== GENERALIZED RUN ENVELOPE ====================
 #
 # One event pair for every run kind, keyed by (run_kind, run_id) in the room
 # run_<kind>_<id>. The deploy kind dual-emits the legacy deploy_log /
@@ -711,7 +712,7 @@ def handle_subscribe_container_logs(data):
     data = data if isinstance(data, dict) else {}
     app_id = data.get('app_id')
     if not user or not _app_visible(user, app_id):
-        emit('error', {'message': 'Application access denied'})
+        emit('error', {'message': "You don't have access to this service"})
         return
     tail = data.get('tail', 100)
     since = data.get('since')
@@ -728,7 +729,7 @@ def handle_subscribe_container_logs(data):
     try:
         app = Application.query_active().filter_by(id=app_id).first()
         if not app:
-            emit('container_log_error', {'message': 'Application not found', 'app_id': app_id})
+            emit('container_log_error', {'message': 'Service not found', 'app_id': app_id})
             return
     except Exception as e:
         emit('container_log_error', {'message': f'Database error: {str(e)}', 'app_id': app_id})
@@ -753,7 +754,7 @@ def handle_subscribe_container_logs(data):
 
     if not container_id:
         emit('container_log_error', {
-            'message': 'No container found for this application',
+            'message': 'No container found for this service',
             'app_id': app_id,
             'hint': 'The application may not have been started yet'
         })
