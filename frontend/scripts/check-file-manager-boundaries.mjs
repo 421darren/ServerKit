@@ -29,9 +29,13 @@ export function inspectFileManagerSource(path, source) {
     }
     function visit(node) {
         if (!node || typeof node !== 'object') return;
-        if (page && node.type === 'AwaitExpression') errors.push(`${path}: asynchronous work belongs in hooks`);
+        if ((page || view) && node.type === 'AwaitExpression') errors.push(`${path}: asynchronous work belongs in hooks`);
         if ((page || view) && node.type === 'CallExpression' && node.callee?.object?.name === 'api') {
             errors.push(`${path}: views must not call API methods`);
+        }
+        if ((page || view) && node.type === 'CallExpression' && node.callee?.object?.name === 'fileApi'
+            && node.callee?.property?.name !== 'supports') {
+            errors.push(`${path}: file operations belong in feature hooks`);
         }
         if ((page || view) && node.type === 'CallExpression' && node.callee?.name === 'fetch') {
             errors.push(`${path}: views must not fetch`);

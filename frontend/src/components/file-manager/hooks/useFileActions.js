@@ -134,6 +134,12 @@ export default function useFileActions({
 
     const openRenameModal = (entry) => setDialog({ kind: 'rename', entry });
     const openPermissionsModal = (entry) => setDialog({ kind: 'permissions', entry });
+    const handleDownload = (entry) => {
+        if (!remoteGuard('download')) fileApi.download(entry);
+    };
+    const downloadSelected = (entries) => {
+        if (!remoteGuard('download')) entries.filter(entry => !entry.is_dir).forEach(fileApi.download);
+    };
 
     return {
         dialog,
@@ -143,6 +149,8 @@ export default function useFileActions({
         handleDelete,
         handleRename,
         handleChangePermissions,
+        handleDownload,
+        downloadSelected,
         openRenameModal,
         openPermissionsModal,
     };

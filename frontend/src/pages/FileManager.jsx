@@ -168,6 +168,8 @@ function FileManager() {
         handleDelete,
         handleRename,
         handleChangePermissions,
+        handleDownload,
+        downloadSelected,
         openRenameModal,
         openPermissionsModal,
     } = useFileActions({
@@ -275,20 +277,12 @@ function FileManager() {
     const rowOpen = useStableHandler(handleOpen);
     const rowToggleSelect = useStableHandler(handleToggleSelect);
     const rowContext = useStableHandler(openContextMenu);
-    const handleDownload = (entry) => {
-        if (!remoteGuard('download')) fileApi.download(entry);
-    };
     const rowDownload = useStableHandler(handleDownload);
     const rowRename = useStableHandler(openRenameModal);
     const rowPermissions = useStableHandler(openPermissionsModal);
     const rowDelete = useStableHandler((entry) => handleDelete(entry));
 
     const copyPathToClipboard = (path) => copyText(path);
-
-    const downloadSelected = () => {
-        if (!remoteGuard('download'))
-            selectedEntries.filter((e) => !e.is_dir).forEach((e) => fileApi.download(e));
-    };
 
     useTopbarActions(
         () => (
@@ -409,7 +403,7 @@ function FileManager() {
                             variant="unstyled"
                             type="button"
                             className="bulk-btn"
-                            onClick={downloadSelected}
+                            onClick={() => downloadSelected(selectedEntries)}
                         >
                             <Download size={14} /> {t('common.actions.download', 'Download')}
                         </Button>
