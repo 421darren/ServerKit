@@ -27,7 +27,7 @@ window.testApi={
  renameFile:(p,n)=>{(window.ops=window.ops||[]).push(['rename',p,n]);return Promise.resolve({});},
  changeFilePermissions:(p,m)=>{(window.ops=window.ops||[]).push(['chmod',p,m]);return Promise.resolve({});},
 };
-createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={['/files']}><ConfirmProvider><FileManager/></ConfirmProvider></MemoryRouter>);
+createRoot(document.getElementById('root')).render(<MemoryRouter initialEntries={[window.initialPath || '/files']}><ConfirmProvider><FileManager/></ConfirmProvider></MemoryRouter>);
 `;
 const server = await createServer({
     root, configFile: false, logLevel: 'error', resolve: { alias: { '@': path.join(root, 'src') } },
@@ -329,6 +329,16 @@ try {
     await failed.getByText("Couldn't open this folder.", { exact: true }).waitFor();
     assert.equal(await failed.getByText('This folder is empty', { exact: true }).count(), 0);
     console.log('PASS listing failures remain errors rather than empty folders');
+
+    const deepLink = await browser.newPage();
+    await deepLink.addInitScript(() => { window.initialPath = '/files?path=/var/www'; });
+    await deepLink.goto(`http://127.0.0.1:${server.httpServer.address().port}/fm-check`);
+    await deepLink.waitForFunction(() => window.pending.some(x => x.path === '/var/www'));
+    await deepLink.evaluate(() => window.release('/var/www'));
+    await deepLink.getByText('inside-www.txt', { exact: true }).waitFor();
+    assert.equal(await deepLink.getByText('projects', { exact: true }).count(), 0);
+    assert.equal(await deepLink.getByTitle('Back', { exact: true }).isDisabled(), true);
+    console.log('PASS initial deep links retain their directory and history');
 } finally {
     await browser?.close();
     await server.close();

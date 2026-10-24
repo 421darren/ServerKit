@@ -29,7 +29,7 @@ export default function useDirectoryBrowser({
     t,
 }) {
     const [searchParams, setSearchParams] = useSearchParams();
-    const previousTargetRef = useRef({ kind: 'local', server_id: null });
+    const previousTargetRef = useRef({ kind: target.kind, server_id: target.server_id });
     // ─── core ────────────────────────────────────────────
     const [currentPath, setCurrentPath] = useState(() => searchParams.get('path') || '/home');
     const [entries, setEntries] = useState([]);
