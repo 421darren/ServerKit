@@ -72,6 +72,36 @@ documented exception to adapter-only transport: they read storage configuration,
 panel version and panel volumes, not file contents. The route constructs the
 adapter but does not issue API calls or await requests.
 
+## Nginx configuration generation
+
+`backend/app/services/nginx_service.py` remains the compatible host-facing
+interface. It owns file updates, config testing, reloads, rollback and restore
+checkpoints. Configuration generation lives under `services/nginx/`:
+
+| Owner | Responsibility |
+| --- | --- |
+| `templates.py` | Configuration text and default values, with no executable behavior |
+| `validation.py` | Domain/path validation shared by rendering and cache operations |
+| `rendering.py` | Vhost selection, immutable assets, micro-cache, WordPress protection and SSL wrapping |
+| `compression.py` | Compression directives computed from supplied nginx dump/version text |
+
+The dependency direction is host service → pure configuration modules →
+templates/validation. Rendering never imports Flask, models, other services,
+filesystem APIs or process runners. It accepts values and returns text or an
+error. `RenderSettings` is an immutable value object; the compatibility service
+copies its template settings into that object, preserving class-level settings
+without passing the service itself into the renderer. Compression similarly
+receives directive tuples. Keep privileged writes and reloads in the existing
+host lifecycle; a rendering feature must not create another write path.
+
+The old `NginxService` methods and template attributes remain available. New
+rendering behavior belongs in the pure modules; those service methods must stay
+delegates. `test_nginx_boundaries.py` enforces that direction, data-only templates
+and module size limits, with negative fixtures for forbidden dependencies.
+`test_nginx_render_contract.py` captures 512 pre-extraction rendering combinations.
+Its digests are a refactoring contract: change them only for an intentional
+output change backed by semantic tests and, where relevant, real nginx parsing.
+
 ## Checks when extending these areas
 
 - `npm run lint` in `frontend`: includes File Manager dependency/composition
@@ -85,6 +115,11 @@ adapter but does not issue API calls or await requests.
   tests/test_core_blueprint_registry.py tests/test_cli_skips_background.py
   tests/test_api_error_shape.py` in `backend`: focused startup coverage.
 - Run the full backend suite for application assembly changes.
+- Nginx changes: run `test_nginx_boundaries.py`, `test_nginx_render_contract.py`
+  and the existing nginx, micro-cache, immutable-assets, HTTPS, WordPress
+  protection and restore-point tests. On Linux with nginx installed, run
+  `SERVERKIT_REAL_BINARIES=1 python -m pytest tests/test_real_nginx_vhost_syntax.py`
+  to validate generated configuration with the actual nginx parser.
 
 These checks already run through the existing frontend/backend CI workflows.
 Do not raise a size ceiling or allow a new dependency just to make a check pass;
