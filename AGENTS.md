@@ -38,6 +38,11 @@ Default dev credentials: `admin` / `admin`
 
 ## Architecture
 
+For application startup and File Manager ownership rules, see
+[`docs/CORE_BOUNDARIES.md`](docs/CORE_BOUNDARIES.md). Keep startup as ordered
+bootstrap phases, file transport in the capability-checked adapter, and async
+File Manager state in its feature hooks. CI enforces these boundaries.
+
 ### Backend (`backend/`)
 
 Flask app factory in `app/__init__.py` using `create_app()`. Three-layer architecture:

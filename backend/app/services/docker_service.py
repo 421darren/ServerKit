@@ -309,7 +309,7 @@ class DockerService:
 
     @staticmethod
     def run_container(image, name=None, ports=None, volumes=None, env=None,
-                      network=None, restart_policy='unless-stopped', command=None, detach=True):
+                      network=None, restart_policy='unless-stopped', command=None, detach=True, labels=None):
         """Run a new container (create and start)."""
         try:
             cmd = ['run']
@@ -331,6 +331,9 @@ class DockerService:
             if env:
                 for key, value in env.items():
                     cmd.extend(['-e', f'{key}={value}'])
+
+            for key, value in (labels or {}).items():
+                cmd.extend(['--label', f'{key}={value}'])
 
             if network:
                 cmd.extend(['--network', network])

@@ -189,24 +189,13 @@ def receive_pull_request(token):
         'pr_title': pr.get('pr_title'),
     }}
 
-    # On close we destroy by preview-id (the PR number maps to exactly one
-    # preview row); resolving it here avoids a full sync that — with no
-    # connected provider — would otherwise tear down every preview.
-    if job_kind == 'preview.destroy':
-        from app.models.application_preview import ApplicationPreview
-        preview = ApplicationPreview.query.filter_by(
-            application_id=webhook.app_id, pr_number=pr.get('pr_number')).first()
-        if not preview:
-            return jsonify({'success': True, 'action': 'ignored',
-                            'reason': 'no preview for closed PR'}), 200
-        payload = {'preview_id': preview.id}
-
-    # Enqueue the matching preview job. Under ENV=testing the job system is a
-    # no-op; never let an enqueue failure break the webhook response.
+    # Reserve desired state even when the create job has not started yet.
+    # A close must cancel a queued build rather than disappear for lack of a row.
     enqueued = False
     try:
-        from app.plugins_sdk import jobs
-        jobs.enqueue(job_kind, payload)
+        from app.services.previews.requests import enqueue
+        enqueue(webhook.app_id, payload['pr'],
+                action='destroy' if job_kind == 'preview.destroy' else 'create')
         enqueued = True
     except Exception as exc:
         logger.warning('failed to enqueue %s for app %s: %s',

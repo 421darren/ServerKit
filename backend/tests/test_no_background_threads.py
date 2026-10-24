@@ -13,6 +13,8 @@ the queue-bus consumers) or started only by an explicit runtime trigger
 """
 import threading
 
+import pytest
+
 
 def _thread_ids():
     return {t.ident for t in threading.enumerate()}
@@ -48,3 +50,44 @@ def test_create_app_testing_spawns_no_background_threads():
         finally:
             db.session.remove()
             db.drop_all()
+
+
+@pytest.mark.parametrize('failed_phase', [None, 'persistence', 'plugins'])
+def test_factory_phase_order_and_context(monkeypatch, failed_phase):
+    import app as application
+    from flask import has_app_context
+    from app.bootstrap import configuration, persistence, plugins, http, runtime
+    import app.sockets
+    import app.agent_gateway
+    import app.core_blueprints
+    from app.services import recycle_bin_service, restore_point_adapters
+
+    calls = []
+    def phase(name, context=False):
+        def run(*args):
+            assert has_app_context() is context
+            calls.append(name)
+            if name == failed_phase:
+                raise RuntimeError('startup failed')
+        return run
+
+    monkeypatch.setattr(configuration, 'configure_application', phase('configuration'))
+    monkeypatch.setattr(app.sockets, 'init_socketio', phase('socket'))
+    monkeypatch.setattr(app.agent_gateway, 'init_agent_gateway', phase('gateway'))
+    monkeypatch.setattr(app.core_blueprints, 'register_core_blueprints', phase('routes'))
+    monkeypatch.setattr(recycle_bin_service, 'register_builtin_types', phase('recycle'))
+    monkeypatch.setattr(restore_point_adapters, 'register_builtin_restore_point_adapters', phase('restore'))
+    monkeypatch.setattr(persistence, 'prepare_persistence', phase('persistence', True))
+    monkeypatch.setattr(plugins, 'load_extensions', phase('plugins', True))
+    monkeypatch.setattr(runtime, 'start_runtime', phase('runtime', True))
+    monkeypatch.setattr(http, 'register_http_handlers', phase('http'))
+    monkeypatch.setattr(application, 'socketio', application.socketio)
+    expected = ['configuration', 'socket', 'gateway', 'routes', 'recycle',
+                'restore', 'persistence', 'plugins', 'runtime', 'http']
+    if failed_phase:
+        with pytest.raises(RuntimeError, match='startup failed'):
+            application.create_app('testing')
+        assert calls == expected[:expected.index(failed_phase) + 1]
+    else:
+        application.create_app('testing')
+        assert calls == expected

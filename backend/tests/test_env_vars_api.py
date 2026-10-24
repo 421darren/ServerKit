@@ -43,3 +43,49 @@ def test_null_description_clears_but_omitted_leaves_it(app, client):
                      headers=headers)
     assert res.status_code == 200
     assert res.get_json()['env_var']['description'] is None
+
+
+def test_effective_view_is_value_free_and_app_scoped(app, client):
+    from factories import headers_for, make_user
+    with app.app_context():
+        application, owner = _seed_var(app)
+        app_id = application.id
+        owner_headers = headers_for(owner)
+        stranger = make_user(db, role='viewer')
+        stranger_headers = headers_for(stranger)
+    url = f'/api/v1/apps/{app_id}/env?view=effective'
+    response = client.get(url, headers=owner_headers)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['values_hidden'] and data['complete']
+    assert data['env_vars'][0]['key'] == 'API_URL'
+    assert 'https://api.example.test' not in response.get_data(as_text=True)
+    assert 'value' not in data['env_vars'][0]
+    assert client.get(url, headers=stranger_headers).status_code in (403, 404)
+    assert client.get(url).status_code == 401
+    assert client.get(url + '&service=bad/name', headers=owner_headers).status_code == 400
+
+
+def test_effective_view_grant_never_reveals_values_and_tombstone_denied(app, client):
+    from datetime import datetime
+    from factories import headers_for, make_user
+    from app.services.resource_grant_service import ResourceGrantService
+    from app.services.env_service import EnvService
+    with app.app_context():
+        application, owner = _seed_var(app)
+        EnvService.set_env_var(application.id, 'PASSWORD', 'super-private', is_secret=True)
+        viewer = make_user(db, role='viewer')
+        ResourceGrantService.grant(user_id=viewer.id, resource_type='application',
+                                  resource_id=application.id, granted_by=owner.id, role='viewer')
+        headers = headers_for(viewer)
+        app_id = application.id
+    url = f'/api/v1/apps/{app_id}/env?view=effective&mask=false'
+    response = client.get(url, headers=headers)
+    assert response.status_code == 200
+    assert 'super-private' not in response.get_data(as_text=True)
+    assert all('value' not in row for row in response.get_json()['env_vars'])
+    with app.app_context():
+        row = db.session.get(Application, app_id)
+        row.deleted_at = datetime.utcnow()
+        db.session.commit()
+    assert client.get(url, headers=headers).status_code == 404

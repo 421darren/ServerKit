@@ -18,7 +18,7 @@
 // sixth, "Total (24h)", was a real backend aggregate, but the view row is the
 // view name alone now and there was nowhere left to put it — so the
 // /telemetry/stats call went with it. The footer counts what is loaded.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Activity, ChevronRight, Info, Loader2, RefreshCw, Trash2,
 } from 'lucide-react';
@@ -127,6 +127,11 @@ export default function Telemetry() {
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [filters, setFilters] = useState(EMPTY_FILTERS);
     const [q, setQ] = useState('');
+    // Guard both event pages and source-dependent options against late responses.
+    const eventRequestSeq = useRef(0);
+    const optionsRequestSeq = useRef(0);
+    const currentQuery = useRef(null);
+    currentQuery.current = { filters, q };
 
     // Table sort + column visibility, controlled so saved views can drive
     // them — same localStorage keys the DataTable used when uncontrolled.
@@ -145,11 +150,14 @@ export default function Telemetry() {
     }, []);
 
     const loadFilterOptions = useCallback(async () => {
+        if (filters.source !== currentQuery.current.filters.source) return;
+        const request = ++optionsRequestSeq.current;
         try {
             const [sourcesData, typesData] = await Promise.all([
                 api.getTelemetrySources(),
                 api.getTelemetryEventTypes({ source: filters.source || undefined }),
             ]);
+            if (request !== optionsRequestSeq.current || filters.source !== currentQuery.current.filters.source) return;
             setSources(sourcesData.sources || []);
             setEventTypes(typesData.event_types || []);
         } catch {
@@ -158,6 +166,9 @@ export default function Telemetry() {
     }, [filters.source]);
 
     const fetchEvents = useCallback(async (nextPage = 1, replace = true) => {
+        const isCurrent = () => filters === currentQuery.current.filters && q === currentQuery.current.q;
+        if (!isCurrent()) return;
+        const request = ++eventRequestSeq.current;
         setLoading(true);
         try {
             const params = { ...filters, q, per_page: PAGE_SIZE, page: nextPage };
@@ -165,18 +176,20 @@ export default function Telemetry() {
                 if (params[key] === '') delete params[key];
             });
             const data = await api.getTelemetryEvents(params);
+            if (request !== eventRequestSeq.current || !isCurrent()) return;
             const fresh = data.events || [];
             setEvents((prev) => (replace ? fresh : [...prev, ...fresh]));
             setHasMore(fresh.length === PAGE_SIZE);
             setPage(nextPage);
             setLoadError(null);
         } catch (err) {
+            if (request !== eventRequestSeq.current || !isCurrent()) return;
             // Rendered in the list area (with Retry) rather than as a toast
             // that fades and leaves "No events recorded yet" behind.
             setLoadError(err);
             setHasMore(false);
         } finally {
-            setLoading(false);
+            if (request === eventRequestSeq.current && isCurrent()) setLoading(false);
         }
     }, [filters, q]);
 

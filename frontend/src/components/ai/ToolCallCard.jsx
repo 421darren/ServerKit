@@ -3,6 +3,18 @@ import { Wrench, Check, AlertTriangle, Loader2, ChevronDown } from 'lucide-react
 import { useServerkitAI } from '../../contexts/useServerkitAI.js';
 import { useTranslation } from 'react-i18next';
 import { Button as SharedButton } from '@/components/ui/button';
+import { useOperations } from '../../contexts/OperationsContext';
+import { useShellDock } from '../../contexts/useShellDock';
+
+const deploymentOperation = (call) => {
+    if (!['core__execute_deployment_proposal', 'core__get_deployment_operation'].includes(call.name)) return null;
+    try {
+        const result = typeof call.output === 'string' ? JSON.parse(call.output) : call.output;
+        const operation = result?.operation;
+        return operation?.run_kind === 'deploy' && typeof operation.id === 'string'
+            && /^[a-f0-9-]{36}$/i.test(operation.id) ? operation : null;
+    } catch { return null; }
+};
 
 // Strip the "<prefix>__" namespace for display (e.g. core__list_apps -> list_apps).
 const displayName = (qualified) => {
@@ -20,8 +32,11 @@ const formatValue = (v) => {
 const ToolCallCard = ({ call }) => {
     const { t } = useTranslation();
     const { getToolRenderer } = useServerkitAI();
+    const { openRun } = useOperations();
+    const { openTab } = useShellDock();
     const [expanded, setExpanded] = useState(call.status === 'running');
     const Custom = getToolRenderer(call.name);
+    const operation = deploymentOperation(call);
 
     const statusIcon = call.status === 'running'
         ? <Loader2 size={14} className="sk-ai-spin" />
@@ -48,6 +63,16 @@ const ToolCallCard = ({ call }) => {
                 </span>
                 <ChevronDown size={14} className={`sk-ai-tool-card__chev${expanded ? ' is-open' : ''}`} />
             </SharedButton>
+            {operation && (
+                <div className="sk-ai-tool-card__body">
+                    <SharedButton type="button" variant="ghost" size="sm" onClick={() => {
+                        openTab('ops');
+                        openRun('deploy', operation.id);
+                    }}>
+                        {t('ai.openOperation', 'Open in Operations')}
+                    </SharedButton>
+                </div>
+            )}
             {expanded && (
                 <div className="sk-ai-tool-card__body">
                     {Custom ? (

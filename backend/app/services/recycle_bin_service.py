@@ -162,6 +162,10 @@ def purge(kind, record_id):
         return False, PURGE_NOT_FOUND
     if row.deleted_at is None:
         return False, 'record is not in the recycle bin'
+    if kind == 'application':
+        from app.services.previews.lifecycle import cleanup_application
+        if not cleanup_application(row.id)['success']:
+            return False, 'Preview cleanup is incomplete; retry purge after restoring host access.'
     warning = _run_purge_hook(entry, row)
     db.session.delete(row)
     db.session.commit()
@@ -177,15 +181,21 @@ def purge_expired(retention_days=DEFAULT_RETENTION_DAYS):
             entry['model'].deleted_at.isnot(None),
             entry['model'].deleted_at < cutoff,
         ).all()
+        purged = 0
         for row in rows:
             # The retention sweep is the OTHER way a row reaches the end of its
             # life, so it owes the same cleanup an explicit purge does — without
             # it, a directory is reclaimed only when someone happens to click
             # Purge, and never for the 30-day expiry path.
+            if kind == 'application':
+                from app.services.previews.lifecycle import cleanup_application
+                if not cleanup_application(row.id)['success']:
+                    continue
             _run_purge_hook(entry, row)
             db.session.delete(row)
-        if rows:
-            counts[kind] = len(rows)
+            purged += 1
+        if purged:
+            counts[kind] = purged
     if counts:
         db.session.commit()
     return counts

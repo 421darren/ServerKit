@@ -60,8 +60,14 @@ class AnomalyDetectionService:
 
         self._lock = threading.Lock()
 
-        # Start cleanup thread
         self._stop_cleanup = threading.Event()
+        self._cleanup_thread = None
+
+    def start_cleanup(self):
+        """Start retention once, from the application runtime phase."""
+        if self._cleanup_thread and self._cleanup_thread.is_alive():
+            return
+        self._stop_cleanup.clear()
         self._cleanup_thread = threading.Thread(
             target=self._cleanup_loop,
             daemon=True

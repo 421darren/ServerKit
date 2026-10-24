@@ -10,7 +10,7 @@
 // Activity shows a view bar, a DataTable of runs, and server-side pagination
 // over a job store that can hold six figures of scheduler-tick rows.
 // Wired to the real ApiService job methods (see frontend/src/services/api/jobs.js).
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ListChecks, RefreshCw, RotateCcw, XCircle, Play, Clock } from 'lucide-react';
 import api from '../services/api';
@@ -174,6 +174,10 @@ export default function Jobs() {
     const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(true);
     const [loadErrors, setLoadErrors] = useState({ jobs: null, scheduled: null });
+    // Search, pagination and polling may finish out of order.
+    const requestSeq = useRef(0);
+    const currentQuery = useRef(null);
+    currentQuery.current = { filters, q, page };
 
     // Table sort + column visibility, controlled so saved views can drive
     // them — same localStorage keys the DataTables used when uncontrolled.
@@ -206,6 +210,10 @@ export default function Jobs() {
     }, []);
 
     const load = useCallback(async () => {
+        const isCurrent = () => filters === currentQuery.current.filters
+            && q === currentQuery.current.q && page === currentQuery.current.page;
+        if (!isCurrent()) return;
+        const request = ++requestSeq.current;
         try {
             const params = { limit: PAGE_SIZE, offset: page * PAGE_SIZE };
             if (filters.status) params.status = filters.status;
@@ -221,6 +229,7 @@ export default function Jobs() {
                 api.getJobs(params),
                 api.getScheduledJobs(),
             ]);
+            if (request !== requestSeq.current || !isCurrent()) return;
             if (jobsRes.status === 'fulfilled') {
                 const data = jobsRes.value;
                 setJobs(data?.jobs || []);
@@ -235,7 +244,7 @@ export default function Jobs() {
                 scheduled: schedRes.status === 'rejected' ? schedRes.reason : null,
             });
         } finally {
-            setLoading(false);
+            if (request === requestSeq.current && isCurrent()) setLoading(false);
         }
     }, [filters, q, page]);
 

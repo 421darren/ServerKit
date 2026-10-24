@@ -521,6 +521,7 @@ const Templates = () => {
     if (loading) {
         return (
             <div className="sk-tabgroup__inner">
+                {topbarChrome}
                 <EmptyState loading loadingVariant="cards" title={t('app.templates.loadingTemplates', 'Loading templates')} />
             </div>
         );

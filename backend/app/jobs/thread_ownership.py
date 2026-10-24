@@ -89,7 +89,7 @@ THREAD_OWNERSHIP = {
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': 'Long-lived liveness checker for connected agents.',
     },
-    'app/services/anomaly_detection_service.py:__init__:self._cleanup_loop': {
+    'app/services/anomaly_detection_service.py:start_cleanup:self._cleanup_loop': {
         'owner': 'anomaly detector',
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': 'Maintains process-local anomaly detector state and retention.',
@@ -134,7 +134,7 @@ THREAD_OWNERSHIP = {
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': 'Long-lived monitor loop; periodic migration is separate from one-shot work.',
     },
-    'app/services/nonce_service.py:__init__:self._cleanup_loop': {
+    'app/services/nonce_service.py:start_cleanup:self._cleanup_loop': {
         'owner': 'nonce store',
         'lifecycle': LIFECYCLE_PROCESS_LOOP,
         'rationale': 'Expires process-local nonce state.',

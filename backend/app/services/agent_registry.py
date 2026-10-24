@@ -188,7 +188,10 @@ class AgentRegistry:
             # Called outside an app context (e.g. during testing) —
             # heartbeat checker will skip DB operations gracefully.
             self._app = None
-        # Start heartbeat checker
+
+    def start(self, app):
+        """Start liveness checks after application persistence is ready."""
+        self._app = app
         self._start_heartbeat_checker()
 
     def _start_heartbeat_checker(self):

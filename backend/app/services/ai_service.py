@@ -112,6 +112,16 @@ SYSTEM_BASE = (
     "corresponding tool — it will pause for explicit human confirmation before "
     "anything actually runs. Never claim you performed an action unless a tool "
     "result confirms it."
+    " For deployment requests, inspect the target and catalog, then prepare a proposal. "
+    "Show its scope before calling execute_deployment_proposal with the unchanged proposal. "
+    "That tool still requires human approval. Keep the returned operation ID: a queued run "
+    "continues in Operations after chat closes. Use get_deployment_operation for progress "
+    "and logs; never start another deployment just because a run is pending. Avoid tight "
+    "polling loops: report the operation and let the user follow it or ask for an update. "
+    "Only report deployment success after the operation succeeds, and state the verification "
+    "scope. Running containers without health checks do not prove application health. "
+    "Never request credentials in chat; direct secret handoffs to Operations. Unsupported "
+    "recipe capabilities are blockers, not instructions to improvise shell commands."
 )
 
 # Guardrail detectors (cheap, regex-based) — built once, on first use. They are
@@ -519,6 +529,8 @@ def _audit_tool_execute(descriptor, params, user, *, ok: bool, error: Optional[s
 
 
 def summarize_action(descriptor, params: dict) -> str:
+    if getattr(descriptor, 'qualified_name', None) == 'core__execute_deployment_proposal':
+        return 'Run the deployment described below. It continues in Operations after chat closes.'
     first_line = (descriptor.description or descriptor.name).split("\n")[0].rstrip(".")
     if params:
         kv = ", ".join(f"{k}={v}" for k, v in params.items())
@@ -734,6 +746,12 @@ class ConfirmationGate:
 
         token = secrets.token_urlsafe(16)
         summary = summarize_action(descriptor, params)
+        display_params = params
+        if descriptor.qualified_name == 'core__execute_deployment_proposal':
+            from app.models.user import User
+            from app.services.ai_operations import proposal_details
+            caller = db.session.get(User, self.user_id, populate_existing=True)
+            display_params = proposal_details(params.get('proposal'), caller)
         row = AiPendingAction(
             id=token, conversation_id=self.conversation_id, user_id=self.user_id,
             tool_name=descriptor.qualified_name, plugin_slug=descriptor.plugin_slug,
@@ -756,6 +774,7 @@ class ConfirmationGate:
             "action_token": token, "tool_name": descriptor.qualified_name,
             "name": descriptor.name, "plugin_slug": descriptor.plugin_slug,
             "summary": summary, "params": params, "is_write": True,
+            "display_params": display_params,
         })
 
         signaled = ev.wait(timeout=self._ttl)

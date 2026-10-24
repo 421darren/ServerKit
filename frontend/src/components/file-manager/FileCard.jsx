@@ -13,7 +13,7 @@ function FileCard({
     onOpen,
     onToggleSelect,
     onContext,
-    isS3 = false,
+    fileApi,
 }) {
     const { t } = useTranslation();
     const ext = getFileExt(entry);
@@ -51,7 +51,7 @@ function FileCard({
 
             <div className="file-card-thumb">
                 {showThumb ? (
-                    <ImageThumb path={entry.path} isS3={isS3} fallback={<FileIcon entry={entry} size={36} />} />
+                    <ImageThumb path={entry.path} fileApi={fileApi} fallback={<FileIcon entry={entry} size={36} />} />
                 ) : (
                     <FileIcon entry={entry} size={36} />
                 )}

@@ -9,7 +9,7 @@
 // rows this client never loaded), while the grid chrome's column rules narrow
 // the rows already on screen. A saved view carries both — the server pair under
 // `page.serverFilters`, the rules under `columnFilters`.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     ChevronRight, Globe, Pause, Play, Plus, Radar, RefreshCw,
@@ -195,23 +195,35 @@ export default function Monitors() {
     const [formOpen, setFormOpen] = useState(false);
     const [form, setForm] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
+    // Search changes and polling can overlap; only the latest current query wins.
+    const requestSeq = useRef(0);
+    const currentQuery = useRef(null);
+    currentQuery.current = { q, status: filters.status, type: filters.type };
     // Bumps once a second so "next check in 42s" actually counts down between
     // polls instead of sitting still for 15 seconds at a time.
     const [, setTick] = useState(0);
 
     const load = useCallback(async () => {
+        const query = { q, status: filters.status, type: filters.type };
+        const isCurrent = () => query.q === currentQuery.current.q
+            && query.status === currentQuery.current.status
+            && query.type === currentQuery.current.type;
+        if (!isCurrent()) return;
+        const request = ++requestSeq.current;
         try {
             const listRes = await api.getMonitors({
                 q: q || undefined, status: filters.status || undefined, type: filters.type || undefined,
             });
+            if (request !== requestSeq.current || !isCurrent()) return;
             setMonitors(listRes?.monitors || []);
             setLoadError(null);
         } catch (err) {
+            if (request !== requestSeq.current || !isCurrent()) return;
             // Keep the last good list on screen rather than blanking the page;
             // the error shows above it, or in its place on a first load.
             setLoadError(err);
         } finally {
-            setLoading(false);
+            if (request === requestSeq.current && isCurrent()) setLoading(false);
         }
     }, [q, filters.status, filters.type]);
 

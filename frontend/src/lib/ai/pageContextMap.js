@@ -25,13 +25,15 @@ const ROUTES = [
 ];
 
 const SUGGESTED = {
-    docker: ['List my running containers', "Why might a container keep restarting?"],
+    docker: ['List my running containers', 'Help me deploy an application from the template catalog'],
+    services: ['List my services and their status', 'Help me deploy an application from the template catalog'],
+    service: ['Check this service’s container health', 'Show the recent deployments for this service'],
     apps: ['List my services and their status', 'Which services are unhealthy?'],
     app: ['Summarize the status of this service'],
     databases: ['List my databases', 'How big is each database?'],
     monitoring: ["What's my current CPU, memory, and disk usage?"],
     servers: ['List the servers in my fleet'],
-    server: ["Summarize this server's health"],
+    server: ["Summarize this server's health", 'Prepare an application deployment on this server'],
     dashboard: ['What can you do?', "Give me a quick health summary of this panel"],
 };
 

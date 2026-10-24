@@ -86,6 +86,8 @@ class RecipeStepRegistry:
         if callable(check) and check(context):
             return {'already_complete': True}
         outcome = entry['handler'](context)
+        if isinstance(outcome, dict) and (outcome.get('success') is False or outcome.get('ok') is False):
+            raise RuntimeError(f'Recipe capability {capability} reported failure')
         return outcome if isinstance(outcome, dict) else {'result': outcome}
 
     @classmethod
@@ -126,6 +128,8 @@ class RecipeExecutionService:
     @classmethod
     def register_jobs(cls) -> None:
         from app.services import deploy_kind_registry
+        from app.services.recipe_builtin_steps import register_steps
+        register_steps()
         deploy_kind_registry.register(RECIPE_JOB_KIND, cls.run, replace=True)
 
     @staticmethod
@@ -143,13 +147,15 @@ class RecipeExecutionService:
               user_id: Optional[int], slug: Optional[str] = None,
               title: Optional[str] = None, manifest_row=None,
               params: Optional[Dict[str, str]] = None,
-              wait: bool = False) -> Dict[str, Any]:
+              wait: bool = False, job_id: Optional[str] = None,
+              server_id: Optional[str] = None) -> Dict[str, Any]:
         """Create one Recipe run after capability and manifest preflight."""
         recipe_steps = list(normalized.get('configure') or []) + list(
             normalized.get('verify') or [])
         if not recipe_steps:
             return {'success': False, 'error': 'Manifest does not contain Recipe steps'}
 
+        cls.register_jobs()
         unsupported = cls.unsupported_capabilities(normalized)
         if unsupported:
             return {
@@ -188,7 +194,6 @@ class RecipeExecutionService:
                 'step_id': step['id'], 'recipe_step': step,
             })
 
-        cls.register_jobs()
         from app.services.deployment_job_service import DeploymentJobService
         return DeploymentJobService.start_registered(
             RECIPE_JOB_KIND,
@@ -196,6 +201,8 @@ class RecipeExecutionService:
             user_id=user_id,
             trigger='recipe',
             wait=wait,
+            job_id=job_id,
+            server_id=server_id,
             plan={
                 'recipe': {
                     'slug': slug or normalized.get('project') or 'inline',

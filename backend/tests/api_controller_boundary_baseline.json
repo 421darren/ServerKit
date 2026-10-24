@@ -3,7 +3,7 @@
   "policy": "Exact reviewed inventory of direct persistence, subprocess, and filesystem mutation calls in Flask API controllers. New calls are forbidden; remove entries as controllers delegate to services.",
   "counts": {
     "filesystem": 8,
-    "persistence": 469
+    "persistence": 468
   },
   "owners": {
     "api/admin.py": {
@@ -655,7 +655,6 @@
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::1",
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::2",
     "api/two_factor.py::verify_2fa_code::persistence::db.session.commit()::3",
-    "api/webhooks.py::receive_pull_request::persistence::ApplicationPreview.query.filter_by(application_id=webhook.app_id, pr_number=pr.get('pr_number')).first()::1",
     "api/webhooks.py::receive_pull_request::persistence::GitWebhook.query.filter_by(webhook_token=token).first()::1"
   ]
 }

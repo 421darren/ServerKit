@@ -96,11 +96,16 @@ class TestDeploy:
         assert result['started'] == [] and set(result['failed']) == {'worker', 'scheduler'}
 
 
-def test_build_pack_containers_are_listed_web_first(app, fake_subprocess):
+@pytest.mark.parametrize('compose_command', [None, ['docker', 'compose'], ['docker-compose']])
+def test_build_pack_containers_are_listed_web_first(app, fake_subprocess, monkeypatch, compose_command):
+    # Prior tests can cache either Compose flavor. Both must yield the same
+    # build-pack fallback; keep the fake transport independent of test order.
+    monkeypatch.setattr(DockerService, '_compose_cmd', compose_command)
     site = make_application(db, name='shop', buildpack_type='python', root_path='/nonexistent')
     rows = [{'ID': 'w1', 'Names': f'serverkit-app-{site.id}-worker', 'State': 'running'},
             {'ID': 'm1', 'Names': f'serverkit-app-{site.id}', 'State': 'running'}]
     fake_subprocess.script(['docker', 'compose'], stdout='')
+    fake_subprocess.script(['docker-compose'], stdout='')
     fake_subprocess.script(['docker', 'ps'], stdout='\n'.join(json.dumps(r) for r in rows))
     listed = DockerService.get_all_app_containers(site)
     assert [(c['id'], c['service']) for c in listed] == [('m1', 'web'), ('w1', 'worker')]

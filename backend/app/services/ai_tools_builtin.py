@@ -194,5 +194,7 @@ def register_builtin_tools() -> None:
         rbac_feature="docker", is_write=True, admin_only=True,
     )
 
+    from app.services.ai_operations import register_tools
+    register_tools(ai_tool_registry)
     _REGISTERED = True
-    logger.info("Registered %d built-in AI tools", 8)
+    logger.info("Registered core AI tools")

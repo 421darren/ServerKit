@@ -156,11 +156,12 @@ def test_create_and_destroy_writes_rows_and_flips_status(app):
             'pr_title': 'Add X',
         })
         assert created.get('pr_number') == 12
-        assert created.get('status') == ApplicationPreview.STATUS_RUNNING
+        assert created.get('status') == ApplicationPreview.STATUS_FAILED
+        assert created['url'] is None
         assert created.get('domain')  # a domain was rendered
 
         row = ApplicationPreview.query.filter_by(application_id=a.id, pr_number=12).first()
-        assert row is not None and row.status == ApplicationPreview.STATUS_RUNNING
+        assert row is not None and row.status == ApplicationPreview.STATUS_FAILED
 
         destroyed = PreviewService.destroy_preview(row.id)
         assert destroyed.get('status') == ApplicationPreview.STATUS_DESTROYED
@@ -217,3 +218,31 @@ def test_reconcile_against_db_rows(app):
             open_prs=[{'pr_number': 7, 'commit_sha': 'new'}],
             active_previews=[live])
         assert [p['pr_number'] for p in plan['to_update']] == [7]
+
+
+def test_preview_requires_success_and_runtime_ids(app, monkeypatch):
+    with app.app_context():
+        a = _mk_app(name='runtime-proof')
+        PreviewService.enable_previews(a.id, {'enabled': True})
+        for number, result, expected in [
+            (1, {'ok': True, 'container_ids': ['runtime']}, 'running'),
+            (2, {'ok': True, 'container_ids': []}, 'failed'),
+            (3, {'ok': False, 'container_ids': ['runtime']}, 'failed'),
+            (4, {'container_ids': ['runtime']}, 'failed'),
+        ]:
+            monkeypatch.setattr(PreviewService, '_provision', lambda *a, **kw: result)
+            row = PreviewService.create_preview(a, {'pr_number': number})
+            assert row['status'] == expected
+            assert bool(row['url']) == (expected == 'running')
+
+
+def test_legacy_preview_without_runtime_is_not_advertised():
+    row = ApplicationPreview(status='running', domain='pr.example.test')
+    assert row.to_dict()['status'] == 'unavailable'
+    assert row.to_dict()['url'] is None
+    assert row.status == 'running'  # reads do not mutate persistence
+    row.set_container_ids(['runtime'])
+    assert row.to_dict()['url'] == 'https://pr.example.test'
+    for status in ('failed', 'stopped', 'destroyed', 'building', 'queued'):
+        row.status = status
+        assert row.to_dict()['url'] is None
