@@ -30,6 +30,13 @@ def inspect(kind, name):
 
 def start(app, preview, state, inherit_environment=False):
     name = identity(preview.id, state['token'])
+    container_port = app.port
+    if app.active_slot:
+        from app.models.app_slot import AppSlot
+        slot = AppSlot.query.filter_by(application_id=app.id, slot=app.active_slot).first()
+        if not slot or not slot.container_port:
+            raise PreviewError('The active deployment slot has no recorded container port.')
+        container_port = slot.container_port
     state['container'] = True
     save(preview, state)  # intent before docker run, even if it partially fails
     env = {'SERVERKIT_PREVIEW': 'true', 'SERVERKIT_PR_NUMBER': str(preview.pr_number),
@@ -41,7 +48,7 @@ def start(app, preview, state, inherit_environment=False):
             raise PreviewError('Inherited environment is incomplete; preview deployment stopped.')
         env = {**{key: value['value'] for key, value in entries.items()}, **env}
     result = DockerService.run_container(
-        image=name + ':preview', name=name, ports=[f'127.0.0.1::{app.port}'],
+        image=name + ':preview', name=name, ports=[f'127.0.0.1::{container_port}'],
         env=env, restart_policy='unless-stopped', labels={LABEL: str(preview.id)},
     )
     if not result.get('success'):
@@ -49,7 +56,7 @@ def start(app, preview, state, inherit_environment=False):
     info = inspect('container', name)
     if not info or info.get('Config', {}).get('Labels', {}).get(LABEL) != str(preview.id):
         raise PreviewError('Preview container ownership could not be verified.')
-    bindings = info.get('NetworkSettings', {}).get('Ports', {}).get(f'{app.port}/tcp') or []
+    bindings = info.get('NetworkSettings', {}).get('Ports', {}).get(f'{container_port}/tcp') or []
     binding = next((b for b in bindings if b.get('HostIp') == '127.0.0.1'), None)
     if not binding:
         raise PreviewError('Preview container has no loopback HTTP port.')

@@ -368,3 +368,20 @@ def test_purge_cleans_preview_before_deleting_ownership_record(host, monkeypatch
     assert ok, warning
     assert not resources['containers'] and not resources['images']
     assert db.session.get(ApplicationPreview, result['id']) is None
+
+
+def test_preview_uses_slot_container_port_without_mutating_production_slot(host):
+    from app.models.app_slot import AppSlot
+    parent, resources = host
+    parent.active_slot = 'a'
+    parent.slot_deploys_enabled = True
+    parent.port = 39005  # live host binding, not the image's listening port
+    slot = AppSlot(application_id=parent.id, slot='a', container_port=8400,
+                   host_port=39005, container_name='production-slot', state='live')
+    db.session.add(slot)
+    db.session.commit()
+    assert PreviewService.create_preview(parent, PR)['status'] == 'running'
+    run = next(call[1] for call in resources['calls'] if call[0] == 'run')
+    assert run['ports'] == ['127.0.0.1::8400']
+    db.session.refresh(slot)
+    assert slot.host_port == 39005 and slot.container_name == 'production-slot'

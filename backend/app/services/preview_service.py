@@ -485,7 +485,7 @@ class PreviewService:
     def _fetch_open_prs(cls, app):
         """Best-effort: list open PRs for the app's connected repo. Returns a
         list of ``{pr_number, branch, commit_sha, pr_title}`` dicts, or ``[]``
-        when no provider is connected (e.g. dev/test)."""
+        when a provider returns an empty list. Unavailable discovery returns None."""
         try:
             from app.services.source_connection_service import SourceConnectionService
             fn = getattr(SourceConnectionService, 'list_open_pull_requests', None)
