@@ -787,6 +787,7 @@ Regenerate (backend/):
 - `POST /apps/{app_id}/image-update/apply`
 - `POST /apps/{app_id}/link`
 - `POST /apps/{app_id}/micro-cache/purge`
+- `POST /apps/{app_id}/previews`
 - `POST /apps/{app_id}/previews/sync`
 - `POST /apps/{app_id}/previews/{preview_id}/redeploy`
 - `POST /apps/{app_id}/private-url`
