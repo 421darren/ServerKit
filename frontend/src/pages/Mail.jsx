@@ -55,7 +55,7 @@ const Mail = () => {
         : selectedServer.status;
 
     return (
-        <div className="page-container page-container--full-bleed docker-page-new dx-page">
+        <div className="page-container page-container--full-bleed docker-page-new dx-page mail-page">
             <div className="dx-workspace">
                 <aside className="dx-docker-sidebar">
                     {hasMultipleTargets && (
