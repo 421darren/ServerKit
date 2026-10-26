@@ -13,7 +13,8 @@ import {
 } from '../routeManifest.js';
 
 test('core route paths and ids are unique', () => {
-    assert.equal(CORE_ROUTES.length, 98, 'route changes must update the parity baseline intentionally');
+    // 98 upstream routes + this fork's /mail and /monitoring/status-pages.
+    assert.equal(CORE_ROUTES.length, 100, 'route changes must update the parity baseline intentionally');
     assert.equal(new Set(CORE_ROUTES.map(({ id }) => id)).size, CORE_ROUTES.length);
     assert.equal(new Set(CORE_ROUTES.map(({ path }) => path)).size, CORE_ROUTES.length);
 });
